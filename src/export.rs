@@ -1048,3 +1048,170 @@ fn wasm4_rust_source(meta: &Wasm4Meta, palette: &[[u8; 3]; 4], blob: &[u8]) -> S
     src.push_str("];\n");
     src
 }
+/// Request for `export_sheet_paperzd`: grid sheet PNG plus TexturePacker-style
+/// JSON metadata for PaperZD / Paper 2D import.
+///
+/// Same grid layout as `export_sheet`; only the sidecar format differs.
+/// Frame names are `{tag}_{index}` when a tag covers the frame, else
+/// `frame_{index}`. Rejects the same inputs as `export_sheet`.
+#[derive(Debug, Deserialize, JsonSchema)]
+pub struct ExportSheetPaperZdRequest {
+    /// Project-relative `.lumen.json` document to render.
+    pub doc: String,
+    /// Project-relative `.png` sheet output path (required).
+    pub output: String,
+    /// Project-relative `.json` TexturePacker metadata path (required).
+    pub meta_output: String,
+    /// Grid columns, 1..=64. Clamped down to the exported frame count.
+    pub columns: u32,
+    /// Export only this tag's frame range. `None` exports every frame.
+    pub tag: Option<String>,
+    /// Transparent gap between cells, 0..=64 px. No outer border.
+    pub padding: u32,
+}
+
+/// One frame entry in TexturePacker JSON format, as PaperZD expects.
+#[derive(Debug, Clone, Serialize)]
+pub struct PaperZdFrame {
+    pub frame: PaperZdRect,
+    pub rotated: bool,
+    pub trimmed: bool,
+    #[serde(rename = "spriteSourceSize")]
+    pub sprite_source_size: PaperZdRect,
+    #[serde(rename = "sourceSize")]
+    pub source_size: PaperZdSize,
+}
+
+/// Rectangle `{x, y, w, h}` in TexturePacker JSON.
+#[derive(Debug, Clone, Serialize)]
+pub struct PaperZdRect {
+    pub x: u32,
+    pub y: u32,
+    pub w: u32,
+    pub h: u32,
+}
+
+/// Size `{w, h}` in TexturePacker JSON.
+#[derive(Debug, Clone, Serialize)]
+pub struct PaperZdSize {
+    pub w: u32,
+    pub h: u32,
+}
+
+/// Top-level TexturePacker JSON document for PaperZD import.
+///
+/// `frames` is a `BTreeMap` so serialization is deterministic (sorted by
+/// name); PaperZD reads the `frame` rect and `meta.image`/`meta.size`.
+#[derive(Debug, Clone, Serialize)]
+pub struct PaperZdSheetMeta {
+    pub frames: std::collections::BTreeMap<String, PaperZdFrame>,
+    pub meta: PaperZdMetaInner,
+}
+
+/// The `meta` section of TexturePacker JSON.
+#[derive(Debug, Clone, Serialize)]
+pub struct PaperZdMetaInner {
+    pub app: String,
+    pub version: String,
+    pub image: String,
+    pub format: String,
+    pub size: PaperZdSize,
+    pub scale: String,
+}
+
+/// Render frames into a grid sheet PNG plus a TexturePacker-style JSON
+/// sidecar for PaperZD / Paper 2D import.
+///
+/// Contract: identical grid layout and validation to `export_sheet`; the
+/// sidecar uses TexturePacker field names (`frame`, `rotated`, `trimmed`,
+/// `spriteSourceSize`, `sourceSize`, `meta.image`, `meta.size`) so Unreal's
+/// PaperZD importer reads frame rects without manual slicing. Frames are
+/// never rotated or trimmed; pivots default to center (PaperZD convention).
+/// The PNG is written first; the sidecar only after the PNG succeeded.
+pub async fn export_sheet_paperzd(
+    root: &Path,
+    req: ExportSheetPaperZdRequest,
+) -> Result<ImageSaved, LumenError> {
+    require_suffix("output", &req.output, ".png")?;
+    require_suffix("meta_output", &req.meta_output, ".json")?;
+    if req.padding > SHEET_PADDING_MAX_PX {
+        return Err(LumenError::BadParam(format!(
+            "padding {} outside 0..={SHEET_PADDING_MAX_PX}",
+            req.padding
+        )));
+    }
+    let doc = load_doc(root, &req.doc)?;
+    let frames: Vec<usize> = match &req.tag {
+        Some(name) => tag_frames(find_tag(&doc, name)?),
+        None => (0..doc.frames.len()).collect(),
+    };
+    let grid = Grid::plan(
+        frames.len(),
+        doc.width,
+        doc.height,
+        req.columns,
+        req.padding,
+        0,
+    )?;
+    let meta_path = crate::resolve_write_path(&req.meta_output, root, &["json"])?;
+
+    let mut paper_frames = std::collections::BTreeMap::new();
+    for (slot, &frame) in (0u32..).zip(frames.iter()) {
+        let (x, y) = grid.origin(slot);
+        let tag_name = match &req.tag {
+            Some(name) => Some(name.clone()),
+            None => doc
+                .tags
+                .iter()
+                .find(|t| t.from_frame as usize <= frame && frame <= t.to_frame as usize)
+                .map(|t| t.name.clone()),
+        };
+        let frame_name = match tag_name {
+            Some(tag) => format!("{tag}_{slot}"),
+            None => format!("frame_{slot}"),
+        };
+        let rect = PaperZdRect {
+            x,
+            y,
+            w: doc.width,
+            h: doc.height,
+        };
+        paper_frames.insert(
+            frame_name,
+            PaperZdFrame {
+                frame: PaperZdRect { x, y, w: doc.width, h: doc.height },
+                rotated: false,
+                trimmed: false,
+                sprite_source_size: rect,
+                source_size: PaperZdSize {
+                    w: doc.width,
+                    h: doc.height,
+                },
+            },
+        );
+    }
+
+    let sheet = render_grid(&doc, &grid, &frames)?;
+    let saved = save_png(root, &sheet, &req.output)?;
+    let image_filename = Path::new(&req.output)
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or(&req.output)
+        .to_string();
+    let meta = PaperZdSheetMeta {
+        frames: paper_frames,
+        meta: PaperZdMetaInner {
+            app: "lumen".to_string(),
+            version: env!("CARGO_PKG_VERSION").to_string(),
+            image: image_filename,
+            format: "RGBA8888".to_string(),
+            size: PaperZdSize {
+                w: sheet.width(),
+                h: sheet.height(),
+            },
+            scale: "1".to_string(),
+        },
+    };
+    write_json_sidecar(&meta_path, &meta)?;
+    Ok(saved)
+}

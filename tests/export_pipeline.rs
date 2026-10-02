@@ -15,9 +15,9 @@ use lumen::doc::{
     BlendMode, Frame, Layer, LayerMod, SpriteDoc, Tag, identity_mod, load_doc, new_doc, save_doc,
 };
 use lumen::export::{
-    ExportSheetRequest, ExportSpriteRequest, ExportTagRequest, ExportTic80Request,
-    ExportWasm4Request, ImportLayerRequest, export_sheet, export_sprite, export_tag, export_tic80,
-    export_wasm4, import_layer,
+    ExportSheetPaperZdRequest, ExportSheetRequest, ExportSpriteRequest, ExportTagRequest,
+    ExportTic80Request, ExportWasm4Request, ImportLayerRequest, export_sheet, export_sheet_paperzd,
+    export_sprite, export_tag, export_tic80, export_wasm4, import_layer,
 };
 use lumen::pipeline::{
     BuildFullbodySheetRequest, ContactSheetRequest, GenerateMatureVariantRequest,
@@ -1548,4 +1548,94 @@ async fn adv_wasm4_rejects_oversized_frames_and_blob() {
         .unwrap_err();
     assert!(err.to_string().contains("38400 bytes"), "{err}");
     assert_nothing_written(root, &["s.rs", "out/sprite.json"]);
+}
+// export_sheet_paperzd — 2 validation, 2 adversarial
+// ---------------------------------------------------------------------------
+
+fn paperzd_req(columns: u32, tag: Option<&str>, padding: u32, meta: &str) -> ExportSheetPaperZdRequest {
+    ExportSheetPaperZdRequest {
+        doc: "a.lumen.json".into(),
+        output: "sheet.png".into(),
+        meta_output: meta.into(),
+        columns,
+        tag: tag.map(str::to_string),
+        padding,
+    }
+}
+
+#[tokio::test]
+async fn export_sheet_paperzd_emits_texturepacker_json() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let root = dir.path();
+    write_doc(root, 4, 2, 3, &[("idle", 0, 1), ("walk", 1, 2)]);
+    let saved = export_sheet_paperzd(root, paperzd_req(2, None, 0, "sheet.json"))
+        .await
+        .expect("export");
+    // 2 columns x 2 rows of 4x2 cells, no padding.
+    assert_eq!((saved.width, saved.height), (8, 4));
+    let meta = read_json(&root.join("sheet.json"));
+    // TexturePacker top-level structure.
+    let frames = meta["frames"].as_object().expect("frames object");
+    assert_eq!(frames.len(), 3);
+    // Frame names use tag_slot convention.
+    assert!(frames.contains_key("idle_0"), "idle_0 in {:?}", frames.keys().collect::<Vec<_>>());
+    assert!(frames.contains_key("idle_1"));
+    assert!(frames.contains_key("walk_2"));
+    // Frame rect matches grid position.
+    let f0 = &frames["idle_0"];
+    assert_eq!(xy(&f0["frame"], "x", "y"), (0, 0));
+    assert_eq!(xy(&f0["frame"], "w", "h"), (4, 2));
+    assert_eq!(f0["rotated"], false);
+    assert_eq!(f0["trimmed"], false);
+    // Meta section has image and size.
+    assert_eq!(meta["meta"]["image"], "sheet.png");
+    assert_eq!(xy(&meta["meta"]["size"], "w", "h"), (8, 4));
+    assert_eq!(meta["meta"]["format"], "RGBA8888");
+}
+
+#[tokio::test]
+async fn export_sheet_paperzd_tag_filter_names_frames() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let root = dir.path();
+    write_doc(root, 4, 2, 4, &[("walk", 1, 2)]);
+    export_sheet_paperzd(root, paperzd_req(8, Some("walk"), 0, "m.json"))
+        .await
+        .expect("export");
+    let meta = read_json(&root.join("m.json"));
+    let frames = meta["frames"].as_object().expect("frames");
+    assert_eq!(frames.len(), 2);
+    assert!(frames.contains_key("walk_0"));
+    assert!(frames.contains_key("walk_1"));
+}
+
+#[tokio::test]
+async fn export_sheet_paperzd_rejects_bad_params() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let root = dir.path();
+    write_doc(root, 4, 2, 3, &[]);
+    for columns in [0, 65] {
+        let err = export_sheet_paperzd(root, paperzd_req(columns, None, 0, "m.json"))
+            .await
+            .unwrap_err();
+        assert!(is_bad_param(&err), "columns {columns}: {err}");
+    }
+    let err = export_sheet_paperzd(root, paperzd_req(2, Some("missing"), 0, "m.json"))
+        .await
+        .unwrap_err();
+    assert!(is_bad_param(&err), "{err}");
+    assert!(!root.join("sheet.png").exists(), "PNG not written on failure");
+}
+
+#[tokio::test]
+async fn export_sheet_paperzd_rejects_wrong_suffixes() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let root = dir.path();
+    write_doc(root, 4, 2, 2, &[]);
+    let mut req = paperzd_req(2, None, 0, "m.json");
+    req.output = "sheet.jpg".into();
+    let err = export_sheet_paperzd(root, req).await.unwrap_err();
+    assert!(is_bad_param(&err), "{err}");
+    let req = paperzd_req(2, None, 0, "m.txt");
+    let err = export_sheet_paperzd(root, req).await.unwrap_err();
+    assert!(is_bad_param(&err), "{err}");
 }

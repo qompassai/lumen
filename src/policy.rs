@@ -74,6 +74,7 @@ pub const LIBRARY_TOOLS: &[&str] = &[
     "bevy_status",
     "export_sprite",
     "export_sheet",
+    "export_sheet_paperzd",
     "export_tag",
     "import_layer",
     "dream_ambient",

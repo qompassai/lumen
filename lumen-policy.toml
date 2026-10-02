@@ -126,6 +126,10 @@ sink = "trusted"
 reads = ["low"]
 sink = "trusted"
 
+[tools.export_sheet_paperzd]
+reads = ["low"]
+sink = "trusted"
+
 [tools.export_tag]
 reads = ["low"]
 sink = "trusted"
