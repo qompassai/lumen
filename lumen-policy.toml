@@ -1,0 +1,332 @@
+# lumen-policy.toml — deterministic flow policy (see POLICY_DESIGN.md).
+#
+# Question answered before every tools/call: may data carrying these
+# sensitivity labels flow to this sink? Decisions are a pure function of
+# this file plus the session's call history: no network, no file I/O.
+#
+# Sensitivity labels: low | untrusted | high | restricted
+# Sink trust labels:  trusted | public | loopback | remote | external
+#
+# Evaluation (src/policy.rs):
+#   1. Every [[deny]] rule, in file order: a match denies immediately.
+#   2. Every label in context must be covered by some [[allow]] rule for
+#      this sink; any uncovered label is denied by R4-deny-by-default.
+# `default` must be "deny"; the loader rejects anything else.
+
+version = 1
+default = "deny"
+
+# Source labels: project-relative path prefixes, matched per component,
+# ASCII case-insensitively, after lexical `.`/`..` normalization. A path that
+# is absolute or climbs above the project root is labeled `restricted`.
+# Labels picked up by a call stay in the session context (they only grow).
+
+[[sources]]
+prefix = "refs/proprietary"
+label = "high"
+
+[[sources]]
+prefix = "refs/licensed"
+label = "high"
+
+[[sources]]
+prefix = "refs/restricted"
+label = "restricted"
+
+[[sources]]
+prefix = "refs/web"
+label = "untrusted"
+
+# ---------------------------------------------------------------------------
+# Deny rules (rules 1-3 of POLICY_DESIGN.md). Rule 4 is the engine default.
+# ---------------------------------------------------------------------------
+
+[[deny]]
+id = "R1-high-never-public"
+reason = "high-sensitivity reference art never flows to public cart exports or external A2A tasks"
+labels = ["high"]
+sinks = ["public", "external"]
+
+[[deny]]
+id = "R2-lua-refuses-untrusted"
+reason = "run_lua_script refuses while untrusted-sourced data is in context (prompt-injection exfiltration)"
+tools = ["run_lua_script"]
+labels = ["untrusted"]
+sinks = ["trusted", "public", "loopback", "remote", "external"]
+
+[[deny]]
+id = "R3-restricted-loopback-brp-only"
+reason = "restricted data never goes to a non-loopback BRP target"
+labels = ["restricted"]
+sinks = ["remote"]
+
+# ---------------------------------------------------------------------------
+# Allow rules. Anything not covered here is denied (R4-deny-by-default).
+# ---------------------------------------------------------------------------
+
+[[allow]]
+id = "A1-low-anywhere"
+reason = "project sprites may go to any sink"
+labels = ["low"]
+sinks = ["trusted", "public", "loopback", "remote", "external"]
+
+[[allow]]
+id = "A2-high-local-and-brp"
+reason = "reference art may be used locally and in Bevy; remote BRP still needs LUMEN_ALLOW_REMOTE_BRP=1"
+labels = ["high"]
+sinks = ["trusted", "loopback", "remote"]
+
+[[allow]]
+id = "A3-untrusted-local-and-brp"
+reason = "web-sourced data may be used locally and in Bevy, never shipped to public or external sinks"
+labels = ["untrusted"]
+sinks = ["trusted", "loopback", "remote"]
+
+[[allow]]
+id = "A4-restricted-local-only"
+reason = "restricted data stays on this machine"
+labels = ["restricted"]
+sinks = ["trusted", "loopback"]
+
+# ---------------------------------------------------------------------------
+# Tool labels. `reads` = baseline input sensitivity; `sink` = destination
+# trust. `sink = "brp"` resolves per call from the `endpoint` argument:
+# `loopback` for localhost/127.0.0.0/8/::1 (default endpoint), else `remote`.
+# `lumen policy check` fails if any registered or library tool is missing.
+# ---------------------------------------------------------------------------
+
+# Registered MCP tools (src/main.rs).
+[tools.sprite_info]
+reads = ["low"]
+sink = "trusted"
+
+[tools.validate_atlas]
+reads = ["low"]
+sink = "trusted"
+
+[tools.bevy_discover]
+reads = ["low"]
+sink = "brp"
+
+# Bevy bridge (src/bevy.rs).
+[tools.bevy_call]
+reads = ["low"]
+sink = "brp"
+
+[tools.bevy_status]
+reads = ["low"]
+sink = "brp"
+
+# Exports and import (src/export.rs): local project writes.
+[tools.export_sprite]
+reads = ["low"]
+sink = "trusted"
+
+[tools.export_sheet]
+reads = ["low"]
+sink = "trusted"
+
+[tools.export_tag]
+reads = ["low"]
+sink = "trusted"
+
+[tools.import_layer]
+reads = ["low"]
+sink = "trusted"
+
+# Dream automation (src/dream.rs).
+[tools.dream_ambient]
+reads = ["low"]
+sink = "trusted"
+
+[tools.dream_act]
+reads = ["low"]
+sink = "trusted"
+
+[tools.dream_transition]
+reads = ["low"]
+sink = "trusted"
+
+[tools.dream_text]
+reads = ["low"]
+sink = "trusted"
+
+# Text (src/text.rs).
+[tools.text_rasterize]
+reads = ["low"]
+sink = "trusted"
+
+[tools.text_measure]
+reads = ["low"]
+sink = "trusted"
+
+# Palette (src/palette.rs).
+[tools.palette_presets]
+reads = ["low"]
+sink = "trusted"
+
+[tools.palette_apply]
+reads = ["low"]
+sink = "trusted"
+
+[tools.palette_extract]
+reads = ["low"]
+sink = "trusted"
+
+[tools.palette_ramp]
+reads = ["low"]
+sink = "trusted"
+
+[tools.quantize]
+reads = ["low"]
+sink = "trusted"
+
+# Sprite core (src/sprite_ops.rs).
+[tools.new_sprite]
+reads = ["low"]
+sink = "trusted"
+
+[tools.add_layer]
+reads = ["low"]
+sink = "trusted"
+
+[tools.delete_layer]
+reads = ["low"]
+sink = "trusted"
+
+[tools.reorder_layer]
+reads = ["low"]
+sink = "trusted"
+
+[tools.rename_layer]
+reads = ["low"]
+sink = "trusted"
+
+[tools.set_layer_props]
+reads = ["low"]
+sink = "trusted"
+
+[tools.add_frame]
+reads = ["low"]
+sink = "trusted"
+
+[tools.delete_frame]
+reads = ["low"]
+sink = "trusted"
+
+[tools.set_frame_duration]
+reads = ["low"]
+sink = "trusted"
+
+[tools.set_frame_mod]
+reads = ["low"]
+sink = "trusted"
+
+[tools.add_tag]
+reads = ["low"]
+sink = "trusted"
+
+[tools.delete_tag]
+reads = ["low"]
+sink = "trusted"
+
+[tools.set_pixel]
+reads = ["low"]
+sink = "trusted"
+
+[tools.fill_rect]
+reads = ["low"]
+sink = "trusted"
+
+[tools.draw_line]
+reads = ["low"]
+sink = "trusted"
+
+[tools.draw_circle]
+reads = ["low"]
+sink = "trusted"
+
+[tools.flood_fill]
+reads = ["low"]
+sink = "trusted"
+
+[tools.flip]
+reads = ["low"]
+sink = "trusted"
+
+[tools.rotate]
+reads = ["low"]
+sink = "trusted"
+
+[tools.resize_canvas]
+reads = ["low"]
+sink = "trusted"
+
+[tools.crop]
+reads = ["low"]
+sink = "trusted"
+
+[tools.tween_frames]
+reads = ["low"]
+sink = "trusted"
+
+# Light Show pipeline (src/pipeline.rs).
+[tools.build_fullbody_sheet]
+reads = ["low"]
+sink = "trusted"
+
+[tools.generate_mature_variant]
+reads = ["low"]
+sink = "trusted"
+
+[tools.contact_sheet]
+reads = ["low"]
+sink = "trusted"
+
+# Style and fidelity (src/style.rs).
+[tools.fidelity_set]
+reads = ["low"]
+sink = "trusted"
+
+[tools.style_list]
+reads = ["low"]
+sink = "trusted"
+
+[tools.style_apply]
+reads = ["low"]
+sink = "trusted"
+
+# Inspection (src/inspect.rs).
+[tools.inspect_sprite]
+reads = ["low"]
+sink = "trusted"
+
+[tools.inspect_layer]
+reads = ["low"]
+sink = "trusted"
+
+[tools.histogram]
+reads = ["low"]
+sink = "trusted"
+
+[tools.color_usage]
+reads = ["low"]
+sink = "trusted"
+
+# QA (src/qa.rs). run_lua_script stays disabled unless opt_in=true; this
+# policy only adds flow control on top (R2), it never enables Lua.
+[tools.validate_scene]
+reads = ["low"]
+sink = "trusted"
+
+[tools.audit_animation]
+reads = ["low"]
+sink = "trusted"
+
+[tools.compare_frames]
+reads = ["low"]
+sink = "trusted"
+
+[tools.run_lua_script]
+reads = ["low"]
+sink = "trusted"
