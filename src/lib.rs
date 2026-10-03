@@ -12,6 +12,7 @@
 #![forbid(unsafe_code)]
 
 pub mod a2a;
+pub mod animation;
 pub mod bevy;
 pub mod doc;
 pub mod dream;
