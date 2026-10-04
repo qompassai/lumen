@@ -24,3 +24,15 @@ VRM license defaults must be set deliberately, Mixamo naming provisional.
 `~/workspace/skills/lumen-sprite-to-3d/SKILL.md` — mirrored to primo
 `~/.claude/skills/`, `~/.local/share/skills/`, `~/.local/share/pax-skills/`.
 Status banner updated as milestones land.
+
+## Repomap (codebase map for agents)
+
+One-shot generation (no flake wiring in this repo):
+
+```
+nix run github:qompassai/nix?dir=repomap -- /path/to/repo --budget 15000 --out .repomap.txt
+```
+
+`.repomap.txt` is a derived artifact — gitignore it, never commit it.
+For automatic regeneration on `nix develop`, wire the flake input per
+github.com/qompassai/nix/tree/main/repomap/README.md.
