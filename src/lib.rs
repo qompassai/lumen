@@ -13,11 +13,15 @@
 
 pub mod a2a;
 pub mod animation;
+pub mod aseprite;
 pub mod bevy;
+pub mod cli;
 pub mod doc;
 pub mod dream;
 pub mod export;
 pub mod inspect;
+pub mod pack;
+pub mod upscale;
 pub mod palette;
 pub mod pipeline;
 pub mod policy;

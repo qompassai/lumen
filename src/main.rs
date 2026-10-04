@@ -1,12 +1,17 @@
 //! lumen — "Lux in motu" (light in motion).
 //!
-//! MCP stdio server for sprite artistry. Tool logic lives in the `lumen`
-//! library crate; this binary is transport wiring only.
+//! MCP stdio server for sprite artistry (default, no subcommand), plus a
+//! pipeline CLI: `split`, `pack`, `clean`, `watch`, and `policy` tools.
+//! Tool logic lives in the `lumen` library crate; this binary is transport
+//! and argument wiring only.
 
 #![forbid(unsafe_code)]
 
+use std::path::PathBuf;
 use std::sync::Arc;
 
+use clap::{Parser, Subcommand};
+use lumen::cli::{self, CLI_DEFAULT_HEIGHT, CLI_DEFAULT_WIDTH};
 use lumen::policy::{self, DEFAULT_POLICY_TOML, Enforcer, Policy, PolicyError};
 use lumen::{bevy_discover, project_root, sprite_info, validate_atlas};
 use rmcp::{
@@ -21,6 +26,111 @@ use rmcp::{
     tool, tool_handler, tool_router,
     transport::io::stdio,
 };
+
+#[derive(Parser)]
+#[command(
+    name = "lumen",
+    version,
+    about = "Lux in motu — sprite artistry MCP server and pipeline CLI"
+)]
+struct Cli {
+    /// Subcommand. With none, serves the MCP server on stdio.
+    #[command(subcommand)]
+    command: Option<Command>,
+}
+
+#[derive(Subcommand)]
+enum Command {
+    /// Policy tools: check labels, replay scenarios.
+    Policy {
+        #[command(subcommand)]
+        action: PolicyAction,
+    },
+    /// Split a horizontal strip into cleaned, centered frame PNGs.
+    Split {
+        /// Strip image path.
+        input: PathBuf,
+        /// Frames in the strip (width must divide evenly).
+        #[arg(long)]
+        frames: u32,
+        /// Output directory for frame_*.png.
+        #[arg(long)]
+        out_dir: PathBuf,
+        /// Output frame width.
+        #[arg(long, default_value_t = CLI_DEFAULT_WIDTH)]
+        width: u32,
+        /// Output frame height.
+        #[arg(long, default_value_t = CLI_DEFAULT_HEIGHT)]
+        height: u32,
+    },
+    /// Pack PNGs from a directory into a sprite sheet + JSON sidecar.
+    Pack {
+        /// Directory of frame PNGs.
+        dir: PathBuf,
+        /// Output sheet path stem (`out` -> `out.png` + `out.json`).
+        #[arg(long)]
+        out: PathBuf,
+        /// Starting bin size; doubles until everything fits.
+        #[arg(long, default_value_t = 1024)]
+        bin_size: u32,
+    },
+    /// Clean transparency on every PNG in a directory.
+    Clean {
+        /// Directory of PNGs.
+        dir: PathBuf,
+        /// Output directory.
+        #[arg(long)]
+        out_dir: PathBuf,
+        /// Also key the border-connected background via connected
+        /// components (for solid white panels).
+        #[arg(long, default_value_t = false)]
+        connected_components: bool,
+        /// Use magenta chrominance matting (for #FF00FF backgrounds).
+        #[arg(long, default_value_t = false)]
+        magenta: bool,
+    },
+    /// Watch a directory; re-run clean/extract on change until killed.
+    Watch {
+        /// Directory to watch (recursive).
+        dir: PathBuf,
+    },
+    /// Upscale PNGs 2x via Real-ESRGAN ONNX.
+    Upscale {
+        /// Directory of PNGs.
+        dir: PathBuf,
+        /// Output directory.
+        #[arg(long)]
+        out: PathBuf,
+        /// Path to Real-ESRGAN .onnx model.
+        #[arg(long)]
+        model: PathBuf,
+    },
+    /// Export one animation per tag from an .aseprite file.
+    SplitTags {
+        /// Input .aseprite file.
+        input: PathBuf,
+        /// Output directory.
+        #[arg(long)]
+        out: PathBuf,
+        /// Output format: "png" (sequence + JSON) or "gif".
+        #[arg(long, default_value = "png")]
+        format: String,
+        /// Prefix prepended to every output name.
+        #[arg(long, default_value = "")]
+        prefix: String,
+        /// Overwrite a non-empty output directory.
+        #[arg(long, default_value_t = false)]
+        force: bool,
+    },
+}
+
+#[derive(Subcommand)]
+enum PolicyAction {
+    /// Exit 0 iff the policy loads and every tool is labeled.
+    Check,
+    /// Exit 0 iff every policy scenario decides as expected.
+    Replay,
+}
 
 #[derive(Debug, Clone)]
 pub struct Lumen {
@@ -79,7 +189,7 @@ impl Lumen {
     #[tool(description = "Validate a .png against the Light Show atlas contract: 384x1152, 4x6 grid of 96x192 cells, RGBA.")]
     fn validate_atlas(&self, Parameters(req): Parameters<ValidateAtlasRequest>) -> String {
         match project_root().and_then(|root| validate_atlas(&root, &req.path)) {
-            Ok(report) => ok_json(&report),
+            Ok(info) => ok_json(&info),
             Err(e) => err_json(e),
         }
     }
@@ -193,26 +303,72 @@ fn policy_replay() -> i32 {
     i32::from(failed != 0)
 }
 
-/// `Some(exit code)` when argv selects a policy subcommand, `None` to serve.
-fn policy_cli() -> Option<i32> {
-    let args: Vec<String> = std::env::args().skip(1).collect();
-    if args.first().map(String::as_str) != Some("policy") {
-        return None;
+/// Run a CLI subcommand; returns the process exit code.
+fn run_cli(command: Command) -> i32 {
+    if let Command::Policy { action } = command {
+        let code = match action {
+            PolicyAction::Check => policy_check(),
+            PolicyAction::Replay => policy_replay(),
+        };
+        std::process::exit(code);
     }
-    Some(match args.get(1).map(String::as_str) {
-        Some("check") if args.len() == 2 => policy_check(),
-        Some("replay") if args.len() == 2 => policy_replay(),
-        _ => {
-            eprintln!("usage: lumen policy <check|replay>  (policy file: $LUMEN_POLICY or built-in)");
-            2
+    let result: Result<(), lumen::LumenError> = match command {
+        Command::Policy { .. } => unreachable!("handled above"),
+        Command::Split { input, frames, out_dir, width, height } => {
+            cli::run_split(&input, frames, &out_dir, width, height).map(|written| {
+                println!("split: {} frames -> {}", written.len(), out_dir.display());
+            })
         }
-    })
+        Command::Pack { dir, out, bin_size } => {
+            cli::run_pack(&dir, &out, bin_size).map(|report| {
+                println!(
+                    "pack: {} frames -> {} (+ {}) [{}px bin]",
+                    report.frames.len(),
+                    report.sheet.display(),
+                    report.sidecar.display(),
+                    report.bin_size
+                );
+            })
+        }
+        Command::Clean { dir, out_dir, connected_components, magenta } => {
+            cli::run_clean(&dir, &out_dir, connected_components, magenta).map(|written| {
+                println!("clean: {} files -> {}", written.len(), out_dir.display());
+            })
+        }
+        Command::Watch { dir } => cli::run_watch(&dir),
+        Command::Upscale { dir, out, model } => {
+            lumen::upscale::run_upscale(&dir, &out, &model).map(|written| {
+                println!("upscale: {} files -> {}", written.len(), out.display());
+            })
+        }
+        Command::SplitTags { input, out, format, prefix, force } => {
+            cli::run_split_tags(&input, &out, &format, &prefix, force).map(|reports| {
+                for r in &reports {
+                    println!(
+                        "split-tags: {} -> {} ({} frames, {:?})",
+                        r.name,
+                        r.output.display(),
+                        r.frames.len(),
+                        r.direction
+                    );
+                }
+            })
+        }
+    };
+    match result {
+        Ok(()) => 0,
+        Err(e) => {
+            eprintln!("lumen: error: {e}");
+            1
+        }
+    }
 }
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    if let Some(code) = policy_cli() {
-        std::process::exit(code);
+    let cli = Cli::parse();
+    if let Some(command) = cli.command {
+        std::process::exit(run_cli(command));
     }
     tracing_subscriber::fmt()
         .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())

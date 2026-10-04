@@ -14,6 +14,15 @@ image = { version = "0.25", default-features = false, features = ["png", "gif"] 
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 base64 = "0.22"
 mlua = { version = "0.11", features = ["vendored", "lua54"] }
+asefile = "0.3"
+rectangle-pack = "0.4"
+imageproc = "0.25"
+clap = { version = "4", features = ["derive"] }
+rayon = "1"
+notify = "8"
+indicatif = "0.18"
+# ONNX Runtime for Real-ESRGAN inference. CUDA EP for primo's RTX 4070.
+ort = { version = "2.0.0-rc.10", features = ["download-binaries"] }
 thiserror = "2"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
