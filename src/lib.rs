@@ -20,6 +20,7 @@ pub mod doc;
 pub mod dream;
 pub mod export;
 pub mod inspect;
+pub mod oracle;
 pub mod pack;
 pub mod upscale;
 pub mod palette;
