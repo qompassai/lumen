@@ -43,7 +43,10 @@ struct HttpRequest {
 
 impl HttpRequest {
     fn header(&self, name: &str) -> Option<&str> {
-        self.headers.iter().find(|(n, _)| n == name).map(|(_, v)| v.as_str())
+        self.headers
+            .iter()
+            .find(|(n, _)| n == name)
+            .map(|(_, v)| v.as_str())
     }
 }
 
@@ -107,7 +110,11 @@ async fn handle_rpc(stream: &mut TcpStream, agent: &Agent, request: &HttpRequest
         .header("content-type")
         .is_some_and(|v| v.to_ascii_lowercase().starts_with("application/json"));
     if !json_type {
-        return write_error(stream, &http_err(415, "content-type must be application/json")).await;
+        return write_error(
+            stream,
+            &http_err(415, "content-type must be application/json"),
+        )
+        .await;
     }
     match agent.dispatch(&request.body, true).await {
         Reply::Json(envelope) => {
@@ -122,13 +129,19 @@ async fn handle_rpc(stream: &mut TcpStream, agent: &Agent, request: &HttpRequest
 }
 
 fn check_host(request: &HttpRequest) -> Result<(), HttpError> {
-    let host = request.header("host").ok_or_else(|| http_err(400, "host header required"))?;
+    let host = request
+        .header("host")
+        .ok_or_else(|| http_err(400, "host header required"))?;
     let name = match host.strip_prefix('[') {
         Some(rest) => rest.split(']').next().unwrap_or_default(),
         None => host.split(':').next().unwrap_or_default(),
     };
     let loopback = name.eq_ignore_ascii_case("localhost") || name == "127.0.0.1" || name == "::1";
-    if loopback { Ok(()) } else { Err(http_err(403, "host must be a loopback name")) }
+    if loopback {
+        Ok(())
+    } else {
+        Err(http_err(403, "host must be a loopback name"))
+    }
 }
 
 /// Read headers (bounded), then exactly `Content-Length` body bytes (bounded
@@ -143,7 +156,10 @@ async fn read_request(stream: &mut TcpStream) -> Result<HttpRequest, HttpError> 
         if buf.len() > HEADER_BYTES_MAX {
             return Err(http_err(431, "headers too large"));
         }
-        let read = stream.read(&mut chunk).await.map_err(|_| http_err(400, "read failed"))?;
+        let read = stream
+            .read(&mut chunk)
+            .await
+            .map_err(|_| http_err(400, "read failed"))?;
         if read == 0 {
             return Err(http_err(400, "connection closed mid-request"));
         }
@@ -170,7 +186,12 @@ async fn read_request(stream: &mut TcpStream) -> Result<HttpRequest, HttpError> 
         .read_exact(&mut body[filled..])
         .await
         .map_err(|_| http_err(400, "body shorter than content-length"))?;
-    Ok(HttpRequest { method, path, headers, body })
+    Ok(HttpRequest {
+        method,
+        path,
+        headers,
+        body,
+    })
 }
 
 type Head = (String, String, Vec<(String, String)>);
@@ -192,7 +213,9 @@ fn parse_head(head: &str) -> Result<Head, HttpError> {
         if headers.len() >= HEADER_COUNT_MAX {
             return Err(http_err(431, "too many headers"));
         }
-        let (name, value) = line.split_once(':').ok_or_else(|| http_err(400, "bad header"))?;
+        let (name, value) = line
+            .split_once(':')
+            .ok_or_else(|| http_err(400, "bad header"))?;
         headers.push((name.trim().to_ascii_lowercase(), value.trim().to_string()));
     }
     Ok((method.to_string(), path.to_string(), headers))
@@ -239,7 +262,10 @@ fn reason(status: u16) -> &'static str {
 
 /// Best-effort write: a vanished client is not a server error.
 async fn write_bytes(stream: &mut TcpStream, bytes: &[u8]) -> bool {
-    matches!(tokio::time::timeout(WRITE_DEADLINE, stream.write_all(bytes)).await, Ok(Ok(())))
+    matches!(
+        tokio::time::timeout(WRITE_DEADLINE, stream.write_all(bytes)).await,
+        Ok(Ok(()))
+    )
 }
 
 async fn write_response(stream: &mut TcpStream, status: u16, content_type: &str, body: &[u8]) {

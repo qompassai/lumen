@@ -284,7 +284,9 @@ impl Policy {
             )));
         }
         if raw.default != "deny" {
-            return Err(invalid("default must be \"deny\"; deny-by-default is not optional"));
+            return Err(invalid(
+                "default must be \"deny\"; deny-by-default is not optional",
+            ));
         }
         if raw.sources.len() > POLICY_SOURCES_MAX {
             return Err(invalid(format!("more than {POLICY_SOURCES_MAX} sources")));
@@ -292,7 +294,11 @@ impl Policy {
         if raw.tools.len() > POLICY_TOOLS_MAX {
             return Err(invalid(format!("more than {POLICY_TOOLS_MAX} tools")));
         }
-        let sources = raw.sources.into_iter().map(validate_source).collect::<Result<_, _>>()?;
+        let sources = raw
+            .sources
+            .into_iter()
+            .map(validate_source)
+            .collect::<Result<_, _>>()?;
         let tools = raw
             .tools
             .into_iter()
@@ -301,7 +307,12 @@ impl Policy {
         let mut seen_ids = BTreeSet::new();
         let deny = validate_rules(raw.deny, &mut seen_ids)?;
         let allow = validate_rules(raw.allow, &mut seen_ids)?;
-        Ok(Self { sources, tools, deny, allow })
+        Ok(Self {
+            sources,
+            tools,
+            deny,
+            allow,
+        })
     }
 
     /// Read and validate a policy file, refusing files over `POLICY_BYTES_MAX`
@@ -339,20 +350,34 @@ impl Policy {
 fn validate_source(raw: RawSource) -> Result<Source, PolicyError> {
     let prefix = raw.prefix.trim();
     if prefix.is_empty() || prefix.starts_with('/') || prefix.starts_with('\\') {
-        return Err(invalid(format!("source prefix `{}` must be relative", raw.prefix)));
+        return Err(invalid(format!(
+            "source prefix `{}` must be relative",
+            raw.prefix
+        )));
     }
     let mut components = Vec::new();
     for part in prefix.split(['/', '\\']) {
         match part {
             "" | "." => {}
-            ".." => return Err(invalid(format!("source prefix `{}` contains ..", raw.prefix))),
+            ".." => {
+                return Err(invalid(format!(
+                    "source prefix `{}` contains ..",
+                    raw.prefix
+                )));
+            }
             p => components.push(p.to_ascii_lowercase()),
         }
     }
     if components.is_empty() {
-        return Err(invalid(format!("source prefix `{}` names no directory", raw.prefix)));
+        return Err(invalid(format!(
+            "source prefix `{}` names no directory",
+            raw.prefix
+        )));
     }
-    Ok(Source { components, label: raw.label })
+    Ok(Source {
+        components,
+        label: raw.label,
+    })
 }
 
 fn validate_tool(name: String, raw: RawTool) -> Result<(String, ToolLabels), PolicyError> {
@@ -362,28 +387,44 @@ fn validate_tool(name: String, raw: RawTool) -> Result<(String, ToolLabels), Pol
     if raw.reads.is_empty() {
         return Err(invalid(format!("tool `{name}` has empty reads")));
     }
-    let labels = ToolLabels { reads: raw.reads.into_iter().collect(), sink: raw.sink };
+    let labels = ToolLabels {
+        reads: raw.reads.into_iter().collect(),
+        sink: raw.sink,
+    };
     Ok((name, labels))
 }
 
-fn validate_rules(raw: Vec<RawRule>, seen: &mut BTreeSet<String>) -> Result<Vec<Rule>, PolicyError> {
+fn validate_rules(
+    raw: Vec<RawRule>,
+    seen: &mut BTreeSet<String>,
+) -> Result<Vec<Rule>, PolicyError> {
     if raw.len() > POLICY_RULES_MAX {
-        return Err(invalid(format!("more than {POLICY_RULES_MAX} rules in one list")));
+        return Err(invalid(format!(
+            "more than {POLICY_RULES_MAX} rules in one list"
+        )));
     }
     let mut rules = Vec::with_capacity(raw.len());
     for r in raw {
         let id_chars = r.id.chars().count();
         if id_chars == 0 || id_chars > RULE_ID_CHARS_MAX {
-            return Err(invalid(format!("rule id must be 1..={RULE_ID_CHARS_MAX} characters")));
+            return Err(invalid(format!(
+                "rule id must be 1..={RULE_ID_CHARS_MAX} characters"
+            )));
         }
         if r.id.starts_with("R0-") || r.id.starts_with("R4-") {
-            return Err(invalid(format!("rule id `{}` uses a reserved engine prefix", r.id)));
+            return Err(invalid(format!(
+                "rule id `{}` uses a reserved engine prefix",
+                r.id
+            )));
         }
         if !seen.insert(r.id.clone()) {
             return Err(invalid(format!("duplicate rule id `{}`", r.id)));
         }
         if r.labels.is_empty() || r.sinks.is_empty() {
-            return Err(invalid(format!("rule `{}` needs non-empty labels and sinks", r.id)));
+            return Err(invalid(format!(
+                "rule `{}` needs non-empty labels and sinks",
+                r.id
+            )));
         }
         if r.tools.iter().any(String::is_empty) {
             return Err(invalid(format!("rule `{}` has an empty tool name", r.id)));
@@ -425,7 +466,13 @@ pub struct Denial {
 
 impl Denial {
     fn engine(rule: &str, tool: &str, reason: impl Into<String>) -> Self {
-        Self { rule: rule.to_string(), tool: tool.to_string(), label: None, sink: None, reason: reason.into() }
+        Self {
+            rule: rule.to_string(),
+            tool: tool.to_string(),
+            label: None,
+            sink: None,
+            reason: reason.into(),
+        }
     }
 
     /// The JSON body returned to the MCP client.
@@ -444,7 +491,10 @@ pub enum Decision {
 /// Pure decision: deny rules first (file order, most severe label first),
 /// then every label must be covered by an allow rule for the sink.
 pub fn decide(policy: &Policy, event: &CallEvent) -> Decision {
-    assert!(!event.labels.is_empty(), "a labeled call always carries its tool's reads");
+    assert!(
+        !event.labels.is_empty(),
+        "a labeled call always carries its tool's reads"
+    );
     for rule in &policy.deny {
         for &label in event.labels.iter().rev() {
             if rule.matches(&event.tool, label, event.sink) {
@@ -459,7 +509,10 @@ pub fn decide(policy: &Policy, event: &CallEvent) -> Decision {
         }
     }
     for &label in event.labels.iter().rev() {
-        let covered = policy.allow.iter().any(|r| r.matches(&event.tool, label, event.sink));
+        let covered = policy
+            .allow
+            .iter()
+            .any(|r| r.matches(&event.tool, label, event.sink));
         if !covered {
             return Decision::Deny(Denial {
                 rule: RULE_DENY_BY_DEFAULT.to_string(),
@@ -482,15 +535,26 @@ pub fn decide(policy: &Policy, event: &CallEvent) -> Decision {
 /// after URL normalization; everything else (lookalike domains, userinfo
 /// tricks, trailing dots, IPv4-mapped IPv6) is `remote`.
 pub fn classify_brp_endpoint(endpoint: &str) -> Result<Trust, String> {
-    let url: reqwest::Url = endpoint.parse().map_err(|_| "endpoint is not a valid url".to_string())?;
-    let host = url.host_str().ok_or_else(|| "endpoint has no host".to_string())?;
-    let bare = host.strip_prefix('[').and_then(|h| h.strip_suffix(']')).unwrap_or(host);
+    let url: reqwest::Url = endpoint
+        .parse()
+        .map_err(|_| "endpoint is not a valid url".to_string())?;
+    let host = url
+        .host_str()
+        .ok_or_else(|| "endpoint has no host".to_string())?;
+    let bare = host
+        .strip_prefix('[')
+        .and_then(|h| h.strip_suffix(']'))
+        .unwrap_or(host);
     let loopback = match bare.parse::<IpAddr>() {
         Ok(IpAddr::V4(v4)) => v4.is_loopback(),
         Ok(IpAddr::V6(v6)) => v6 == Ipv6Addr::LOCALHOST,
         Err(_) => bare == "localhost",
     };
-    Ok(if loopback { Trust::Loopback } else { Trust::Remote })
+    Ok(if loopback {
+        Trust::Loopback
+    } else {
+        Trust::Remote
+    })
 }
 
 fn resolve_sink(spec: SinkSpec, args: Option<&Map<String, Value>>) -> Result<Trust, String> {
@@ -550,7 +614,9 @@ fn label_args(
     let mut visit_string = |s: &str, labels: &mut BTreeSet<Sensitivity>| -> Result<(), String> {
         string_bytes = string_bytes.saturating_add(s.len());
         if string_bytes > ARGS_STRING_BYTES_MAX {
-            return Err(format!("argument strings exceed {ARGS_STRING_BYTES_MAX} bytes"));
+            return Err(format!(
+                "argument strings exceed {ARGS_STRING_BYTES_MAX} bytes"
+            ));
         }
         label_path(sources, s, labels);
         Ok(())
@@ -612,7 +678,11 @@ impl Session {
         args: Option<&Map<String, Value>>,
     ) -> Result<CallEvent, Denial> {
         let Some(declared) = policy.tool_labels(tool) else {
-            return Err(Denial::engine(RULE_UNLABELED_TOOL, tool, "tool has no policy labels"));
+            return Err(Denial::engine(
+                RULE_UNLABELED_TOOL,
+                tool,
+                "tool has no policy labels",
+            ));
         };
         let sink = resolve_sink(declared.sink, args)
             .map_err(|e| Denial::engine(RULE_SINK_UNRESOLVABLE, tool, e))?;
@@ -622,7 +692,11 @@ impl Session {
                 .map_err(|e| Denial::engine(RULE_ARGS_UNBOUNDED, tool, e))?;
         }
         labels.extend(self.labels.iter().copied());
-        Ok(CallEvent { tool: tool.to_string(), labels, sink })
+        Ok(CallEvent {
+            tool: tool.to_string(),
+            labels,
+            sink,
+        })
     }
 
     /// Label, decide, and on allow commit the call's labels to the session.
@@ -639,7 +713,11 @@ impl Session {
     /// Decide an already-labeled event (session labels are merged in first)
     /// and on allow commit its labels. Used by replay for sinks that have no
     /// registered tool yet.
-    pub fn admit_event(&mut self, policy: &Policy, mut event: CallEvent) -> Result<CallEvent, Denial> {
+    pub fn admit_event(
+        &mut self,
+        policy: &Policy,
+        mut event: CallEvent,
+    ) -> Result<CallEvent, Denial> {
         event.labels.extend(self.labels.iter().copied());
         match decide(policy, &event) {
             Decision::Allow => {
@@ -663,7 +741,10 @@ pub struct Enforcer {
 
 impl Enforcer {
     pub fn new(policy: Policy) -> Self {
-        Self { policy, session: Mutex::new(Session::new()) }
+        Self {
+            policy,
+            session: Mutex::new(Session::new()),
+        }
     }
 
     pub fn policy(&self) -> &Policy {
@@ -681,9 +762,10 @@ impl Enforcer {
 
     /// Snapshot of the session labels.
     pub fn session_labels(&self) -> Result<BTreeSet<Sensitivity>, Denial> {
-        let session = self.session.lock().map_err(|_| {
-            Denial::engine(RULE_SESSION_UNAVAILABLE, "", "session state poisoned")
-        })?;
+        let session = self
+            .session
+            .lock()
+            .map_err(|_| Denial::engine(RULE_SESSION_UNAVAILABLE, "", "session state poisoned"))?;
         Ok(session.labels().clone())
     }
 }
@@ -742,10 +824,17 @@ pub fn check(policy: &Policy, registered: &[&str]) -> CheckReport {
 #[derive(Debug, Clone, Copy)]
 pub enum StepInput {
     /// A real tool call: full labeling path. `args` is a JSON object.
-    Call { tool: &'static str, args: &'static str },
+    Call {
+        tool: &'static str,
+        args: &'static str,
+    },
     /// A pre-labeled event for sinks with no registered tool yet
     /// (cart exports, A2A). Session labels are still merged in.
-    Event { tool: &'static str, labels: &'static [Sensitivity], sink: Trust },
+    Event {
+        tool: &'static str,
+        labels: &'static [Sensitivity],
+        sink: Trust,
+    },
 }
 
 /// Expected decision for a step.
@@ -800,14 +889,25 @@ fn replay_one(policy: &Policy, scenario: &Scenario) -> ScenarioOutcome {
                 Ok(_) => "allow".to_string(),
                 Err(d) => format!("deny {}", d.rule),
             };
-            return fail(scenario.id, format!("step {index}: expected {:?}, got {got_text}", step.expect));
+            return fail(
+                scenario.id,
+                format!("step {index}: expected {:?}, got {got_text}", step.expect),
+            );
         }
     }
-    ScenarioOutcome { id: scenario.id, passed: true, detail: String::new() }
+    ScenarioOutcome {
+        id: scenario.id,
+        passed: true,
+        detail: String::new(),
+    }
 }
 
 fn fail(id: &'static str, detail: String) -> ScenarioOutcome {
-    ScenarioOutcome { id, passed: false, detail }
+    ScenarioOutcome {
+        id,
+        passed: false,
+        detail,
+    }
 }
 
 /// Outer `Err` is a malformed scenario (bad JSON), not a policy decision.
@@ -818,7 +918,8 @@ fn run_step(
 ) -> Result<Result<CallEvent, Denial>, String> {
     match input {
         StepInput::Call { tool, args } => {
-            let parsed: Value = serde_json::from_str(args).map_err(|e| format!("bad args json: {e}"))?;
+            let parsed: Value =
+                serde_json::from_str(args).map_err(|e| format!("bad args json: {e}"))?;
             let Value::Object(map) = parsed else {
                 return Err("args must be a JSON object".to_string());
             };
@@ -828,18 +929,33 @@ fn run_step(
             if labels.is_empty() {
                 return Err("event needs at least one label".to_string());
             }
-            let event = CallEvent { tool: tool.to_string(), labels: labels.iter().copied().collect(), sink };
+            let event = CallEvent {
+                tool: tool.to_string(),
+                labels: labels.iter().copied().collect(),
+                sink,
+            };
             Ok(session.admit_event(policy, event))
         }
     }
 }
 
 const fn call(tool: &'static str, args: &'static str, expect: Expect) -> Step {
-    Step { input: StepInput::Call { tool, args }, expect }
+    Step {
+        input: StepInput::Call { tool, args },
+        expect,
+    }
 }
 
-const fn event(tool: &'static str, labels: &'static [Sensitivity], sink: Trust, expect: Expect) -> Step {
-    Step { input: StepInput::Event { tool, labels, sink }, expect }
+const fn event(
+    tool: &'static str,
+    labels: &'static [Sensitivity],
+    sink: Trust,
+    expect: Expect,
+) -> Step {
+    Step {
+        input: StepInput::Event { tool, labels, sink },
+        expect,
+    }
 }
 
 const ALLOW: Expect = Expect::Allow;
@@ -858,127 +974,321 @@ const READ_RESTRICTED: &str = r#"{"path":"refs/restricted/vault.png"}"#;
 /// scenarios in equal number. Expectations are compiled in, so loosening
 /// `lumen-policy.toml` makes `lumen policy replay` fail.
 pub const SCENARIOS: &[Scenario] = &[
-    Scenario { id: "ok_low_sprite_info_to_trusted", steps: &[
-        call("sprite_info", r#"{"path":"sprites/hero.png"}"#, ALLOW),
-    ] },
-    Scenario { id: "ok_brp_default_endpoint_is_loopback", steps: &[
-        call("bevy_discover", "{}", ALLOW),
-        call("bevy_discover", r#"{"endpoint":null}"#, ALLOW),
-    ] },
-    Scenario { id: "ok_high_reference_to_loopback_brp", steps: &[
-        call("sprite_info", r#"{"path":"refs/proprietary/sheet.png"}"#, ALLOW),
-        call("bevy_call", r#"{"endpoint":"http://127.0.0.1:15702","method":"bevy/list"}"#, ALLOW),
-    ] },
-    Scenario { id: "ok_high_reference_to_remote_brp", steps: &[
-        call("sprite_info", r#"{"path":"refs/licensed/style.png"}"#, ALLOW),
-        call("bevy_discover", r#"{"endpoint":"http://192.168.1.20:15702"}"#, ALLOW),
-    ] },
-    Scenario { id: "ok_restricted_to_loopback_variants", steps: &[
-        call("sprite_info", READ_RESTRICTED, ALLOW),
-        call("bevy_discover", r#"{"endpoint":"http://localhost:15702"}"#, ALLOW),
-        call("bevy_discover", r#"{"endpoint":"http://LOCALHOST:15702"}"#, ALLOW),
-        call("bevy_discover", r#"{"endpoint":"http://[::1]:15702"}"#, ALLOW),
-        call("bevy_status", r#"{"endpoint":"http://127.0.0.1:15702"}"#, ALLOW),
-    ] },
-    Scenario { id: "ok_ipv4_shorthand_normalizes_to_loopback", steps: &[
-        call("sprite_info", READ_RESTRICTED, ALLOW),
-        call("bevy_discover", r#"{"endpoint":"http://127.1:15702"}"#, ALLOW),
-    ] },
-    Scenario { id: "ok_lua_with_clean_context", steps: &[
-        call("sprite_info", r#"{"path":"sprites/hero.png"}"#, ALLOW),
-        call("run_lua_script", LUA_CLEAN, ALLOW),
-    ] },
-    Scenario { id: "ok_low_cart_export_to_public", steps: &[
-        event("cart_export_wasm4", LOW, Trust::Public, ALLOW),
-    ] },
-    Scenario { id: "ok_low_a2a_task_to_external", steps: &[
-        event("a2a_dispatch", LOW, Trust::External, ALLOW),
-    ] },
-    Scenario { id: "ok_untrusted_local_export", steps: &[
-        call("sprite_info", r#"{"path":"refs/web/pasted.png"}"#, ALLOW),
-        call("export_sprite", r#"{"doc":"sprites/hero.lumen.json","output":"out/hero.png"}"#, ALLOW),
-    ] },
-    Scenario { id: "ok_lookalike_paths_stay_low", steps: &[
-        call("sprite_info", r#"{"path":"sprites/refs/proprietary/a.png"}"#, ALLOW),
-        call("sprite_info", r#"{"path":"refs/proprietary-fan/a.png"}"#, ALLOW),
-        event("cart_export_tic80", LOW, Trust::Public, ALLOW),
-    ] },
-    Scenario { id: "ok_plain_text_args_stay_low", steps: &[
-        call("text_measure", r#"{"text":"refs proprietary... hello","size":8}"#, ALLOW),
-        event("cart_export_wasm4", LOW, Trust::Public, ALLOW),
-    ] },
-    Scenario { id: "ok_denied_call_does_not_taint", steps: &[
-        event("cart_export_wasm4", HIGH, Trust::Public, R1),
-        event("cart_export_wasm4", LOW, Trust::Public, ALLOW),
-    ] },
-    Scenario { id: "adv_prompt_injection_lua_after_web_read", steps: &[
-        call("sprite_info", r#"{"path":"refs/web/injected.png"}"#, ALLOW),
-        call("validate_atlas", r#"{"path":"sprites/atlas.png"}"#, ALLOW),
-        call("bevy_discover", "{}", ALLOW),
-        call("run_lua_script", LUA_CLEAN, R2),
-    ] },
-    Scenario { id: "adv_prompt_injection_lua_on_web_doc", steps: &[
-        call(
+    Scenario {
+        id: "ok_low_sprite_info_to_trusted",
+        steps: &[call("sprite_info", r#"{"path":"sprites/hero.png"}"#, ALLOW)],
+    },
+    Scenario {
+        id: "ok_brp_default_endpoint_is_loopback",
+        steps: &[
+            call("bevy_discover", "{}", ALLOW),
+            call("bevy_discover", r#"{"endpoint":null}"#, ALLOW),
+        ],
+    },
+    Scenario {
+        id: "ok_high_reference_to_loopback_brp",
+        steps: &[
+            call(
+                "sprite_info",
+                r#"{"path":"refs/proprietary/sheet.png"}"#,
+                ALLOW,
+            ),
+            call(
+                "bevy_call",
+                r#"{"endpoint":"http://127.0.0.1:15702","method":"bevy/list"}"#,
+                ALLOW,
+            ),
+        ],
+    },
+    Scenario {
+        id: "ok_high_reference_to_remote_brp",
+        steps: &[
+            call(
+                "sprite_info",
+                r#"{"path":"refs/licensed/style.png"}"#,
+                ALLOW,
+            ),
+            call(
+                "bevy_discover",
+                r#"{"endpoint":"http://192.168.1.20:15702"}"#,
+                ALLOW,
+            ),
+        ],
+    },
+    Scenario {
+        id: "ok_restricted_to_loopback_variants",
+        steps: &[
+            call("sprite_info", READ_RESTRICTED, ALLOW),
+            call(
+                "bevy_discover",
+                r#"{"endpoint":"http://localhost:15702"}"#,
+                ALLOW,
+            ),
+            call(
+                "bevy_discover",
+                r#"{"endpoint":"http://LOCALHOST:15702"}"#,
+                ALLOW,
+            ),
+            call(
+                "bevy_discover",
+                r#"{"endpoint":"http://[::1]:15702"}"#,
+                ALLOW,
+            ),
+            call(
+                "bevy_status",
+                r#"{"endpoint":"http://127.0.0.1:15702"}"#,
+                ALLOW,
+            ),
+        ],
+    },
+    Scenario {
+        id: "ok_ipv4_shorthand_normalizes_to_loopback",
+        steps: &[
+            call("sprite_info", READ_RESTRICTED, ALLOW),
+            call(
+                "bevy_discover",
+                r#"{"endpoint":"http://127.1:15702"}"#,
+                ALLOW,
+            ),
+        ],
+    },
+    Scenario {
+        id: "ok_lua_with_clean_context",
+        steps: &[
+            call("sprite_info", r#"{"path":"sprites/hero.png"}"#, ALLOW),
+            call("run_lua_script", LUA_CLEAN, ALLOW),
+        ],
+    },
+    Scenario {
+        id: "ok_low_cart_export_to_public",
+        steps: &[event("cart_export_wasm4", LOW, Trust::Public, ALLOW)],
+    },
+    Scenario {
+        id: "ok_low_a2a_task_to_external",
+        steps: &[event("a2a_dispatch", LOW, Trust::External, ALLOW)],
+    },
+    Scenario {
+        id: "ok_untrusted_local_export",
+        steps: &[
+            call("sprite_info", r#"{"path":"refs/web/pasted.png"}"#, ALLOW),
+            call(
+                "export_sprite",
+                r#"{"doc":"sprites/hero.lumen.json","output":"out/hero.png"}"#,
+                ALLOW,
+            ),
+        ],
+    },
+    Scenario {
+        id: "ok_lookalike_paths_stay_low",
+        steps: &[
+            call(
+                "sprite_info",
+                r#"{"path":"sprites/refs/proprietary/a.png"}"#,
+                ALLOW,
+            ),
+            call(
+                "sprite_info",
+                r#"{"path":"refs/proprietary-fan/a.png"}"#,
+                ALLOW,
+            ),
+            event("cart_export_tic80", LOW, Trust::Public, ALLOW),
+        ],
+    },
+    Scenario {
+        id: "ok_plain_text_args_stay_low",
+        steps: &[
+            call(
+                "text_measure",
+                r#"{"text":"refs proprietary... hello","size":8}"#,
+                ALLOW,
+            ),
+            event("cart_export_wasm4", LOW, Trust::Public, ALLOW),
+        ],
+    },
+    Scenario {
+        id: "ok_denied_call_does_not_taint",
+        steps: &[
+            event("cart_export_wasm4", HIGH, Trust::Public, R1),
+            event("cart_export_wasm4", LOW, Trust::Public, ALLOW),
+        ],
+    },
+    Scenario {
+        id: "adv_prompt_injection_lua_after_web_read",
+        steps: &[
+            call("sprite_info", r#"{"path":"refs/web/injected.png"}"#, ALLOW),
+            call("validate_atlas", r#"{"path":"sprites/atlas.png"}"#, ALLOW),
+            call("bevy_discover", "{}", ALLOW),
+            call("run_lua_script", LUA_CLEAN, R2),
+        ],
+    },
+    Scenario {
+        id: "adv_prompt_injection_lua_on_web_doc",
+        steps: &[call(
             "run_lua_script",
             r#"{"doc":"refs/web/payload.lumen.json","script":"sprite.fill(0,0,0,0,0)","opt_in":true}"#,
             R2,
-        ),
-    ] },
-    Scenario { id: "adv_injection_exfil_to_external_agent", steps: &[
-        call("sprite_info", r#"{"path":"refs/web/injected.png"}"#, ALLOW),
-        event("a2a_dispatch", LOW, Trust::External, R4),
-        call("sprite_info", r#"{"path":"refs/proprietary/sheet.png"}"#, ALLOW),
-        event("a2a_dispatch", LOW, Trust::External, R1),
-    ] },
-    Scenario { id: "adv_label_confusion_case_folding", steps: &[
-        call("sprite_info", r#"{"path":"REFS/Proprietary/sheet.png"}"#, ALLOW),
-        event("cart_export_tic80", LOW, Trust::Public, R1),
-    ] },
-    Scenario { id: "adv_label_confusion_dot_segments", steps: &[
-        call("sprite_info", r#"{"path":"./sprites/../refs//proprietary/./sheet.png"}"#, ALLOW),
-        event("cart_export_wasm4", LOW, Trust::Public, R1),
-    ] },
-    Scenario { id: "adv_label_confusion_backslashes", steps: &[
-        call("sprite_info", r#"{"path":"refs\\licensed\\style.png"}"#, ALLOW),
-        event("cart_export_wasm4", LOW, Trust::Public, R1),
-    ] },
-    Scenario { id: "adv_label_confusion_self_declared_low", steps: &[
-        call(
-            "sprite_info",
-            r#"{"path":"refs/licensed/style.png","sensitivity":"low","labels":["low"],"_meta":{"label":"low"}}"#,
-            ALLOW,
-        ),
-        event("cart_export_wasm4", LOW, Trust::Public, R1),
-    ] },
-    Scenario { id: "adv_label_confusion_escape_and_reenter", steps: &[
-        call("sprite_info", r#"{"path":"../sprite-mcp/refs/proprietary/sheet.png"}"#, ALLOW),
-        call("bevy_discover", r#"{"endpoint":"http://10.0.0.7:15702"}"#, R3),
-        event("cart_export_wasm4", LOW, Trust::Public, R4),
-    ] },
-    Scenario { id: "adv_sink_spoof_remote_dressed_as_loopback", steps: &[
-        call("sprite_info", READ_RESTRICTED, ALLOW),
-        call("bevy_discover", r#"{"endpoint":"http://127.0.0.1.nip.io:15702"}"#, R3),
-        call("bevy_discover", r#"{"endpoint":"http://localhost@evil.example:15702"}"#, R3),
-        call("bevy_discover", r#"{"endpoint":"http://localhost.evil.example:15702"}"#, R3),
-        call("bevy_discover", r#"{"endpoint":"http://localhost.:15702"}"#, R3),
-        call("bevy_discover", r#"{"endpoint":"http://[::ffff:127.0.0.1]:15702"}"#, R3),
-        call("bevy_call", r#"{"endpoint":"http://0.0.0.0:15702","method":"bevy/list"}"#, R3),
-    ] },
-    Scenario { id: "adv_sink_unresolvable_endpoint", steps: &[
-        call("bevy_call", r#"{"endpoint":15702,"method":"bevy/list"}"#, Expect::Deny(RULE_SINK_UNRESOLVABLE)),
-        call("bevy_call", r#"{"endpoint":"not a url","method":"bevy/list"}"#, Expect::Deny(RULE_SINK_UNRESOLVABLE)),
-        call("bevy_status", r#"{"endpoint":["http://127.0.0.1:15702"]}"#, Expect::Deny(RULE_SINK_UNRESOLVABLE)),
-    ] },
-    Scenario { id: "adv_missing_label_tool", steps: &[
-        call("shadow_exec", r#"{"cmd":"cat ~/.ssh/id_ed25519"}"#, Expect::Deny(RULE_UNLABELED_TOOL)),
-        call("Sprite_Info", r#"{"path":"sprites/hero.png"}"#, Expect::Deny(RULE_UNLABELED_TOOL)),
-    ] },
-    Scenario { id: "adv_restricted_to_public_is_default_denied", steps: &[
-        event("cart_export_wasm4", RESTRICTED, Trust::Public, R4),
-        event("a2a_dispatch", RESTRICTED, Trust::External, R4),
-    ] },
-    Scenario { id: "adv_args_depth_bomb", steps: &[
-        call("sprite_info", r#"{"path":[[[[[[[[[["refs/web/x.png"]]]]]]]]]]}"#, Expect::Deny(RULE_ARGS_UNBOUNDED)),
-        call("run_lua_script", LUA_CLEAN, ALLOW),
-    ] },
+        )],
+    },
+    Scenario {
+        id: "adv_injection_exfil_to_external_agent",
+        steps: &[
+            call("sprite_info", r#"{"path":"refs/web/injected.png"}"#, ALLOW),
+            event("a2a_dispatch", LOW, Trust::External, R4),
+            call(
+                "sprite_info",
+                r#"{"path":"refs/proprietary/sheet.png"}"#,
+                ALLOW,
+            ),
+            event("a2a_dispatch", LOW, Trust::External, R1),
+        ],
+    },
+    Scenario {
+        id: "adv_label_confusion_case_folding",
+        steps: &[
+            call(
+                "sprite_info",
+                r#"{"path":"REFS/Proprietary/sheet.png"}"#,
+                ALLOW,
+            ),
+            event("cart_export_tic80", LOW, Trust::Public, R1),
+        ],
+    },
+    Scenario {
+        id: "adv_label_confusion_dot_segments",
+        steps: &[
+            call(
+                "sprite_info",
+                r#"{"path":"./sprites/../refs//proprietary/./sheet.png"}"#,
+                ALLOW,
+            ),
+            event("cart_export_wasm4", LOW, Trust::Public, R1),
+        ],
+    },
+    Scenario {
+        id: "adv_label_confusion_backslashes",
+        steps: &[
+            call(
+                "sprite_info",
+                r#"{"path":"refs\\licensed\\style.png"}"#,
+                ALLOW,
+            ),
+            event("cart_export_wasm4", LOW, Trust::Public, R1),
+        ],
+    },
+    Scenario {
+        id: "adv_label_confusion_self_declared_low",
+        steps: &[
+            call(
+                "sprite_info",
+                r#"{"path":"refs/licensed/style.png","sensitivity":"low","labels":["low"],"_meta":{"label":"low"}}"#,
+                ALLOW,
+            ),
+            event("cart_export_wasm4", LOW, Trust::Public, R1),
+        ],
+    },
+    Scenario {
+        id: "adv_label_confusion_escape_and_reenter",
+        steps: &[
+            call(
+                "sprite_info",
+                r#"{"path":"../sprite-mcp/refs/proprietary/sheet.png"}"#,
+                ALLOW,
+            ),
+            call(
+                "bevy_discover",
+                r#"{"endpoint":"http://10.0.0.7:15702"}"#,
+                R3,
+            ),
+            event("cart_export_wasm4", LOW, Trust::Public, R4),
+        ],
+    },
+    Scenario {
+        id: "adv_sink_spoof_remote_dressed_as_loopback",
+        steps: &[
+            call("sprite_info", READ_RESTRICTED, ALLOW),
+            call(
+                "bevy_discover",
+                r#"{"endpoint":"http://127.0.0.1.nip.io:15702"}"#,
+                R3,
+            ),
+            call(
+                "bevy_discover",
+                r#"{"endpoint":"http://localhost@evil.example:15702"}"#,
+                R3,
+            ),
+            call(
+                "bevy_discover",
+                r#"{"endpoint":"http://localhost.evil.example:15702"}"#,
+                R3,
+            ),
+            call(
+                "bevy_discover",
+                r#"{"endpoint":"http://localhost.:15702"}"#,
+                R3,
+            ),
+            call(
+                "bevy_discover",
+                r#"{"endpoint":"http://[::ffff:127.0.0.1]:15702"}"#,
+                R3,
+            ),
+            call(
+                "bevy_call",
+                r#"{"endpoint":"http://0.0.0.0:15702","method":"bevy/list"}"#,
+                R3,
+            ),
+        ],
+    },
+    Scenario {
+        id: "adv_sink_unresolvable_endpoint",
+        steps: &[
+            call(
+                "bevy_call",
+                r#"{"endpoint":15702,"method":"bevy/list"}"#,
+                Expect::Deny(RULE_SINK_UNRESOLVABLE),
+            ),
+            call(
+                "bevy_call",
+                r#"{"endpoint":"not a url","method":"bevy/list"}"#,
+                Expect::Deny(RULE_SINK_UNRESOLVABLE),
+            ),
+            call(
+                "bevy_status",
+                r#"{"endpoint":["http://127.0.0.1:15702"]}"#,
+                Expect::Deny(RULE_SINK_UNRESOLVABLE),
+            ),
+        ],
+    },
+    Scenario {
+        id: "adv_missing_label_tool",
+        steps: &[
+            call(
+                "shadow_exec",
+                r#"{"cmd":"cat ~/.ssh/id_ed25519"}"#,
+                Expect::Deny(RULE_UNLABELED_TOOL),
+            ),
+            call(
+                "Sprite_Info",
+                r#"{"path":"sprites/hero.png"}"#,
+                Expect::Deny(RULE_UNLABELED_TOOL),
+            ),
+        ],
+    },
+    Scenario {
+        id: "adv_restricted_to_public_is_default_denied",
+        steps: &[
+            event("cart_export_wasm4", RESTRICTED, Trust::Public, R4),
+            event("a2a_dispatch", RESTRICTED, Trust::External, R4),
+        ],
+    },
+    Scenario {
+        id: "adv_args_depth_bomb",
+        steps: &[
+            call(
+                "sprite_info",
+                r#"{"path":[[[[[[[[[["refs/web/x.png"]]]]]]]]]]}"#,
+                Expect::Deny(RULE_ARGS_UNBOUNDED),
+            ),
+            call("run_lua_script", LUA_CLEAN, ALLOW),
+        ],
+    },
 ];

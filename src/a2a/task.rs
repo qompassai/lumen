@@ -62,7 +62,10 @@ impl TaskState {
 
     /// Terminal states accept no further transitions.
     pub fn is_terminal(self) -> bool {
-        matches!(self, Self::Completed | Self::Failed | Self::Canceled | Self::Rejected)
+        matches!(
+            self,
+            Self::Completed | Self::Failed | Self::Canceled | Self::Rejected
+        )
     }
 
     /// The legal edges. Progress within `working` is not a transition.
@@ -96,7 +99,13 @@ pub(crate) struct TaskError {
 
 impl TaskError {
     pub(crate) fn new(code: &'static str, message: impl Into<String>) -> Self {
-        Self { code, message: message.into(), step: None, skill: None, reasons: Vec::new() }
+        Self {
+            code,
+            message: message.into(),
+            step: None,
+            skill: None,
+            reasons: Vec::new(),
+        }
     }
 
     fn at(mut self, step: usize, skill: &'static str) -> Self {
@@ -160,7 +169,12 @@ impl TaskEntry {
         if let Err(from) = self.transition(next) {
             // Only reachable if a caller skipped its own state check; the
             // published state stays as it was.
-            debug_assert!(false, "illegal transition {} -> {}", from.as_str(), next.as_str());
+            debug_assert!(
+                false,
+                "illegal transition {} -> {}",
+                from.as_str(),
+                next.as_str()
+            );
         }
     }
 
@@ -249,7 +263,10 @@ impl Store {
     }
 
     fn live_count(&self) -> usize {
-        self.tasks.values().filter(|t| !t.state.is_terminal()).count()
+        self.tasks
+            .values()
+            .filter(|t| !t.state.is_terminal())
+            .count()
     }
 
     /// Fail reviews left open past `REVIEW_WINDOW`, then evict the oldest
@@ -257,14 +274,20 @@ impl Store {
     pub(crate) fn sweep(&mut self, now: Instant) {
         for entry in self.tasks.values_mut() {
             let expired = entry.state == TaskState::InputRequired
-                && entry.paused_at.is_some_and(|t| now.duration_since(t) >= REVIEW_WINDOW);
+                && entry
+                    .paused_at
+                    .is_some_and(|t| now.duration_since(t) >= REVIEW_WINDOW);
             if expired {
                 let err = TaskError::new("review_expired", "no review decision within window");
                 entry.finish(TaskState::Failed, Some(err));
             }
         }
-        let terminal: Vec<u64> =
-            self.tasks.iter().filter(|(_, t)| t.state.is_terminal()).map(|(k, _)| *k).collect();
+        let terminal: Vec<u64> = self
+            .tasks
+            .iter()
+            .filter(|(_, t)| t.state.is_terminal())
+            .map(|(k, _)| *k)
+            .collect();
         let excess = terminal.len().saturating_sub(RETAINED_TERMINAL_TASKS_MAX);
         for seq in terminal.into_iter().take(excess) {
             self.tasks.remove(&seq);
@@ -380,7 +403,10 @@ fn at_boundary(entry: &mut TaskEntry, deadline: Duration) -> Boundary {
     }
     let elapsed = entry.run_started.elapsed();
     let Some(budget) = deadline.checked_sub(elapsed).filter(|b| !b.is_zero()) else {
-        entry.finish(TaskState::Failed, Some(TaskError::new("timeout", "task deadline reached")));
+        entry.finish(
+            TaskState::Failed,
+            Some(TaskError::new("timeout", "task deadline reached")),
+        );
         return Boundary::Stop;
     };
     if index > 0 && entry.review_after == Some(index - 1) {
@@ -396,8 +422,12 @@ fn at_boundary(entry: &mut TaskEntry, deadline: Duration) -> Boundary {
         assert!(moved.is_ok(), "submitted -> working is a legal edge");
     }
     let step = &entry.steps[index];
-    entry.progress =
-        Some(format!("step {}/{}: {}", index + 1, entry.steps.len(), step.skill.name));
+    entry.progress = Some(format!(
+        "step {}/{}: {}",
+        index + 1,
+        entry.steps.len(),
+        step.skill.name
+    ));
     entry.publish(entry.status_event());
     Boundary::Run {
         index,
@@ -422,7 +452,11 @@ fn build_artifact(
     if let Some(path) = output.get("path").and_then(Value::as_str) {
         let rel = artifact_relative_path(root, Path::new(path))
             .map_err(|e| TaskError::new("artifact_rejected", e.to_string()))?;
-        let mime = if rel.ends_with(".png") { "image/png" } else { "application/json" };
+        let mime = if rel.ends_with(".png") {
+            "image/png"
+        } else {
+            "application/json"
+        };
         let name = rel.rsplit('/').next().unwrap_or(&rel).to_string();
         parts.push(json!({"kind": "file", "file": {"uri": rel, "name": name, "mimeType": mime}}));
         output["path"] = Value::String(rel);
@@ -440,11 +474,24 @@ fn build_artifact(
 pub(crate) async fn run_task(shared: Arc<Shared>, seq: u64) {
     for _ in 0..=STEPS_MAX {
         let boundary = {
-            let Ok(mut store) = shared.store.lock() else { return };
-            let Some(entry) = store.tasks.get_mut(&seq) else { return };
+            let Ok(mut store) = shared.store.lock() else {
+                return;
+            };
+            let Some(entry) = store.tasks.get_mut(&seq) else {
+                return;
+            };
             at_boundary(entry, shared.task_deadline)
         };
-        let Boundary::Run { index, skill, op, args, budget } = boundary else { return };
+        let Boundary::Run {
+            index,
+            skill,
+            op,
+            args,
+            budget,
+        } = boundary
+        else {
+            return;
+        };
         let outcome = tokio::time::timeout(budget, op(shared.root.clone(), args)).await;
         let task_id = format!("{TASK_ID_PREFIX}{seq}");
         // Path canonicalization touches the filesystem: do it before locking.
@@ -453,8 +500,12 @@ pub(crate) async fn run_task(shared: Arc<Shared>, seq: u64) {
             Ok(Err(e)) => Err(TaskError::new("operation_failed", e.to_string())),
             Ok(Ok(value)) => build_artifact(&shared.root, &task_id, index, skill, value),
         };
-        let Ok(mut store) = shared.store.lock() else { return };
-        let Some(entry) = store.tasks.get_mut(&seq) else { return };
+        let Ok(mut store) = shared.store.lock() else {
+            return;
+        };
+        let Some(entry) = store.tasks.get_mut(&seq) else {
+            return;
+        };
         match output {
             Ok(artifact) => {
                 entry.publish(TaskEvent {

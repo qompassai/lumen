@@ -176,12 +176,36 @@ struct FidelityPreset {
 }
 
 const FIDELITY_PRESETS: [FidelityPreset; 6] = [
-    FidelityPreset { name: "8bit", max_colors: Some(32), pixel_block: 4 },
-    FidelityPreset { name: "16bit", max_colors: Some(256), pixel_block: 2 },
-    FidelityPreset { name: "32bit", max_colors: Some(4096), pixel_block: 1 },
-    FidelityPreset { name: "64bit", max_colors: None, pixel_block: 1 },
-    FidelityPreset { name: "studio", max_colors: None, pixel_block: 1 },
-    FidelityPreset { name: "max", max_colors: None, pixel_block: 1 },
+    FidelityPreset {
+        name: "8bit",
+        max_colors: Some(32),
+        pixel_block: 4,
+    },
+    FidelityPreset {
+        name: "16bit",
+        max_colors: Some(256),
+        pixel_block: 2,
+    },
+    FidelityPreset {
+        name: "32bit",
+        max_colors: Some(4096),
+        pixel_block: 1,
+    },
+    FidelityPreset {
+        name: "64bit",
+        max_colors: None,
+        pixel_block: 1,
+    },
+    FidelityPreset {
+        name: "studio",
+        max_colors: None,
+        pixel_block: 1,
+    },
+    FidelityPreset {
+        name: "max",
+        max_colors: None,
+        pixel_block: 1,
+    },
 ];
 
 #[derive(Debug, Clone, Copy)]
@@ -260,20 +284,31 @@ const STYLE_PRESETS: [StylePreset; 13] = [
 ];
 
 fn find_fidelity(name: &str) -> Result<FidelityPreset, LumenError> {
-    FIDELITY_PRESETS.iter().find(|p| p.name == name).copied().ok_or_else(|| {
-        let valid: Vec<&str> = FIDELITY_PRESETS.iter().map(|p| p.name).collect();
-        LumenError::BadParam(format!(
-            "unknown fidelity preset {name:?}; valid: {}",
-            valid.join(", ")
-        ))
-    })
+    FIDELITY_PRESETS
+        .iter()
+        .find(|p| p.name == name)
+        .copied()
+        .ok_or_else(|| {
+            let valid: Vec<&str> = FIDELITY_PRESETS.iter().map(|p| p.name).collect();
+            LumenError::BadParam(format!(
+                "unknown fidelity preset {name:?}; valid: {}",
+                valid.join(", ")
+            ))
+        })
 }
 
 fn find_style(name: &str) -> Result<StylePreset, LumenError> {
-    STYLE_PRESETS.iter().find(|p| p.name == name).copied().ok_or_else(|| {
-        let valid: Vec<&str> = STYLE_PRESETS.iter().map(|p| p.name).collect();
-        LumenError::BadParam(format!("unknown style {name:?}; valid: {}", valid.join(", ")))
-    })
+    STYLE_PRESETS
+        .iter()
+        .find(|p| p.name == name)
+        .copied()
+        .ok_or_else(|| {
+            let valid: Vec<&str> = STYLE_PRESETS.iter().map(|p| p.name).collect();
+            LumenError::BadParam(format!(
+                "unknown style {name:?}; valid: {}",
+                valid.join(", ")
+            ))
+        })
 }
 
 // ---------------------------------------------------------------------------
@@ -286,7 +321,9 @@ fn output_target<'a>(input: &'a str, output: Option<&'a str>) -> Result<&'a str,
     match output {
         None => Ok(input),
         Some(o) if o.ends_with(".lumen.json") => Ok(o),
-        Some(_) => Err(LumenError::BadParam("output must end in .lumen.json".to_string())),
+        Some(_) => Err(LumenError::BadParam(
+            "output must end in .lumen.json".to_string(),
+        )),
     }
 }
 
@@ -357,12 +394,20 @@ fn make_box(hist: &[(u32, u32)], start: usize, end: usize) -> ColorBox {
         }
     }
     let extent = hi[widest_channel] - lo[widest_channel];
-    ColorBox { start, end, widest_channel, extent }
+    ColorBox {
+        start,
+        end,
+        widest_channel,
+        extent,
+    }
 }
 
 /// Split a box at the count-weighted median of its widest channel.
 fn split_box(hist: &mut [(u32, u32)], b: ColorBox) -> (ColorBox, ColorBox) {
-    assert!(b.end - b.start >= 2, "only boxes with >= 2 colors are split");
+    assert!(
+        b.end - b.start >= 2,
+        "only boxes with >= 2 colors are split"
+    );
     let slice = &mut hist[b.start..b.end];
     // Key is unique per color (packed tiebreak), so the order is deterministic.
     slice.sort_unstable_by_key(|&(c, _)| (channel(c, b.widest_channel), c));
@@ -441,21 +486,30 @@ fn box_mean(colors: &[(u32, u32)]) -> [u8; 3] {
 // ---------------------------------------------------------------------------
 
 fn grade_pixel(p: Rgba<u8>, preset: StylePreset, strength: f32) -> Rgba<u8> {
-    let (r, g, b) = (p[0] as f32 / 255.0, p[1] as f32 / 255.0, p[2] as f32 / 255.0);
+    let (r, g, b) = (
+        p[0] as f32 / 255.0,
+        p[1] as f32 / 255.0,
+        p[2] as f32 / 255.0,
+    );
     let (h, s, l) = rgb_to_hsl(r, g, b);
     let h = (h + preset.hue_shift_deg).rem_euclid(360.0);
     let s = (s * preset.sat_mult).clamp(0.0, 1.0);
     let l = (l * preset.light_mult).clamp(0.0, 1.0);
     let mut l = ((l - 0.5) * preset.contrast + 0.5).clamp(0.0, 1.0);
     if let Some(levels) = preset.posterize {
-        assert!((2..=16).contains(&levels), "posterize levels come from the table");
+        assert!(
+            (2..=16).contains(&levels),
+            "posterize levels come from the table"
+        );
         let steps = f32::from(levels - 1);
         l = (l * steps).round() / steps;
     }
     let (gr, gg, gb) = hsl_to_rgb(h, s, l);
     let blend = |orig: u8, graded: f32| {
         let o = orig as f32;
-        (o + (graded * 255.0 - o) * strength).round().clamp(0.0, 255.0) as u8
+        (o + (graded * 255.0 - o) * strength)
+            .round()
+            .clamp(0.0, 255.0) as u8
     };
     Rgba([blend(p[0], gr), blend(p[1], gg), blend(p[2], gb), p[3]])
 }

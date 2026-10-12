@@ -29,8 +29,8 @@ use serde::Deserialize;
 use crate::LumenError;
 use crate::doc::{
     BlendMode, DOC_MAX_DIMENSION, DOC_MAX_FRAMES, DOC_MAX_LAYERS, DOC_MAX_NAME_CHARS,
-    DOC_MAX_OFFSET_PX, DocSaved, Frame, Layer, LayerMod, SpriteDoc, Tag, check_dims,
-    identity_mod, load_doc, new_doc, save_doc,
+    DOC_MAX_OFFSET_PX, DocSaved, Frame, Layer, LayerMod, SpriteDoc, Tag, check_dims, identity_mod,
+    load_doc, new_doc, save_doc,
 };
 
 /// Frame duration bounds, in milliseconds.
@@ -309,14 +309,16 @@ pub async fn new_sprite(root: &Path, req: NewSpriteRequest) -> Result<DocSaved, 
     check_doc_suffix(&req.output)?;
     let color = parse_color(&req.background)?;
     let mut doc = new_doc(req.width, req.height)?;
-    let layer = doc.layers.first_mut().ok_or_else(|| {
-        LumenError::DocInvalid("new document has no layer".to_string())
-    })?;
+    let layer = doc
+        .layers
+        .first_mut()
+        .ok_or_else(|| LumenError::DocInvalid("new document has no layer".to_string()))?;
     layer.name = NEW_SPRITE_LAYER_NAME.to_string();
     layer.image = ImageBuffer::from_pixel(req.width, req.height, Rgba(color));
-    let frame = doc.frames.first_mut().ok_or_else(|| {
-        LumenError::DocInvalid("new document has no frame".to_string())
-    })?;
+    let frame = doc
+        .frames
+        .first_mut()
+        .ok_or_else(|| LumenError::DocInvalid("new document has no frame".to_string()))?;
     frame.duration_ms = NEW_SPRITE_FRAME_MS;
     commit(root, &req.output, &doc)
 }
@@ -339,7 +341,9 @@ pub async fn add_layer(root: &Path, req: AddLayerRequest) -> Result<DocSaved, Lu
     let base_name = clean_name(&req.name, "layer")?;
     let mut doc = load_doc(root, &req.doc)?;
     if doc.layers.len() >= DOC_MAX_LAYERS {
-        return Err(bad(format!("document already has {DOC_MAX_LAYERS} layers (the maximum)")));
+        return Err(bad(format!(
+            "document already has {DOC_MAX_LAYERS} layers (the maximum)"
+        )));
     }
     let index = req.index.unwrap_or(doc.layers.len());
     if index > doc.layers.len() {
@@ -445,11 +449,16 @@ pub async fn add_frame(root: &Path, req: AddFrameRequest) -> Result<DocSaved, Lu
     check_duration(req.duration_ms)?;
     let mut doc = load_doc(root, &req.doc)?;
     if doc.frames.len() >= DOC_MAX_FRAMES {
-        return Err(bad(format!("document already has {DOC_MAX_FRAMES} frames (the maximum)")));
+        return Err(bad(format!(
+            "document already has {DOC_MAX_FRAMES} frames (the maximum)"
+        )));
     }
     let at = req.at.unwrap_or(doc.frames.len());
     if at > doc.frames.len() {
-        return Err(bad(format!("frame index {at} out of range (0..={})", doc.frames.len())));
+        return Err(bad(format!(
+            "frame index {at} out of range (0..={})",
+            doc.frames.len()
+        )));
     }
     let frame = Frame {
         duration_ms: req.duration_ms,
@@ -471,7 +480,11 @@ pub async fn delete_frame(root: &Path, req: DeleteFrameRequest) -> Result<DocSav
         return Err(bad("cannot delete the only frame"));
     }
     let index = frame_u32(req.index);
-    if doc.tags.iter().any(|t| t.from_frame == index && t.to_frame == index) {
+    if doc
+        .tags
+        .iter()
+        .any(|t| t.from_frame == index && t.to_frame == index)
+    {
         return Err(bad(format!(
             "frame {index} is the only frame of a tag; delete that tag first"
         )));
@@ -511,7 +524,9 @@ pub async fn set_frame_mod(root: &Path, req: SetFrameModRequest) -> Result<DocSa
         && req.opacity_mult.is_none()
         && req.scale.is_none()
     {
-        return Err(bad("give at least one of: offset_x, offset_y, opacity_mult, scale"));
+        return Err(bad(
+            "give at least one of: offset_x, offset_y, opacity_mult, scale",
+        ));
     }
     for (value, what) in [(req.offset_x, "offset_x"), (req.offset_y, "offset_y")] {
         if let Some(v) = value
@@ -551,7 +566,9 @@ pub async fn set_frame_mod(root: &Path, req: SetFrameModRequest) -> Result<DocSa
 pub async fn add_tag(root: &Path, req: AddTagRequest) -> Result<DocSaved, LumenError> {
     let target = output_target(&req.doc, req.output.as_deref())?;
     if req.name.chars().count() > DOC_MAX_NAME_CHARS {
-        return Err(bad(format!("tag name exceeds {DOC_MAX_NAME_CHARS} characters")));
+        return Err(bad(format!(
+            "tag name exceeds {DOC_MAX_NAME_CHARS} characters"
+        )));
     }
     let name = clean_name(&req.name, "tag")?;
     if req.from_frame > req.to_frame {
@@ -738,7 +755,10 @@ fn flood_region(image: &mut RgbaImage, seed_x: u32, seed_y: u32, fill: Rgba<u8>,
     while let Some((x, y)) = queue.pop_front() {
         image.put_pixel(x, y, fill);
         painted += 1;
-        assert!(painted <= pixel_count, "flood fill painted more pixels than exist");
+        assert!(
+            painted <= pixel_count,
+            "flood fill painted more pixels than exist"
+        );
         let neighbours = [
             (x.checked_sub(1), Some(y)),
             (x.checked_add(1).filter(|&v| v < width), Some(y)),
@@ -830,7 +850,11 @@ pub async fn resize_canvas(root: &Path, req: ResizeCanvasRequest) -> Result<DocS
         let mut canvas: RgbaImage =
             ImageBuffer::from_pixel(req.width, req.height, Rgba([0, 0, 0, 0]));
         let xs = clip_span(shift_x, shift_x + i64::from(layer.image.width()), req.width);
-        let ys = clip_span(shift_y, shift_y + i64::from(layer.image.height()), req.height);
+        let ys = clip_span(
+            shift_y,
+            shift_y + i64::from(layer.image.height()),
+            req.height,
+        );
         for y in ys {
             for x in xs.clone() {
                 // Source coordinates are in range: x - shift_x lies in
@@ -856,7 +880,10 @@ pub async fn crop(root: &Path, req: CropRequest) -> Result<DocSaved, LumenError>
     }
     let mut doc = load_doc(root, &req.doc)?;
     let fits_x = req.x.checked_add(req.w).is_some_and(|end| end <= doc.width);
-    let fits_y = req.y.checked_add(req.h).is_some_and(|end| end <= doc.height);
+    let fits_y = req
+        .y
+        .checked_add(req.h)
+        .is_some_and(|end| end <= doc.height);
     if !fits_x || !fits_y {
         return Err(bad(format!(
             "crop rectangle does not fit inside the {}x{} canvas",
@@ -953,12 +980,18 @@ pub(crate) fn unique_layer_name(
     for suffix_number in 2..=DOC_MAX_LAYERS + 1 {
         let suffix = format!(" ({suffix_number})");
         let keep_chars = DOC_MAX_NAME_CHARS - suffix.len();
-        let candidate: String = base.chars().take(keep_chars).chain(suffix.chars()).collect();
+        let candidate: String = base
+            .chars()
+            .take(keep_chars)
+            .chain(suffix.chars())
+            .collect();
         if !taken(&candidate) {
             return Ok(candidate);
         }
     }
-    Err(LumenError::DocInvalid("no free layer name found".to_string()))
+    Err(LumenError::DocInvalid(
+        "no free layer name found".to_string(),
+    ))
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -1029,7 +1062,9 @@ fn parse_easing(s: &str) -> Result<Easing, LumenError> {
         "ease_in" => Ok(Easing::EaseIn),
         "ease_out" => Ok(Easing::EaseOut),
         "ease_in_out" => Ok(Easing::EaseInOut),
-        _ => Err(bad("easing must be one of: linear, ease_in, ease_out, ease_in_out")),
+        _ => Err(bad(
+            "easing must be one of: linear, ease_in, ease_out, ease_in_out",
+        )),
     }
 }
 
@@ -1062,7 +1097,9 @@ fn lerp_mod(a: &LayerMod, b: &LayerMod, t: f32) -> LayerMod {
 
 fn check_f32_range(value: f32, min: f32, max: f32, what: &str) -> Result<(), LumenError> {
     if !value.is_finite() || value < min || value > max {
-        return Err(bad(format!("{what} must be a finite number in {min}..={max}")));
+        return Err(bad(format!(
+            "{what} must be a finite number in {min}..={max}"
+        )));
     }
     Ok(())
 }
@@ -1099,7 +1136,10 @@ fn check_frame_index(doc: &SpriteDoc, index: usize) -> Result<(), LumenError> {
 /// Frame indices/counts are bounded by `DOC_MAX_FRAMES` (1024), so they
 /// always fit the `u32` tag fields.
 fn frame_u32(value: usize) -> u32 {
-    assert!(value <= DOC_MAX_FRAMES, "frame value exceeds DOC_MAX_FRAMES");
+    assert!(
+        value <= DOC_MAX_FRAMES,
+        "frame value exceeds DOC_MAX_FRAMES"
+    );
     value as u32
 }
 
@@ -1141,15 +1181,17 @@ fn clip_span(start: i64, end: i64, limit: u32) -> Range<u32> {
 }
 
 fn put_clipped(image: &mut RgbaImage, x: i64, y: i64, color: Rgba<u8>) {
-    let on_canvas = (0..i64::from(image.width())).contains(&x)
-        && (0..i64::from(image.height())).contains(&y);
+    let on_canvas =
+        (0..i64::from(image.width())).contains(&x) && (0..i64::from(image.height())).contains(&y);
     if on_canvas {
         image.put_pixel(x as u32, y as u32, color);
     }
 }
 
 fn within_tolerance(a: Rgba<u8>, b: Rgba<u8>, tolerance: u8) -> bool {
-    a.0.iter().zip(b.0.iter()).all(|(&p, &q)| p.abs_diff(q) <= tolerance)
+    a.0.iter()
+        .zip(b.0.iter())
+        .all(|(&p, &q)| p.abs_diff(q) <= tolerance)
 }
 
 fn check_doc_suffix(path: &str) -> Result<(), LumenError> {
@@ -1176,11 +1218,7 @@ pub(crate) fn output_target<'a>(
 
 /// Save atomically via `save_doc` (which re-validates the whole document and
 /// resolves the path inside the project root) and report the result.
-pub(crate) fn commit(
-    root: &Path,
-    target: &str,
-    doc: &SpriteDoc,
-) -> Result<DocSaved, LumenError> {
+pub(crate) fn commit(root: &Path, target: &str, doc: &SpriteDoc) -> Result<DocSaved, LumenError> {
     let path = save_doc(root, doc, target)?;
     Ok(DocSaved::of(&path, doc))
 }

@@ -1179,7 +1179,12 @@ pub async fn export_sheet_paperzd(
         paper_frames.insert(
             frame_name,
             PaperZdFrame {
-                frame: PaperZdRect { x, y, w: doc.width, h: doc.height },
+                frame: PaperZdRect {
+                    x,
+                    y,
+                    w: doc.width,
+                    h: doc.height,
+                },
                 rotated: false,
                 trimmed: false,
                 sprite_source_size: rect,

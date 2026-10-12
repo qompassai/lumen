@@ -43,7 +43,10 @@ fn make_doc(width: u32, height: u32, layer_count: usize, frame_count: usize) -> 
         });
     }
     sync_frame_mods(&mut doc);
-    let frame = Frame { duration_ms: 100, layer_mods: doc.frames[0].layer_mods.clone() };
+    let frame = Frame {
+        duration_ms: 100,
+        layer_mods: doc.frames[0].layer_mods.clone(),
+    };
     doc.frames = vec![frame; frame_count];
     doc
 }
@@ -141,10 +144,21 @@ async fn fidelity_8bit_caps_colors_and_makes_4px_blocks() {
     let out = load_doc(root, "out.lumen.json").expect("load output");
     let img = &out.layers[0].image;
     let distinct: BTreeSet<[u8; 4]> = img.pixels().map(|p| p.0).collect();
-    assert!(distinct.len() <= 32, "{} colors exceed the 8bit cap", distinct.len());
-    assert!(distinct.len() >= 16, "median-cut should use most of the budget");
+    assert!(
+        distinct.len() <= 32,
+        "{} colors exceed the 8bit cap",
+        distinct.len()
+    );
+    assert!(
+        distinct.len() >= 16,
+        "median-cut should use most of the budget"
+    );
     for (x, y, p) in img.enumerate_pixels() {
-        assert_eq!(p, img.get_pixel(x - x % 4, y - y % 4), "pixel ({x},{y}) not blocky");
+        assert_eq!(
+            p,
+            img.get_pixel(x - x % 4, y - y % 4),
+            "pixel ({x},{y}) not blocky"
+        );
         assert_eq!(p[3], 255, "alpha must survive");
     }
     // Input untouched when an output path is given.
@@ -164,9 +178,14 @@ async fn fidelity_max_and_studio_are_identity() {
             output: None,
             preset: preset.to_string(),
         };
-        fidelity_set(root, req).await.expect("identity preset applies");
+        fidelity_set(root, req)
+            .await
+            .expect("identity preset applies");
         let after = load_doc(root, DOC).expect("load");
-        assert_eq!(after.layers[0].image, original.layers[0].image, "{preset} changed pixels");
+        assert_eq!(
+            after.layers[0].image, original.layers[0].image,
+            "{preset} changed pixels"
+        );
     }
 }
 
@@ -175,8 +194,14 @@ async fn fidelity_unknown_preset_lists_all_six() {
     let dir = tempfile::tempdir().expect("tempdir");
     let root = dir.path();
     save(root, &gradient_doc());
-    let req = FidelitySetReq { doc: DOC.to_string(), output: None, preset: "4bit".to_string() };
-    let err = fidelity_set(root, req).await.expect_err("unknown preset must fail");
+    let req = FidelitySetReq {
+        doc: DOC.to_string(),
+        output: None,
+        preset: "4bit".to_string(),
+    };
+    let err = fidelity_set(root, req)
+        .await
+        .expect_err("unknown preset must fail");
     assert_bad_param_listing(err, &["8bit", "16bit", "32bit", "64bit", "studio", "max"]);
 }
 
@@ -207,7 +232,9 @@ async fn fidelity_output_escaping_root_is_rejected() {
         output: Some("../evil.lumen.json".to_string()),
         preset: "16bit".to_string(),
     };
-    let err = fidelity_set(&root, req).await.expect_err("escape must fail");
+    let err = fidelity_set(&root, req)
+        .await
+        .expect_err("escape must fail");
     assert!(matches!(err, LumenError::PathRejected(_)), "got {err:?}");
     assert!(!dir.path().join("evil.lumen.json").exists());
 }
@@ -227,7 +254,11 @@ async fn style_list_has_exactly_the_13_presets() {
     for style in &list.styles {
         assert!(!style.description.is_empty());
         if style.name.starts_with("ref_") {
-            assert!(style.description.contains("awaiting Matt"), "{}", style.name);
+            assert!(
+                style.description.contains("awaiting Matt"),
+                "{}",
+                style.name
+            );
         }
     }
 }
@@ -245,9 +276,18 @@ async fn style_list_names_all_apply_and_near_misses_do_not() {
             style: style.name.clone(),
             strength: 1.0,
         };
-        style_apply(root, req).await.expect("every listed style applies");
+        style_apply(root, req)
+            .await
+            .expect("every listed style applies");
     }
-    for bad in ["REF_01", "ref_10", "ref_00", " synthwave", "synthwave\0", ""] {
+    for bad in [
+        "REF_01",
+        "ref_10",
+        "ref_00",
+        " synthwave",
+        "synthwave\0",
+        "",
+    ] {
         let req = StyleApplyReq {
             doc: DOC.to_string(),
             output: None,
@@ -307,7 +347,9 @@ async fn style_apply_ukiyo_e_posterizes_gray_to_level() {
     let dir = tempfile::tempdir().expect("tempdir");
     let root = dir.path();
     let mut doc = make_doc(2, 2, 1, 1);
-    doc.layers[0].image.put_pixel(0, 0, Rgba([128, 128, 128, 255]));
+    doc.layers[0]
+        .image
+        .put_pixel(0, 0, Rgba([128, 128, 128, 255]));
     save(root, &doc);
     let req = StyleApplyReq {
         doc: DOC.to_string(),
@@ -318,7 +360,10 @@ async fn style_apply_ukiyo_e_posterizes_gray_to_level() {
     style_apply(root, req).await.expect("applies");
     let after = load_doc(root, DOC).expect("load");
     // l = 0.502 * 1.05 = 0.527 → contrast 0.95 → 0.526 → 6 levels → 0.6.
-    assert_eq!(after.layers[0].image.get_pixel(0, 0), &Rgba([153, 153, 153, 255]));
+    assert_eq!(
+        after.layers[0].image.get_pixel(0, 0),
+        &Rgba([153, 153, 153, 255])
+    );
 }
 
 #[tokio::test]
@@ -338,9 +383,21 @@ async fn style_apply_preserves_alpha_and_transparent_pixels() {
     style_apply(root, req).await.expect("applies");
     let after = load_doc(root, DOC).expect("load");
     let img = &after.layers[0].image;
-    assert_eq!(img.get_pixel(0, 0)[3], 77, "semi-transparent alpha must survive");
-    assert_ne!(img.get_pixel(0, 0), &Rgba([200, 40, 90, 77]), "rgb should be graded");
-    assert_eq!(img.get_pixel(1, 0)[3], 0, "transparent pixel stays transparent");
+    assert_eq!(
+        img.get_pixel(0, 0)[3],
+        77,
+        "semi-transparent alpha must survive"
+    );
+    assert_ne!(
+        img.get_pixel(0, 0),
+        &Rgba([200, 40, 90, 77]),
+        "rgb should be graded"
+    );
+    assert_eq!(
+        img.get_pixel(1, 0)[3],
+        0,
+        "transparent pixel stays transparent"
+    );
 }
 
 #[tokio::test]
@@ -372,7 +429,9 @@ async fn style_apply_unknown_style_lists_all_13() {
         style: "vaporwave".to_string(),
         strength: 0.5,
     };
-    let err = style_apply(root, req).await.expect_err("unknown style must fail");
+    let err = style_apply(root, req)
+        .await
+        .expect_err("unknown style must fail");
     let mut names: Vec<String> = (1..=9).map(|i| format!("ref_{i:02}")).collect();
     names.extend(["dark_fantasy", "solarpunk", "synthwave", "ukiyo_e"].map(String::from));
     let refs: Vec<&str> = names.iter().map(String::as_str).collect();
@@ -388,7 +447,9 @@ async fn style_apply_missing_doc_is_rejected() {
         style: "synthwave".to_string(),
         strength: 0.5,
     };
-    let err = style_apply(dir.path(), req).await.expect_err("missing doc must fail");
+    let err = style_apply(dir.path(), req)
+        .await
+        .expect_err("missing doc must fail");
     assert!(matches!(err, LumenError::PathRejected(_)), "got {err:?}");
 }
 
@@ -401,24 +462,37 @@ async fn ambient_defaults_add_layer_and_eight_twinkling_frames() {
     let dir = tempfile::tempdir().expect("tempdir");
     let root = dir.path();
     save(root, &make_doc(32, 32, 1, 2));
-    let saved = dream_ambient(root, ambient_req(42)).await.expect("ambient applies");
+    let saved = dream_ambient(root, ambient_req(42))
+        .await
+        .expect("ambient applies");
     assert_eq!((saved.layers, saved.frames), (2, 10));
     let doc = load_doc(root, DOC).expect("load");
     let layer = &doc.layers[1];
     assert_eq!(layer.name, AMBIENT_LAYER_NAME);
     let lit = layer.image.pixels().filter(|p| p[3] != 0).count();
     assert!((1..=64).contains(&lit), "{lit} sparkles");
-    assert!(layer.image.pixels().filter(|p| p[3] != 0).all(|p| p.0 == [255, 255, 255, 255]));
+    assert!(
+        layer
+            .image
+            .pixels()
+            .filter(|p| p[3] != 0)
+            .all(|p| p.0 == [255, 255, 255, 255])
+    );
     // Pre-existing frames get identity for the new layer.
     assert_eq!(doc.frames[0].layer_mods[1].opacity_mult, 1.0);
     for frame in &doc.frames[2..] {
         assert_eq!(frame.duration_ms, 120);
         let op = frame.layer_mods[1].opacity_mult;
         assert!((0.35..=1.0).contains(&op), "opacity {op}");
-        assert_eq!((frame.layer_mods[1].offset_x, frame.layer_mods[1].offset_y), (0, 0));
+        assert_eq!(
+            (frame.layer_mods[1].offset_x, frame.layer_mods[1].offset_y),
+            (0, 0)
+        );
     }
-    let distinct: BTreeSet<u32> =
-        doc.frames[2..].iter().map(|f| f.layer_mods[1].opacity_mult.to_bits()).collect();
+    let distinct: BTreeSet<u32> = doc.frames[2..]
+        .iter()
+        .map(|f| f.layer_mods[1].opacity_mult.to_bits())
+        .collect();
     assert!(distinct.len() > 1, "opacity must twinkle across frames");
 }
 
@@ -439,10 +513,21 @@ async fn ambient_drift_follows_the_formula() {
     for (k, frame) in doc.frames[1..].iter().enumerate() {
         let kf = k as f32;
         let m = &frame.layer_mods[1];
-        assert_eq!(m.offset_x, (3.0 * (kf * 0.7).sin()).round() as i32, "frame {k}");
-        assert_eq!(m.offset_y, (2.0 * (kf * 0.5).cos()).round() as i32, "frame {k}");
+        assert_eq!(
+            m.offset_x,
+            (3.0 * (kf * 0.7).sin()).round() as i32,
+            "frame {k}"
+        );
+        assert_eq!(
+            m.offset_y,
+            (2.0 * (kf * 0.5).cos()).round() as i32,
+            "frame {k}"
+        );
     }
-    assert_eq!(doc.layers[1].image.pixels().filter(|p| p[3] != 0).count(), 0);
+    assert_eq!(
+        doc.layers[1].image.pixels().filter(|p| p[3] != 0).count(),
+        0
+    );
 }
 
 #[tokio::test]
@@ -451,14 +536,25 @@ async fn ambient_is_deterministic_in_seed() {
     let root = dir.path();
     save(root, &make_doc(24, 24, 1, 1));
     let run = |seed: u64, out: &'static str| {
-        let req = DreamAmbientReq { output: Some(out.to_string()), ..ambient_req(seed) };
+        let req = DreamAmbientReq {
+            output: Some(out.to_string()),
+            ..ambient_req(seed)
+        };
         dream_ambient(root, req)
     };
     run(99, "a.lumen.json").await.expect("first run");
     run(99, "b.lumen.json").await.expect("second run");
     run(100, "c.lumen.json").await.expect("other seed");
-    assert_eq!(bytes(root, "a.lumen.json"), bytes(root, "b.lumen.json"), "same seed");
-    assert_ne!(bytes(root, "a.lumen.json"), bytes(root, "c.lumen.json"), "different seed");
+    assert_eq!(
+        bytes(root, "a.lumen.json"),
+        bytes(root, "b.lumen.json"),
+        "same seed"
+    );
+    assert_ne!(
+        bytes(root, "a.lumen.json"),
+        bytes(root, "c.lumen.json"),
+        "different seed"
+    );
 }
 
 #[tokio::test]
@@ -468,13 +564,34 @@ async fn ambient_rejects_out_of_range_frames_and_sparkles() {
     save(root, &make_doc(8, 8, 1, 1));
     let before = bytes(root, DOC);
     assert_bad_param(
-        dream_ambient(root, DreamAmbientReq { frames: Some(0), ..ambient_req(1) }).await,
+        dream_ambient(
+            root,
+            DreamAmbientReq {
+                frames: Some(0),
+                ..ambient_req(1)
+            },
+        )
+        .await,
     );
     assert_bad_param(
-        dream_ambient(root, DreamAmbientReq { frames: Some(65), ..ambient_req(1) }).await,
+        dream_ambient(
+            root,
+            DreamAmbientReq {
+                frames: Some(65),
+                ..ambient_req(1)
+            },
+        )
+        .await,
     );
     assert_bad_param(
-        dream_ambient(root, DreamAmbientReq { sparkles: Some(513), ..ambient_req(1) }).await,
+        dream_ambient(
+            root,
+            DreamAmbientReq {
+                sparkles: Some(513),
+                ..ambient_req(1)
+            },
+        )
+        .await,
     );
     assert_eq!(bytes(root, DOC), before, "rejected calls must not write");
 }
@@ -484,7 +601,9 @@ async fn ambient_twice_is_rejected_not_duplicated() {
     let dir = tempfile::tempdir().expect("tempdir");
     let root = dir.path();
     save(root, &make_doc(8, 8, 1, 1));
-    dream_ambient(root, ambient_req(1)).await.expect("first run");
+    dream_ambient(root, ambient_req(1))
+        .await
+        .expect("first run");
     assert_bad_param(dream_ambient(root, ambient_req(2)).await);
     assert_eq!(load_doc(root, DOC).expect("load").layers.len(), 2);
 }
@@ -544,7 +663,12 @@ async fn act_bounce_hops_up_and_overwrites_existing_mods() {
     let root = dir.path();
     let mut doc = make_doc(8, 8, 1, 6);
     for frame in &mut doc.frames {
-        frame.layer_mods[0] = LayerMod { offset_x: 5, offset_y: 5, opacity_mult: 0.5, scale: 2.0 };
+        frame.layer_mods[0] = LayerMod {
+            offset_x: 5,
+            offset_y: 5,
+            opacity_mult: 0.5,
+            scale: 2.0,
+        };
     }
     save(root, &doc);
     let req = DreamActReq {
@@ -555,12 +679,23 @@ async fn act_bounce_hops_up_and_overwrites_existing_mods() {
     };
     dream_act(root, req).await.expect("bounce applies");
     let doc = load_doc(root, DOC).expect("load");
-    let offsets: Vec<i32> = doc.frames.iter().map(|f| f.layer_mods[0].offset_y).collect();
-    assert!(offsets.iter().all(|&y| (-4..=0).contains(&y)), "{offsets:?}");
+    let offsets: Vec<i32> = doc
+        .frames
+        .iter()
+        .map(|f| f.layer_mods[0].offset_y)
+        .collect();
+    assert!(
+        offsets.iter().all(|&y| (-4..=0).contains(&y)),
+        "{offsets:?}"
+    );
     assert_eq!(offsets.iter().min(), Some(&-4), "peak hop is 4px");
     for frame in &doc.frames {
         let m = &frame.layer_mods[0];
-        assert_eq!((m.offset_x, m.opacity_mult), (0, 1.0), "old mods are overwritten");
+        assert_eq!(
+            (m.offset_x, m.opacity_mult),
+            (0, 1.0),
+            "old mods are overwritten"
+        );
     }
 }
 
@@ -589,7 +724,9 @@ async fn act_unknown_performance_lists_valid_values() {
         seed: 0,
         performance: "dance".to_string(),
     };
-    let err = dream_act(root, req).await.expect_err("unknown performance must fail");
+    let err = dream_act(root, req)
+        .await
+        .expect_err("unknown performance must fail");
     assert_bad_param_listing(err, &["idle", "breathe", "bounce"]);
 }
 
@@ -605,7 +742,9 @@ async fn act_extreme_seed_keeps_mods_valid() {
             seed: u64::MAX,
             performance: performance.to_string(),
         };
-        dream_act(root, req).await.expect("max seed + max frames still saves");
+        dream_act(root, req)
+            .await
+            .expect("max seed + max frames still saves");
     }
 }
 
@@ -618,14 +757,23 @@ async fn transition_dissolve_inserts_and_crossfades() {
     let dir = tempfile::tempdir().expect("tempdir");
     let root = dir.path();
     save(root, &make_doc(8, 8, 1, 2));
-    let saved = dream_transition(root, transition_req(0, 1, "dissolve", 3)).await.expect("ok");
+    let saved = dream_transition(root, transition_req(0, 1, "dissolve", 3))
+        .await
+        .expect("ok");
     assert_eq!(saved.frames, 5);
     let doc = load_doc(root, DOC).expect("load");
     let durations: Vec<u32> = doc.frames.iter().map(|f| f.duration_ms).collect();
     assert_eq!(durations, [100, 90, 90, 90, 100]);
-    let ops: Vec<f32> = doc.frames.iter().map(|f| f.layer_mods[0].opacity_mult).collect();
+    let ops: Vec<f32> = doc
+        .frames
+        .iter()
+        .map(|f| f.layer_mods[0].opacity_mult)
+        .collect();
     assert_eq!(ops[2], 0.0, "midpoint fully dissolved");
-    assert!(ops[1] > 0.0 && ops[1] < 1.0 && ops[3] > 0.0 && ops[3] < 1.0, "{ops:?}");
+    assert!(
+        ops[1] > 0.0 && ops[1] < 1.0 && ops[3] > 0.0 && ops[3] < 1.0,
+        "{ops:?}"
+    );
 }
 
 #[tokio::test]
@@ -633,13 +781,23 @@ async fn transition_iris_and_wipe_hit_their_extremes() {
     let dir = tempfile::tempdir().expect("tempdir");
     let root = dir.path();
     save(root, &make_doc(10, 8, 1, 2));
-    dream_transition(root, transition_req(0, 1, "iris", 1)).await.expect("iris");
+    dream_transition(root, transition_req(0, 1, "iris", 1))
+        .await
+        .expect("iris");
     let doc = load_doc(root, DOC).expect("load");
-    assert_eq!(doc.frames[1].layer_mods[0].scale, 0.0625, "iris closes to doc minimum");
+    assert_eq!(
+        doc.frames[1].layer_mods[0].scale, 0.0625,
+        "iris closes to doc minimum"
+    );
     save(root, &make_doc(10, 8, 1, 2));
-    dream_transition(root, transition_req(0, 1, "wipe", 3)).await.expect("wipe");
+    dream_transition(root, transition_req(0, 1, "wipe", 3))
+        .await
+        .expect("wipe");
     let doc = load_doc(root, DOC).expect("load");
-    let xs: Vec<i32> = doc.frames[1..4].iter().map(|f| f.layer_mods[0].offset_x).collect();
+    let xs: Vec<i32> = doc.frames[1..4]
+        .iter()
+        .map(|f| f.layer_mods[0].offset_x)
+        .collect();
     assert_eq!(xs, [-5, 10, 5], "slides off left, re-enters from right");
 }
 
@@ -649,16 +807,33 @@ async fn transition_shifts_tags_after_insertion_point() {
     let root = dir.path();
     let mut doc = make_doc(8, 8, 1, 3);
     doc.tags = vec![
-        Tag { name: "start".to_string(), from_frame: 0, to_frame: 0 },
-        Tag { name: "end".to_string(), from_frame: 1, to_frame: 2 },
+        Tag {
+            name: "start".to_string(),
+            from_frame: 0,
+            to_frame: 0,
+        },
+        Tag {
+            name: "end".to_string(),
+            from_frame: 1,
+            to_frame: 2,
+        },
     ];
     save(root, &doc);
-    dream_transition(root, transition_req(0, 2, "bloom", 4)).await.expect("bloom");
+    dream_transition(root, transition_req(0, 2, "bloom", 4))
+        .await
+        .expect("bloom");
     let doc = load_doc(root, DOC).expect("load");
-    let ranges: Vec<(u32, u32)> = doc.tags.iter().map(|t| (t.from_frame, t.to_frame)).collect();
+    let ranges: Vec<(u32, u32)> = doc
+        .tags
+        .iter()
+        .map(|t| (t.from_frame, t.to_frame))
+        .collect();
     assert_eq!(ranges, [(0, 0), (5, 6)]);
     let mid = &doc.frames[2].layer_mods[0];
-    assert!(mid.scale > 1.0 && mid.opacity_mult < 1.0, "bloom pulses and dips");
+    assert!(
+        mid.scale > 1.0 && mid.opacity_mult < 1.0,
+        "bloom pulses and dips"
+    );
 }
 
 #[tokio::test]
@@ -711,20 +886,31 @@ async fn text_typewriter_eases_in_only_the_text_layer() {
     let dir = tempfile::tempdir().expect("tempdir");
     let root = dir.path();
     let mut doc = make_doc(8, 20, 2, 1);
-    doc.frames[0].layer_mods[0] = LayerMod { offset_x: 3, ..identity_mod() };
+    doc.frames[0].layer_mods[0] = LayerMod {
+        offset_x: 3,
+        ..identity_mod()
+    };
     save(root, &doc);
-    let saved = dream_text(root, text_req(1, "typewriter", None)).await.expect("ok");
+    let saved = dream_text(root, text_req(1, "typewriter", None))
+        .await
+        .expect("ok");
     assert_eq!(saved.frames, 13);
     let doc = load_doc(root, DOC).expect("load");
     let first = &doc.frames[1].layer_mods[1];
     let last = &doc.frames[12].layer_mods[1];
     assert_eq!((first.offset_y, first.opacity_mult), (20, 0.0));
     assert_eq!((last.offset_y, last.opacity_mult), (0, 1.0));
-    let ys: Vec<i32> = doc.frames[1..].iter().map(|f| f.layer_mods[1].offset_y).collect();
+    let ys: Vec<i32> = doc.frames[1..]
+        .iter()
+        .map(|f| f.layer_mods[1].offset_y)
+        .collect();
     assert!(ys.windows(2).all(|w| w[1] <= w[0]), "monotone ease {ys:?}");
     for frame in &doc.frames[1..] {
         assert_eq!(frame.duration_ms, 90);
-        assert_eq!(frame.layer_mods[0].offset_x, 3, "other layers keep the last pose");
+        assert_eq!(
+            frame.layer_mods[0].offset_x, 3,
+            "other layers keep the last pose"
+        );
     }
 }
 
@@ -747,10 +933,20 @@ async fn text_glitch_is_bounded_and_deterministic() {
     for frame in &doc.frames[1..] {
         let m = &frame.layer_mods[0];
         assert!((-2..=2).contains(&m.offset_x) && (-2..=2).contains(&m.offset_y));
-        assert!(m.opacity_mult == 1.0 || m.opacity_mult == 0.2, "{}", m.opacity_mult);
+        assert!(
+            m.opacity_mult == 1.0 || m.opacity_mult == 0.2,
+            "{}",
+            m.opacity_mult
+        );
     }
-    let dims = doc.frames[1..].iter().filter(|f| f.layer_mods[0].opacity_mult == 0.2).count();
-    assert!(dims > 0 && dims < 96, "flicker happens but not always ({dims})");
+    let dims = doc.frames[1..]
+        .iter()
+        .filter(|f| f.layer_mods[0].opacity_mult == 0.2)
+        .count();
+    assert!(
+        dims > 0 && dims < 96,
+        "flicker happens but not always ({dims})"
+    );
 }
 
 #[tokio::test]
@@ -758,10 +954,18 @@ async fn text_pulse_follows_sine() {
     let dir = tempfile::tempdir().expect("tempdir");
     let root = dir.path();
     save(root, &make_doc(8, 8, 1, 1));
-    dream_text(root, text_req(0, "pulse", Some(4))).await.expect("pulse");
+    dream_text(root, text_req(0, "pulse", Some(4)))
+        .await
+        .expect("pulse");
     let doc = load_doc(root, DOC).expect("load");
-    let scales: Vec<f32> = doc.frames[1..].iter().map(|f| f.layer_mods[0].scale).collect();
-    assert!((scales[1] - 1.08).abs() < 1e-6 && (scales[3] - 0.92).abs() < 1e-6, "{scales:?}");
+    let scales: Vec<f32> = doc.frames[1..]
+        .iter()
+        .map(|f| f.layer_mods[0].scale)
+        .collect();
+    assert!(
+        (scales[1] - 1.08).abs() < 1e-6 && (scales[3] - 0.92).abs() < 1e-6,
+        "{scales:?}"
+    );
 }
 
 #[tokio::test]
@@ -778,7 +982,9 @@ async fn text_unknown_effect_lists_valid_values() {
     let dir = tempfile::tempdir().expect("tempdir");
     let root = dir.path();
     save(root, &make_doc(8, 8, 1, 1));
-    let err = dream_text(root, text_req(0, "wobble", None)).await.expect_err("must fail");
+    let err = dream_text(root, text_req(0, "wobble", None))
+        .await
+        .expect_err("must fail");
     assert_bad_param_listing(err, &["typewriter", "glitch", "pulse"]);
 }
 

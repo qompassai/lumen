@@ -59,9 +59,16 @@ fn plan_tiles(w: usize, h: usize) -> Vec<Tile> {
             let ex = (ox + iw + UPSCALE_TILE_PAD).min(w);
             let ey = (oy + ih + UPSCALE_TILE_PAD).min(h);
             tiles.push(Tile {
-                sx, sy, sw: ex - sx, sh: ey - sy,
-                ix: ox - sx, iy: oy - sy, iw, ih,
-                ox, oy,
+                sx,
+                sy,
+                sw: ex - sx,
+                sh: ey - sy,
+                ix: ox - sx,
+                iy: oy - sy,
+                iw,
+                ih,
+                ox,
+                oy,
             });
             ox += iw;
         }
@@ -84,7 +91,9 @@ impl Upscaler {
             .map_err(|e| LumenError::DocInvalid(format!("ort opt level: {e}")))?
             .commit_from_file(model_path)
             .map_err(|e| LumenError::Io(format!("loading ONNX {}: {e}", model_path.display())))?;
-        Ok(Self { session: Arc::new(Mutex::new(session)) })
+        Ok(Self {
+            session: Arc::new(Mutex::new(session)),
+        })
     }
 
     /// Upscale an RGBA image 2x (via 4x model + Lanczos down).
@@ -105,8 +114,10 @@ impl Upscaler {
 
         let out_w = (w * TARGET_SCALE) as u32;
         let out_h = (h * TARGET_SCALE) as u32;
-        let rgb_2x = image::imageops::resize(&sr_4x, out_w, out_h, image::imageops::FilterType::Lanczos3);
-        let alpha_2x = image::imageops::resize(&alpha, out_w, out_h, image::imageops::FilterType::Lanczos3);
+        let rgb_2x =
+            image::imageops::resize(&sr_4x, out_w, out_h, image::imageops::FilterType::Lanczos3);
+        let alpha_2x =
+            image::imageops::resize(&alpha, out_w, out_h, image::imageops::FilterType::Lanczos3);
 
         let mut out = RgbaImage::new(out_w, out_h);
         for y in 0..out_h {
@@ -127,17 +138,26 @@ impl Upscaler {
 
         for tile in plan_tiles(w, h) {
             let tile_img = image::imageops::crop_imm(
-                rgb, tile.sx as u32, tile.sy as u32, tile.sw as u32, tile.sh as u32,
-            ).to_image();
+                rgb,
+                tile.sx as u32,
+                tile.sy as u32,
+                tile.sw as u32,
+                tile.sh as u32,
+            )
+            .to_image();
 
             let input = pack_nchw(&tile_img);
 
             let output = {
-                let mut session = self.session.lock()
+                let mut session = self
+                    .session
+                    .lock()
                     .map_err(|_| LumenError::DocInvalid("upscaler session lock poisoned".into()))?;
-                let outputs = session.run(ort::inputs!["input" => input])
+                let outputs = session
+                    .run(ort::inputs!["input" => input])
                     .map_err(|e| LumenError::DocInvalid(format!("onnx inference: {e}")))?;
-                let (_shape, data) = outputs["output"].try_extract_tensor::<f32>()
+                let (_shape, data) = outputs["output"]
+                    .try_extract_tensor::<f32>()
                     .map_err(|e| LumenError::DocInvalid(format!("output tensor: {e}")))?;
                 data.to_vec()
             };
@@ -180,7 +200,10 @@ fn pack_nchw(img: &image::RgbImage) -> ort::value::Tensor<f32> {
 
 fn unpack_nchw(data: &[f32], w: usize, h: usize) -> Result<image::RgbImage, LumenError> {
     if data.len() != 3 * w * h {
-        return Err(LumenError::DocInvalid(format!("tensor size {} != 3*{w}*{h}", data.len())));
+        return Err(LumenError::DocInvalid(format!(
+            "tensor size {} != 3*{w}*{h}",
+            data.len()
+        )));
     }
     let mut img = image::RgbImage::new(w as u32, h as u32);
     for y in 0..h {
@@ -208,7 +231,11 @@ pub fn run_upscale(
         .map_err(|e| LumenError::Io(format!("reading {}: {e}", dir.display())))?
         .filter_map(|e| e.ok())
         .map(|e| e.path())
-        .filter(|p| p.extension().and_then(|e| e.to_str()).is_some_and(|e| e.eq_ignore_ascii_case("png")))
+        .filter(|p| {
+            p.extension()
+                .and_then(|e| e.to_str())
+                .is_some_and(|e| e.eq_ignore_ascii_case("png"))
+        })
         .collect();
     entries.sort();
 
@@ -218,9 +245,13 @@ pub fn run_upscale(
             .map_err(|e| LumenError::Io(format!("opening {}: {e}", path.display())))?;
         let rgba = img.to_rgba8();
         let upscaled = upscaler.upscale_2x(&rgba)?;
-        let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("out.png");
+        let name = path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("out.png");
         let dest = out_dir.join(name);
-        upscaled.save(&dest)
+        upscaled
+            .save(&dest)
             .map_err(|e| LumenError::Io(format!("saving {}: {e}", dest.display())))?;
         written.push(dest);
     }
@@ -268,7 +299,9 @@ mod tests {
 
     #[test]
     fn nchw_roundtrip() {
-        let img = image::RgbImage::from_fn(4, 4, |x, y| image::Rgb([(x * 16) as u8, (y * 16) as u8, 128]));
+        let img = image::RgbImage::from_fn(4, 4, |x, y| {
+            image::Rgb([(x * 16) as u8, (y * 16) as u8, 128])
+        });
         let tensor = pack_nchw(&img);
         let (_, data) = tensor.try_extract_tensor::<f32>().unwrap();
         let back = unpack_nchw(data, 4, 4).unwrap();

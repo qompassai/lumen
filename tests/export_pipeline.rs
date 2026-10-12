@@ -1552,7 +1552,12 @@ async fn adv_wasm4_rejects_oversized_frames_and_blob() {
 // export_sheet_paperzd — 2 validation, 2 adversarial
 // ---------------------------------------------------------------------------
 
-fn paperzd_req(columns: u32, tag: Option<&str>, padding: u32, meta: &str) -> ExportSheetPaperZdRequest {
+fn paperzd_req(
+    columns: u32,
+    tag: Option<&str>,
+    padding: u32,
+    meta: &str,
+) -> ExportSheetPaperZdRequest {
     ExportSheetPaperZdRequest {
         doc: "a.lumen.json".into(),
         output: "sheet.png".into(),
@@ -1578,7 +1583,11 @@ async fn export_sheet_paperzd_emits_texturepacker_json() {
     let frames = meta["frames"].as_object().expect("frames object");
     assert_eq!(frames.len(), 3);
     // Frame names use tag_slot convention.
-    assert!(frames.contains_key("idle_0"), "idle_0 in {:?}", frames.keys().collect::<Vec<_>>());
+    assert!(
+        frames.contains_key("idle_0"),
+        "idle_0 in {:?}",
+        frames.keys().collect::<Vec<_>>()
+    );
     assert!(frames.contains_key("idle_1"));
     assert!(frames.contains_key("walk_2"));
     // Frame rect matches grid position.
@@ -1623,7 +1632,10 @@ async fn export_sheet_paperzd_rejects_bad_params() {
         .await
         .unwrap_err();
     assert!(is_bad_param(&err), "{err}");
-    assert!(!root.join("sheet.png").exists(), "PNG not written on failure");
+    assert!(
+        !root.join("sheet.png").exists(),
+        "PNG not written on failure"
+    );
 }
 
 #[tokio::test]

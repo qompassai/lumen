@@ -22,7 +22,6 @@ pub mod export;
 pub mod inspect;
 pub mod oracle;
 pub mod pack;
-pub mod upscale;
 pub mod palette;
 pub mod pipeline;
 pub mod policy;
@@ -30,6 +29,7 @@ pub mod qa;
 pub mod sprite_ops;
 pub mod style;
 pub mod text;
+pub mod upscale;
 
 use std::path::{Path, PathBuf};
 
@@ -111,9 +111,9 @@ pub fn resolve_sprite_path(user_path: &str, root: &Path) -> Result<PathBuf, Lume
     if user_path.is_empty() {
         return Err(LumenError::PathRejected("empty path".to_string()));
     }
-    let root = root.canonicalize().map_err(|e| {
-        LumenError::PathRejected(format!("project root not accessible: {e}"))
-    })?;
+    let root = root
+        .canonicalize()
+        .map_err(|e| LumenError::PathRejected(format!("project root not accessible: {e}")))?;
     // Reject absolute paths outright: everything is relative to the root.
     if Path::new(user_path).is_absolute() {
         return Err(LumenError::PathRejected(
@@ -152,22 +152,22 @@ pub fn resolve_write_path(
     if user_path.is_empty() {
         return Err(LumenError::PathRejected("empty path".to_string()));
     }
-    let root = root.canonicalize().map_err(|e| {
-        LumenError::PathRejected(format!("project root not accessible: {e}"))
-    })?;
+    let root = root
+        .canonicalize()
+        .map_err(|e| LumenError::PathRejected(format!("project root not accessible: {e}")))?;
     if Path::new(user_path).is_absolute() {
         return Err(LumenError::PathRejected(
             "absolute paths are not accepted; use a project-relative path".to_string(),
         ));
     }
     let candidate = root.join(user_path);
-    let parent = candidate.parent().ok_or_else(|| {
-        LumenError::PathRejected("path has no parent directory".to_string())
-    })?;
+    let parent = candidate
+        .parent()
+        .ok_or_else(|| LumenError::PathRejected("path has no parent directory".to_string()))?;
     std::fs::create_dir_all(parent).map_err(LumenError::from)?;
-    let canonical_parent = parent.canonicalize().map_err(|e| {
-        LumenError::PathRejected(format!("output parent not accessible: {e}"))
-    })?;
+    let canonical_parent = parent
+        .canonicalize()
+        .map_err(|e| LumenError::PathRejected(format!("output parent not accessible: {e}")))?;
     if !canonical_parent.starts_with(&root) {
         return Err(LumenError::PathRejected(
             "path escapes the project root".to_string(),
@@ -183,9 +183,9 @@ pub fn resolve_write_path(
             allowed_exts.join(", ")
         )));
     }
-    let file_name = candidate.file_name().ok_or_else(|| {
-        LumenError::PathRejected("path has no file name".to_string())
-    })?;
+    let file_name = candidate
+        .file_name()
+        .ok_or_else(|| LumenError::PathRejected("path has no file name".to_string()))?;
     Ok(canonical_parent.join(file_name))
 }
 
@@ -210,8 +210,7 @@ pub fn sprite_info(root: &Path, user_path: &str) -> Result<SpriteInfo, LumenErro
             MAX_SPRITE_BYTES
         )));
     }
-    let reader =
-        image::ImageReader::open(&path).map_err(|e| LumenError::Io(e.to_string()))?;
+    let reader = image::ImageReader::open(&path).map_err(|e| LumenError::Io(e.to_string()))?;
     let reader = reader
         .with_guessed_format()
         .map_err(|e| LumenError::BadPng(e.to_string()))?;

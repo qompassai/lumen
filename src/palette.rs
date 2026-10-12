@@ -51,11 +51,26 @@ struct Preset {
 /// live with each table; none is claimed to be byte-verified against an
 /// upstream source.
 const PRESETS: [Preset; 5] = [
-    Preset { name: "pico8", rgb: &PICO8 },
-    Preset { name: "sweetie16", rgb: &SWEETIE16 },
-    Preset { name: "gameboy", rgb: &GAMEBOY },
-    Preset { name: "nes", rgb: &NES },
-    Preset { name: "endesga32", rgb: &ENDESGA32 },
+    Preset {
+        name: "pico8",
+        rgb: &PICO8,
+    },
+    Preset {
+        name: "sweetie16",
+        rgb: &SWEETIE16,
+    },
+    Preset {
+        name: "gameboy",
+        rgb: &GAMEBOY,
+    },
+    Preset {
+        name: "nes",
+        rgb: &NES,
+    },
+    Preset {
+        name: "endesga32",
+        rgb: &ENDESGA32,
+    },
 ];
 
 /// PICO-8's 16-color base palette.
@@ -203,10 +218,7 @@ pub async fn palette_presets(
 /// Map every non-transparent pixel of the selected layer(s) to its nearest
 /// palette entry, optionally with ordered dithering. The document's bound
 /// palette (`doc.palette`) is left unchanged.
-pub async fn palette_apply(
-    root: &Path,
-    req: PaletteApplyRequest,
-) -> Result<DocSaved, LumenError> {
+pub async fn palette_apply(root: &Path, req: PaletteApplyRequest) -> Result<DocSaved, LumenError> {
     let target = output_target(&req.doc, req.output.as_deref())?;
     let entries = resolve_palette(&req.palette)?;
     let mut doc = load_doc(root, &req.doc)?;
@@ -238,16 +250,16 @@ pub async fn palette_extract(
     sorted.truncate(req.max_colors as usize);
     let colors = sorted
         .into_iter()
-        .map(|(c, count)| CountedColor { color: hex_rgba(c), count })
+        .map(|(c, count)| CountedColor {
+            color: hex_rgba(c),
+            count,
+        })
         .collect();
     Ok(ExtractedPalette { colors })
 }
 
 /// Linear RGB interpolation from `from` to `to` inclusive. Pure; no doc I/O.
-pub async fn palette_ramp(
-    _root: &Path,
-    req: PaletteRampRequest,
-) -> Result<ColorRamp, LumenError> {
+pub async fn palette_ramp(_root: &Path, req: PaletteRampRequest) -> Result<ColorRamp, LumenError> {
     if !(RAMP_STEPS_MIN..=RAMP_STEPS_MAX).contains(&req.steps) {
         return Err(LumenError::BadParam(format!(
             "steps {} outside {RAMP_STEPS_MIN}..={RAMP_STEPS_MAX}",
@@ -344,7 +356,9 @@ fn output_target<'a>(doc: &'a str, output: Option<&'a str>) -> Result<&'a str, L
     match output {
         None => Ok(doc),
         Some(o) if o.ends_with(".lumen.json") => Ok(o),
-        Some(_) => Err(LumenError::BadParam("output must end in .lumen.json".to_string())),
+        Some(_) => Err(LumenError::BadParam(
+            "output must end in .lumen.json".to_string(),
+        )),
     }
 }
 

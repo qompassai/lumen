@@ -212,7 +212,14 @@ pub async fn text_rasterize(
             doc.layers.len() - 1
         }
     };
-    draw_text(&mut doc.layers[layer_index].image, &req.text, fg, req.scale, req.x, req.y);
+    draw_text(
+        &mut doc.layers[layer_index].image,
+        &req.text,
+        fg,
+        req.scale,
+        req.x,
+        req.y,
+    );
     commit(root, target, &doc)
 }
 
@@ -257,7 +264,9 @@ fn check_text(text: &str) -> Result<(), LumenError> {
 
 fn check_scale(scale: u32) -> Result<(), LumenError> {
     if !(1..=SCALE_MAX).contains(&scale) {
-        return Err(LumenError::BadParam(format!("scale must be 1..={SCALE_MAX}")));
+        return Err(LumenError::BadParam(format!(
+            "scale must be 1..={SCALE_MAX}"
+        )));
     }
     Ok(())
 }

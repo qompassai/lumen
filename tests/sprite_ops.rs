@@ -11,11 +11,11 @@ use std::path::Path;
 use lumen::LumenError;
 use lumen::doc::{SpriteDoc, load_doc};
 use lumen::sprite_ops::{
-    self as ops, AddFrameRequest, AddLayerRequest, AddTagRequest, CropRequest,
-    DeleteFrameRequest, DeleteLayerRequest, DeleteTagRequest, DrawCircleRequest, DrawLineRequest,
-    FillRectRequest, FlipRequest, FloodFillRequest, NewSpriteRequest, RenameLayerRequest,
-    ReorderLayerRequest, ResizeCanvasRequest, RotateRequest, SetFrameDurationRequest,
-    SetFrameModRequest, SetLayerPropsRequest, SetPixelRequest, TweenFramesRequest,
+    self as ops, AddFrameRequest, AddLayerRequest, AddTagRequest, CropRequest, DeleteFrameRequest,
+    DeleteLayerRequest, DeleteTagRequest, DrawCircleRequest, DrawLineRequest, FillRectRequest,
+    FlipRequest, FloodFillRequest, NewSpriteRequest, RenameLayerRequest, ReorderLayerRequest,
+    ResizeCanvasRequest, RotateRequest, SetFrameDurationRequest, SetFrameModRequest,
+    SetLayerPropsRequest, SetPixelRequest, TweenFramesRequest,
 };
 
 const DOC: &str = "s.lumen.json";
@@ -62,12 +62,19 @@ fn assert_bad<T: std::fmt::Debug>(result: Result<T, LumenError>) {
 
 async fn add_frames(root: &Path, count: usize) {
     for _ in 0..count {
-        ops::add_frame(root, frame_req(100, None)).await.expect("add_frame");
+        ops::add_frame(root, frame_req(100, None))
+            .await
+            .expect("add_frame");
     }
 }
 
 fn frame_req(duration_ms: u32, at: Option<usize>) -> AddFrameRequest {
-    AddFrameRequest { doc: DOC.into(), output: None, duration_ms, at }
+    AddFrameRequest {
+        doc: DOC.into(),
+        output: None,
+        duration_ms,
+        at,
+    }
 }
 
 fn layer_req(name: &str) -> AddLayerRequest {
@@ -83,7 +90,13 @@ fn layer_req(name: &str) -> AddLayerRequest {
 }
 
 fn tag_req(name: &str, from_frame: u32, to_frame: u32) -> AddTagRequest {
-    AddTagRequest { doc: DOC.into(), output: None, name: name.into(), from_frame, to_frame }
+    AddTagRequest {
+        doc: DOC.into(),
+        output: None,
+        name: name.into(),
+        from_frame,
+        to_frame,
+    }
 }
 
 fn mod_req(frame: usize, layer: usize) -> SetFrameModRequest {
@@ -100,7 +113,14 @@ fn mod_req(frame: usize, layer: usize) -> SetFrameModRequest {
 }
 
 fn pixel_req(x: i32, y: i32, color: &str) -> SetPixelRequest {
-    SetPixelRequest { doc: DOC.into(), output: None, layer: 0, x, y, color: color.into() }
+    SetPixelRequest {
+        doc: DOC.into(),
+        output: None,
+        layer: 0,
+        x,
+        y,
+        color: color.into(),
+    }
 }
 
 fn tween_req(from: usize, to: usize, steps: u32, easing: &str) -> TweenFramesRequest {
@@ -132,7 +152,10 @@ async fn ok_new_sprite_creates_filled_background_and_100ms_frame() {
     )
     .await
     .expect("new_sprite");
-    assert_eq!((saved.width, saved.height, saved.layers, saved.frames), (4, 3, 1, 1));
+    assert_eq!(
+        (saved.width, saved.height, saved.layers, saved.frames),
+        (4, 3, 1, 1)
+    );
     let doc = load_doc(dir.path(), "art/hero.lumen.json").expect("load");
     assert_eq!(doc.layers[0].name, "background");
     assert_eq!(doc.frames[0].duration_ms, 100);
@@ -163,10 +186,17 @@ async fn adv_new_sprite_rejects_malformed_colors() {
     let dir = tempfile::tempdir().expect("tempdir");
     // "#ééé" is 7 bytes: '#' + six bytes of multi-byte UTF-8, which must not
     // panic on a char boundary.
-    for color in ["red", "", "#", "#12345", "#1234567", "#GG0000", "123456", "#ééé", "#12 456"] {
+    for color in [
+        "red", "", "#", "#12345", "#1234567", "#GG0000", "123456", "#ééé", "#12 456",
+    ] {
         let result = ops::new_sprite(
             dir.path(),
-            NewSpriteRequest { width: 2, height: 2, background: color.into(), output: DOC.into() },
+            NewSpriteRequest {
+                width: 2,
+                height: 2,
+                background: color.into(),
+                output: DOC.into(),
+            },
         )
         .await;
         assert_bad(result);
@@ -184,9 +214,15 @@ async fn adv_new_sprite_rejects_bad_output_paths() {
     };
     assert_bad(ops::new_sprite(dir.path(), req("plain.json")).await);
     let traversal = ops::new_sprite(dir.path(), req("../escape.lumen.json")).await;
-    assert!(matches!(traversal, Err(LumenError::PathRejected(_))), "{traversal:?}");
+    assert!(
+        matches!(traversal, Err(LumenError::PathRejected(_))),
+        "{traversal:?}"
+    );
     let absolute = ops::new_sprite(dir.path(), req("/tmp/abs.lumen.json")).await;
-    assert!(matches!(absolute, Err(LumenError::PathRejected(_))), "{absolute:?}");
+    assert!(
+        matches!(absolute, Err(LumenError::PathRejected(_))),
+        "{absolute:?}"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -219,7 +255,10 @@ async fn adv_output_suffix_and_corrupt_input_fail_closed() {
     let mut req = pixel_req(0, 0, "#FF0000");
     req.doc = "junk.lumen.json".into();
     let result = ops::set_pixel(dir.path(), req).await;
-    assert!(matches!(result, Err(LumenError::DocInvalid(_))), "{result:?}");
+    assert!(
+        matches!(result, Err(LumenError::DocInvalid(_))),
+        "{result:?}"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -251,11 +290,15 @@ async fn ok_add_layer_appends_with_props_and_identity_mods() {
 async fn ok_add_layer_inserts_at_index_and_suffixes_duplicates() {
     let dir = tempfile::tempdir().expect("tempdir");
     make(dir.path(), 2, 2).await;
-    ops::add_layer(dir.path(), layer_req("fx")).await.expect("first");
+    ops::add_layer(dir.path(), layer_req("fx"))
+        .await
+        .expect("first");
     let mut req = layer_req("fx");
     req.index = Some(0);
     ops::add_layer(dir.path(), req).await.expect("second");
-    ops::add_layer(dir.path(), layer_req("fx")).await.expect("third");
+    ops::add_layer(dir.path(), layer_req("fx"))
+        .await
+        .expect("third");
     let doc = load(dir.path());
     let names: Vec<&str> = doc.layers.iter().map(|l| l.name.as_str()).collect();
     assert_eq!(names, ["fx (2)", "background", "fx", "fx (3)"]);
@@ -266,8 +309,12 @@ async fn ok_add_layer_truncates_long_name_to_limit() {
     let dir = tempfile::tempdir().expect("tempdir");
     make(dir.path(), 2, 2).await;
     let long = "é".repeat(500);
-    ops::add_layer(dir.path(), layer_req(&long)).await.expect("first");
-    ops::add_layer(dir.path(), layer_req(&long)).await.expect("collision");
+    ops::add_layer(dir.path(), layer_req(&long))
+        .await
+        .expect("first");
+    ops::add_layer(dir.path(), layer_req(&long))
+        .await
+        .expect("collision");
     let doc = load(dir.path());
     assert_eq!(doc.layers[1].name.chars().count(), 128);
     assert_eq!(doc.layers[2].name.chars().count(), 128);
@@ -300,7 +347,9 @@ async fn adv_add_layer_rejects_beyond_max_layers() {
     let dir = tempfile::tempdir().expect("tempdir");
     make(dir.path(), 1, 1).await;
     for i in 1..64 {
-        ops::add_layer(dir.path(), layer_req(&format!("l{i}"))).await.expect("under cap");
+        ops::add_layer(dir.path(), layer_req(&format!("l{i}")))
+            .await
+            .expect("under cap");
     }
     assert_eq!(load(dir.path()).layers.len(), 64);
     assert_bad(ops::add_layer(dir.path(), layer_req("one too many")).await);
@@ -319,19 +368,30 @@ async fn ok_delete_layer_removes_layer_and_its_mods() {
     let mut m = mod_req(0, 2);
     m.offset_x = Some(7);
     ops::set_frame_mod(dir.path(), m).await.expect("mod");
-    let req = DeleteLayerRequest { doc: DOC.into(), output: None, index: 1 };
+    let req = DeleteLayerRequest {
+        doc: DOC.into(),
+        output: None,
+        index: 1,
+    };
     ops::delete_layer(dir.path(), req).await.expect("delete");
     let doc = load(dir.path());
     assert_eq!(doc.layers[1].name, "b");
     assert_eq!(doc.frames[0].layer_mods.len(), 2);
-    assert_eq!(doc.frames[0].layer_mods[1].offset_x, 7, "b's mod must follow b");
+    assert_eq!(
+        doc.frames[0].layer_mods[1].offset_x, 7,
+        "b's mod must follow b"
+    );
 }
 
 #[tokio::test]
 async fn adv_delete_layer_rejects_last_layer_and_bad_index() {
     let dir = tempfile::tempdir().expect("tempdir");
     make(dir.path(), 2, 2).await;
-    let req = |index| DeleteLayerRequest { doc: DOC.into(), output: None, index };
+    let req = |index| DeleteLayerRequest {
+        doc: DOC.into(),
+        output: None,
+        index,
+    };
     assert_bad(ops::delete_layer(dir.path(), req(0)).await);
     assert_bad(ops::delete_layer(dir.path(), req(1)).await);
     assert_bad(ops::delete_layer(dir.path(), req(usize::MAX)).await);
@@ -351,7 +411,12 @@ async fn ok_reorder_layer_moves_layer_with_mods() {
     let mut m = mod_req(0, 2);
     m.offset_y = Some(-3);
     ops::set_frame_mod(dir.path(), m).await.expect("mod");
-    let req = ReorderLayerRequest { doc: DOC.into(), output: None, from: 2, to: 0 };
+    let req = ReorderLayerRequest {
+        doc: DOC.into(),
+        output: None,
+        from: 2,
+        to: 0,
+    };
     ops::reorder_layer(dir.path(), req).await.expect("reorder");
     let doc = load(dir.path());
     let names: Vec<&str> = doc.layers.iter().map(|l| l.name.as_str()).collect();
@@ -363,7 +428,12 @@ async fn ok_reorder_layer_moves_layer_with_mods() {
 async fn ok_reorder_layer_onto_itself_is_noop_success() {
     let dir = tempfile::tempdir().expect("tempdir");
     make(dir.path(), 2, 2).await;
-    let req = ReorderLayerRequest { doc: DOC.into(), output: None, from: 0, to: 0 };
+    let req = ReorderLayerRequest {
+        doc: DOC.into(),
+        output: None,
+        from: 0,
+        to: 0,
+    };
     ops::reorder_layer(dir.path(), req).await.expect("noop");
     assert_eq!(load(dir.path()).layers[0].name, "background");
 }
@@ -372,7 +442,12 @@ async fn ok_reorder_layer_onto_itself_is_noop_success() {
 async fn adv_reorder_layer_rejects_out_of_range() {
     let dir = tempfile::tempdir().expect("tempdir");
     make(dir.path(), 2, 2).await;
-    let req = |from, to| ReorderLayerRequest { doc: DOC.into(), output: None, from, to };
+    let req = |from, to| ReorderLayerRequest {
+        doc: DOC.into(),
+        output: None,
+        from,
+        to,
+    };
     assert_bad(ops::reorder_layer(dir.path(), req(0, 1)).await);
     assert_bad(ops::reorder_layer(dir.path(), req(1, 0)).await);
     assert_bad(ops::reorder_layer(dir.path(), req(usize::MAX, usize::MAX)).await);
@@ -386,16 +461,24 @@ async fn adv_reorder_layer_rejects_out_of_range() {
 async fn ok_rename_layer_renames_and_self_name_is_not_collision() {
     let dir = tempfile::tempdir().expect("tempdir");
     make(dir.path(), 2, 2).await;
-    ops::add_layer(dir.path(), layer_req("sky")).await.expect("sky");
+    ops::add_layer(dir.path(), layer_req("sky"))
+        .await
+        .expect("sky");
     let req = |index, name: &str| RenameLayerRequest {
         doc: DOC.into(),
         output: None,
         index,
         name: name.into(),
     };
-    ops::rename_layer(dir.path(), req(0, "ground")).await.expect("rename");
-    ops::rename_layer(dir.path(), req(1, "sky")).await.expect("self rename");
-    ops::rename_layer(dir.path(), req(1, "ground")).await.expect("collide");
+    ops::rename_layer(dir.path(), req(0, "ground"))
+        .await
+        .expect("rename");
+    ops::rename_layer(dir.path(), req(1, "sky"))
+        .await
+        .expect("self rename");
+    ops::rename_layer(dir.path(), req(1, "ground"))
+        .await
+        .expect("collide");
     let doc = load(dir.path());
     assert_eq!(doc.layers[0].name, "ground");
     assert_eq!(doc.layers[1].name, "ground (2)");
@@ -469,16 +552,24 @@ async fn adv_set_layer_props_rejects_empty_nan_and_unknown_blend() {
 async fn ok_add_frame_inserts_identity_mods_and_shifts_tags() {
     let dir = tempfile::tempdir().expect("tempdir");
     make(dir.path(), 2, 2).await;
-    ops::add_layer(dir.path(), layer_req("a")).await.expect("layer");
+    ops::add_layer(dir.path(), layer_req("a"))
+        .await
+        .expect("layer");
     add_frames(dir.path(), 2).await;
-    ops::add_tag(dir.path(), tag_req("walk", 1, 2)).await.expect("tag");
-    ops::add_frame(dir.path(), frame_req(250, Some(1))).await.expect("insert");
+    ops::add_tag(dir.path(), tag_req("walk", 1, 2))
+        .await
+        .expect("tag");
+    ops::add_frame(dir.path(), frame_req(250, Some(1)))
+        .await
+        .expect("insert");
     let doc = load(dir.path());
     assert_eq!(doc.frames.len(), 4);
     assert_eq!(doc.frames[1].duration_ms, 250);
     assert_eq!(doc.frames[1].layer_mods.len(), 2);
     assert_eq!((doc.tags[0].from_frame, doc.tags[0].to_frame), (2, 3));
-    ops::add_frame(dir.path(), frame_req(250, Some(3))).await.expect("inside tag");
+    ops::add_frame(dir.path(), frame_req(250, Some(3)))
+        .await
+        .expect("inside tag");
     let doc = load(dir.path());
     assert_eq!((doc.tags[0].from_frame, doc.tags[0].to_frame), (2, 4));
 }
@@ -500,7 +591,9 @@ async fn adv_add_frame_rejects_beyond_max_frames() {
     make(dir.path(), 1, 1).await;
     add_frames(dir.path(), 1).await;
     for steps in [256, 256, 256, 254] {
-        ops::tween_frames(dir.path(), tween_req(0, 1, steps, "linear")).await.expect("bulk");
+        ops::tween_frames(dir.path(), tween_req(0, 1, steps, "linear"))
+            .await
+            .expect("bulk");
     }
     assert_eq!(load(dir.path()).frames.len(), 1024);
     assert_bad(ops::add_frame(dir.path(), frame_req(100, None)).await);
@@ -515,9 +608,17 @@ async fn ok_delete_frame_shifts_and_shrinks_tags() {
     let dir = tempfile::tempdir().expect("tempdir");
     make(dir.path(), 2, 2).await;
     add_frames(dir.path(), 4).await;
-    ops::add_tag(dir.path(), tag_req("late", 3, 4)).await.expect("late");
-    ops::add_tag(dir.path(), tag_req("span", 0, 2)).await.expect("span");
-    let req = DeleteFrameRequest { doc: DOC.into(), output: None, index: 1 };
+    ops::add_tag(dir.path(), tag_req("late", 3, 4))
+        .await
+        .expect("late");
+    ops::add_tag(dir.path(), tag_req("span", 0, 2))
+        .await
+        .expect("span");
+    let req = DeleteFrameRequest {
+        doc: DOC.into(),
+        output: None,
+        index: 1,
+    };
     ops::delete_frame(dir.path(), req).await.expect("delete");
     let doc = load(dir.path());
     assert_eq!(doc.frames.len(), 4);
@@ -529,11 +630,17 @@ async fn ok_delete_frame_shifts_and_shrinks_tags() {
 async fn adv_delete_frame_rejects_last_frame_bad_index_and_sole_tag_frame() {
     let dir = tempfile::tempdir().expect("tempdir");
     make(dir.path(), 2, 2).await;
-    let req = |index| DeleteFrameRequest { doc: DOC.into(), output: None, index };
+    let req = |index| DeleteFrameRequest {
+        doc: DOC.into(),
+        output: None,
+        index,
+    };
     assert_bad(ops::delete_frame(dir.path(), req(0)).await);
     add_frames(dir.path(), 1).await;
     assert_bad(ops::delete_frame(dir.path(), req(2)).await);
-    ops::add_tag(dir.path(), tag_req("solo", 1, 1)).await.expect("tag");
+    ops::add_tag(dir.path(), tag_req("solo", 1, 1))
+        .await
+        .expect("tag");
     assert_bad(ops::delete_frame(dir.path(), req(1)).await);
     let doc = load(dir.path());
     assert_eq!((doc.frames.len(), doc.tags.len()), (2, 1));
@@ -554,9 +661,14 @@ async fn ok_set_frame_duration_updates_one_frame() {
         index: 1,
         duration_ms: 60_000,
     };
-    ops::set_frame_duration(dir.path(), req).await.expect("duration");
+    ops::set_frame_duration(dir.path(), req)
+        .await
+        .expect("duration");
     let doc = load(dir.path());
-    assert_eq!((doc.frames[0].duration_ms, doc.frames[1].duration_ms), (100, 60_000));
+    assert_eq!(
+        (doc.frames[0].duration_ms, doc.frames[1].duration_ms),
+        (100, 60_000)
+    );
 }
 
 #[tokio::test]
@@ -591,9 +703,14 @@ async fn ok_set_frame_mod_sets_given_fields() {
     ops::set_frame_mod(dir.path(), req).await.expect("mod");
     let mut req = mod_req(0, 0);
     req.scale = Some(16.0);
-    ops::set_frame_mod(dir.path(), req).await.expect("scale only");
+    ops::set_frame_mod(dir.path(), req)
+        .await
+        .expect("scale only");
     let m = &load(dir.path()).frames[0].layer_mods[0];
-    assert_eq!((m.offset_x, m.offset_y, m.opacity_mult, m.scale), (-8192, 8192, 0.0, 16.0));
+    assert_eq!(
+        (m.offset_x, m.offset_y, m.opacity_mult, m.scale),
+        (-8192, 8192, 0.0, 16.0)
+    );
 }
 
 #[tokio::test]
@@ -637,11 +754,18 @@ async fn ok_add_tag_records_inclusive_range() {
     let dir = tempfile::tempdir().expect("tempdir");
     make(dir.path(), 2, 2).await;
     add_frames(dir.path(), 2).await;
-    ops::add_tag(dir.path(), tag_req("idle", 0, 2)).await.expect("idle");
-    ops::add_tag(dir.path(), tag_req("blink", 1, 1)).await.expect("blink");
+    ops::add_tag(dir.path(), tag_req("idle", 0, 2))
+        .await
+        .expect("idle");
+    ops::add_tag(dir.path(), tag_req("blink", 1, 1))
+        .await
+        .expect("blink");
     let doc = load(dir.path());
     assert_eq!(doc.tags.len(), 2);
-    assert_eq!((doc.tags[0].name.as_str(), doc.tags[0].to_frame), ("idle", 2));
+    assert_eq!(
+        (doc.tags[0].name.as_str(), doc.tags[0].to_frame),
+        ("idle", 2)
+    );
 }
 
 #[tokio::test]
@@ -649,7 +773,9 @@ async fn adv_add_tag_rejects_inverted_overflowing_duplicate_and_long() {
     let dir = tempfile::tempdir().expect("tempdir");
     make(dir.path(), 2, 2).await;
     add_frames(dir.path(), 1).await;
-    ops::add_tag(dir.path(), tag_req("idle", 0, 0)).await.expect("idle");
+    ops::add_tag(dir.path(), tag_req("idle", 0, 0))
+        .await
+        .expect("idle");
     assert_bad(ops::add_tag(dir.path(), tag_req("inv", 1, 0)).await);
     assert_bad(ops::add_tag(dir.path(), tag_req("far", 0, 2)).await);
     assert_bad(ops::add_tag(dir.path(), tag_req("max", 0, u32::MAX)).await);
@@ -663,9 +789,17 @@ async fn adv_add_tag_rejects_inverted_overflowing_duplicate_and_long() {
 async fn ok_delete_tag_removes_named_tag() {
     let dir = tempfile::tempdir().expect("tempdir");
     make(dir.path(), 2, 2).await;
-    ops::add_tag(dir.path(), tag_req("a", 0, 0)).await.expect("a");
-    ops::add_tag(dir.path(), tag_req("b", 0, 0)).await.expect("b");
-    let req = DeleteTagRequest { doc: DOC.into(), output: None, name: "a".into() };
+    ops::add_tag(dir.path(), tag_req("a", 0, 0))
+        .await
+        .expect("a");
+    ops::add_tag(dir.path(), tag_req("b", 0, 0))
+        .await
+        .expect("b");
+    let req = DeleteTagRequest {
+        doc: DOC.into(),
+        output: None,
+        name: "a".into(),
+    };
     ops::delete_tag(dir.path(), req).await.expect("delete");
     let doc = load(dir.path());
     assert_eq!(doc.tags.len(), 1);
@@ -676,9 +810,15 @@ async fn ok_delete_tag_removes_named_tag() {
 async fn adv_delete_tag_rejects_missing_name() {
     let dir = tempfile::tempdir().expect("tempdir");
     make(dir.path(), 2, 2).await;
-    ops::add_tag(dir.path(), tag_req("Walk", 0, 0)).await.expect("tag");
+    ops::add_tag(dir.path(), tag_req("Walk", 0, 0))
+        .await
+        .expect("tag");
     for name in ["walk", "", "Walk "] {
-        let req = DeleteTagRequest { doc: DOC.into(), output: None, name: name.into() };
+        let req = DeleteTagRequest {
+            doc: DOC.into(),
+            output: None,
+            name: name.into(),
+        };
         assert_bad(ops::delete_tag(dir.path(), req).await);
     }
     assert_eq!(load(dir.path()).tags.len(), 1);
@@ -692,7 +832,9 @@ async fn adv_delete_tag_rejects_missing_name() {
 async fn ok_set_pixel_writes_exact_rgba() {
     let dir = tempfile::tempdir().expect("tempdir");
     make(dir.path(), 3, 3).await;
-    ops::set_pixel(dir.path(), pixel_req(2, 1, "#0a0B0c80")).await.expect("pixel");
+    ops::set_pixel(dir.path(), pixel_req(2, 1, "#0a0B0c80"))
+        .await
+        .expect("pixel");
     let doc = load(dir.path());
     assert_eq!(px(&doc, 0, 2, 1), [10, 11, 12, 128]);
     assert_eq!(px(&doc, 0, 1, 1), CLEAR);
@@ -702,8 +844,16 @@ async fn ok_set_pixel_writes_exact_rgba() {
 async fn adv_set_pixel_clips_extreme_coords_and_rejects_bad_layer() {
     let dir = tempfile::tempdir().expect("tempdir");
     make(dir.path(), 3, 3).await;
-    for (x, y) in [(-1, 0), (3, 0), (0, 3), (i32::MIN, i32::MIN), (i32::MAX, i32::MAX)] {
-        ops::set_pixel(dir.path(), pixel_req(x, y, "#FF0000")).await.expect("clipped");
+    for (x, y) in [
+        (-1, 0),
+        (3, 0),
+        (0, 3),
+        (i32::MIN, i32::MIN),
+        (i32::MAX, i32::MAX),
+    ] {
+        ops::set_pixel(dir.path(), pixel_req(x, y, "#FF0000"))
+            .await
+            .expect("clipped");
     }
     let doc = load(dir.path());
     assert!(doc.layers[0].image.pixels().all(|p| p.0 == CLEAR));
@@ -756,8 +906,15 @@ async fn adv_fill_rect_clips_huge_rect_and_rejects_zero_size() {
     ops::fill_rect(dir.path(), req(i32::MIN, i32::MIN, u32::MAX, u32::MAX))
         .await
         .expect("clipped huge rect");
-    assert!(load(dir.path()).layers[0].image.pixels().all(|p| p.0 == RED));
-    ops::fill_rect(dir.path(), req(i32::MAX, 0, u32::MAX, 1)).await.expect("fully off");
+    assert!(
+        load(dir.path()).layers[0]
+            .image
+            .pixels()
+            .all(|p| p.0 == RED)
+    );
+    ops::fill_rect(dir.path(), req(i32::MAX, 0, u32::MAX, 1))
+        .await
+        .expect("fully off");
     assert_bad(ops::fill_rect(dir.path(), req(0, 0, 0, 1)).await);
     assert_bad(ops::fill_rect(dir.path(), req(0, 0, 1, 0)).await);
 }
@@ -783,8 +940,12 @@ fn line_req(x0: i32, y0: i32, x1: i32, y1: i32) -> DrawLineRequest {
 async fn ok_draw_line_diagonal_and_reverse_endpoints_inclusive() {
     let dir = tempfile::tempdir().expect("tempdir");
     make(dir.path(), 5, 5).await;
-    ops::draw_line(dir.path(), line_req(0, 0, 4, 4)).await.expect("diag");
-    ops::draw_line(dir.path(), line_req(4, 0, 2, 0)).await.expect("reverse");
+    ops::draw_line(dir.path(), line_req(0, 0, 4, 4))
+        .await
+        .expect("diag");
+    ops::draw_line(dir.path(), line_req(4, 0, 2, 0))
+        .await
+        .expect("reverse");
     let doc = load(dir.path());
     for i in 0..5 {
         assert_eq!(px(&doc, 0, i, i), RED);
@@ -792,16 +953,24 @@ async fn ok_draw_line_diagonal_and_reverse_endpoints_inclusive() {
     for x in 2..5 {
         assert_eq!(px(&doc, 0, x, 0), RED);
     }
-    assert_eq!(doc.layers[0].image.pixels().filter(|p| p.0 == RED).count(), 8);
+    assert_eq!(
+        doc.layers[0].image.pixels().filter(|p| p.0 == RED).count(),
+        8
+    );
 }
 
 #[tokio::test]
 async fn adv_draw_line_clips_off_canvas_and_rejects_extreme_coords() {
     let dir = tempfile::tempdir().expect("tempdir");
     make(dir.path(), 4, 4).await;
-    ops::draw_line(dir.path(), line_req(-32768, 1, 32768, 1)).await.expect("clipped");
+    ops::draw_line(dir.path(), line_req(-32768, 1, 32768, 1))
+        .await
+        .expect("clipped");
     let doc = load(dir.path());
-    assert_eq!(doc.layers[0].image.pixels().filter(|p| p.0 == RED).count(), 4);
+    assert_eq!(
+        doc.layers[0].image.pixels().filter(|p| p.0 == RED).count(),
+        4
+    );
     assert_bad(ops::draw_line(dir.path(), line_req(i32::MIN, 0, i32::MAX, 0)).await);
     assert_bad(ops::draw_line(dir.path(), line_req(0, 0, 0, 32769)).await);
 }
@@ -827,16 +996,22 @@ fn circle_req(cx: i32, cy: i32, r: u32, filled: bool) -> DrawCircleRequest {
 async fn ok_draw_circle_filled_and_outline_are_symmetric() {
     let dir = tempfile::tempdir().expect("tempdir");
     make(dir.path(), 9, 9).await;
-    ops::draw_circle(dir.path(), circle_req(4, 4, 3, false)).await.expect("outline");
+    ops::draw_circle(dir.path(), circle_req(4, 4, 3, false))
+        .await
+        .expect("outline");
     let doc = load(dir.path());
     assert_eq!(px(&doc, 0, 4, 4), CLEAR, "outline must be hollow");
     for (x, y) in [(1, 4), (7, 4), (4, 1), (4, 7)] {
         assert_eq!(px(&doc, 0, x, y), RED, "cardinal point ({x},{y})");
     }
     assert_eq!(px(&doc, 0, 0, 0), CLEAR);
-    ops::draw_circle(dir.path(), circle_req(4, 4, 0, true)).await.expect("dot");
+    ops::draw_circle(dir.path(), circle_req(4, 4, 0, true))
+        .await
+        .expect("dot");
     assert_eq!(px(&load(dir.path()), 0, 4, 4), RED);
-    ops::draw_circle(dir.path(), circle_req(4, 4, 2, true)).await.expect("disk");
+    ops::draw_circle(dir.path(), circle_req(4, 4, 2, true))
+        .await
+        .expect("disk");
     let doc = load(dir.path());
     for (x, y) in [(4, 4), (3, 4), (4, 2), (6, 4)] {
         assert_eq!(px(&doc, 0, x, y), RED);
@@ -850,7 +1025,12 @@ async fn adv_draw_circle_extreme_radius_is_bounded_and_bad_input_rejected() {
     ops::draw_circle(dir.path(), circle_req(i32::MIN, i32::MIN, u32::MAX, true))
         .await
         .expect("huge filled");
-    assert!(load(dir.path()).layers[0].image.pixels().all(|p| p.0 == RED));
+    assert!(
+        load(dir.path()).layers[0]
+            .image
+            .pixels()
+            .all(|p| p.0 == RED)
+    );
     ops::draw_circle(dir.path(), circle_req(i32::MAX, 0, u32::MAX, false))
         .await
         .expect("huge outline");
@@ -885,9 +1065,14 @@ async fn ok_flood_fill_stops_at_wall() {
     let mut wall = line_req(2, 0, 2, 4);
     wall.color = "#0000FF".into();
     ops::draw_line(dir.path(), wall).await.expect("wall");
-    ops::flood_fill(dir.path(), flood_req(0, 0, "#FF0000", 0)).await.expect("fill");
+    ops::flood_fill(dir.path(), flood_req(0, 0, "#FF0000", 0))
+        .await
+        .expect("fill");
     let doc = load(dir.path());
-    assert_eq!(doc.layers[0].image.pixels().filter(|p| p.0 == RED).count(), 10);
+    assert_eq!(
+        doc.layers[0].image.pixels().filter(|p| p.0 == RED).count(),
+        10
+    );
     assert_eq!(px(&doc, 0, 3, 0), CLEAR, "right of wall untouched");
     assert_eq!(px(&doc, 0, 2, 2), [0, 0, 255, 255], "wall untouched");
 }
@@ -896,14 +1081,22 @@ async fn ok_flood_fill_stops_at_wall() {
 async fn ok_flood_fill_tolerance_and_noop_on_matching_seed() {
     let dir = tempfile::tempdir().expect("tempdir");
     make(dir.path(), 3, 1).await;
-    ops::set_pixel(dir.path(), pixel_req(1, 0, "#00000005")).await.expect("near");
-    ops::set_pixel(dir.path(), pixel_req(2, 0, "#00000006")).await.expect("far");
-    ops::flood_fill(dir.path(), flood_req(0, 0, "#FF0000", 5)).await.expect("fill");
+    ops::set_pixel(dir.path(), pixel_req(1, 0, "#00000005"))
+        .await
+        .expect("near");
+    ops::set_pixel(dir.path(), pixel_req(2, 0, "#00000006"))
+        .await
+        .expect("far");
+    ops::flood_fill(dir.path(), flood_req(0, 0, "#FF0000", 5))
+        .await
+        .expect("fill");
     let doc = load(dir.path());
     assert_eq!([px(&doc, 0, 0, 0), px(&doc, 0, 1, 0)], [RED, RED]);
     assert_eq!(px(&doc, 0, 2, 0), [0, 0, 0, 6]);
     // Seed within tolerance of the fill color: successful no-op.
-    ops::flood_fill(dir.path(), flood_req(2, 0, "#00000008", 2)).await.expect("noop");
+    ops::flood_fill(dir.path(), flood_req(2, 0, "#00000008", 2))
+        .await
+        .expect("noop");
     assert_eq!(px(&load(dir.path()), 0, 2, 0), [0, 0, 0, 6]);
 }
 
@@ -923,15 +1116,26 @@ async fn adv_flood_fill_rejects_off_canvas_seed() {
 async fn adv_flood_fill_whole_large_canvas_with_max_tolerance_is_bounded() {
     let dir = tempfile::tempdir().expect("tempdir");
     make(dir.path(), 512, 512).await;
-    ops::set_pixel(dir.path(), pixel_req(100, 100, "#12345680")).await.expect("speck");
+    ops::set_pixel(dir.path(), pixel_req(100, 100, "#12345680"))
+        .await
+        .expect("speck");
     // Tolerance 255 puts every seed within tolerance of any fill color, so
     // the spec's "seed already matches" rule makes it a no-op.
-    ops::flood_fill(dir.path(), flood_req(0, 0, "#FF0000", 255)).await.expect("noop");
+    ops::flood_fill(dir.path(), flood_req(0, 0, "#FF0000", 255))
+        .await
+        .expect("noop");
     assert_eq!(px(&load(dir.path()), 0, 0, 0), CLEAR);
     // 254 still reaches every pixel (max channel diff from the clear seed is
     // 0x80 for the speck), filling all 262144 pixels through a bounded queue.
-    ops::flood_fill(dir.path(), flood_req(0, 0, "#FF0000", 254)).await.expect("fill");
-    assert!(load(dir.path()).layers[0].image.pixels().all(|p| p.0 == RED));
+    ops::flood_fill(dir.path(), flood_req(0, 0, "#FF0000", 254))
+        .await
+        .expect("fill");
+    assert!(
+        load(dir.path()).layers[0]
+            .image
+            .pixels()
+            .all(|p| p.0 == RED)
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -942,12 +1146,21 @@ async fn adv_flood_fill_whole_large_canvas_with_max_tolerance_is_bounded() {
 async fn ok_flip_horizontal_one_layer_and_vertical_all_layers() {
     let dir = tempfile::tempdir().expect("tempdir");
     make(dir.path(), 3, 2).await;
-    ops::add_layer(dir.path(), layer_req("top")).await.expect("layer");
-    ops::set_pixel(dir.path(), pixel_req(0, 0, "#FF0000")).await.expect("px0");
+    ops::add_layer(dir.path(), layer_req("top"))
+        .await
+        .expect("layer");
+    ops::set_pixel(dir.path(), pixel_req(0, 0, "#FF0000"))
+        .await
+        .expect("px0");
     let mut top = pixel_req(0, 0, "#FF0000");
     top.layer = 1;
     ops::set_pixel(dir.path(), top).await.expect("px1");
-    let req = |layer, horizontal| FlipRequest { doc: DOC.into(), output: None, layer, horizontal };
+    let req = |layer, horizontal| FlipRequest {
+        doc: DOC.into(),
+        output: None,
+        layer,
+        horizontal,
+    };
     ops::flip(dir.path(), req(Some(0), true)).await.expect("h");
     let doc = load(dir.path());
     assert_eq!((px(&doc, 0, 2, 0), px(&doc, 1, 0, 0)), (RED, RED));
@@ -978,19 +1191,30 @@ async fn adv_flip_rejects_out_of_range_layer() {
 // ---------------------------------------------------------------------------
 
 fn rotate_req(layer: Option<usize>, degrees: u16) -> RotateRequest {
-    RotateRequest { doc: DOC.into(), output: None, layer, degrees }
+    RotateRequest {
+        doc: DOC.into(),
+        output: None,
+        layer,
+        degrees,
+    }
 }
 
 #[tokio::test]
 async fn ok_rotate_90_swaps_dims_and_maps_pixels_clockwise() {
     let dir = tempfile::tempdir().expect("tempdir");
     make(dir.path(), 3, 2).await;
-    ops::set_pixel(dir.path(), pixel_req(0, 0, "#FF0000")).await.expect("px");
-    let saved = ops::rotate(dir.path(), rotate_req(None, 90)).await.expect("rotate");
+    ops::set_pixel(dir.path(), pixel_req(0, 0, "#FF0000"))
+        .await
+        .expect("px");
+    let saved = ops::rotate(dir.path(), rotate_req(None, 90))
+        .await
+        .expect("rotate");
     assert_eq!((saved.width, saved.height), (2, 3));
     // Clockwise: top-left goes to top-right.
     assert_eq!(px(&load(dir.path()), 0, 1, 0), RED);
-    ops::rotate(dir.path(), rotate_req(None, 270)).await.expect("back");
+    ops::rotate(dir.path(), rotate_req(None, 270))
+        .await
+        .expect("back");
     let doc = load(dir.path());
     assert_eq!(((doc.width, doc.height), px(&doc, 0, 0, 0)), ((3, 2), RED));
 }
@@ -999,8 +1223,12 @@ async fn ok_rotate_90_swaps_dims_and_maps_pixels_clockwise() {
 async fn ok_rotate_180_single_layer_keeps_dims() {
     let dir = tempfile::tempdir().expect("tempdir");
     make(dir.path(), 3, 2).await;
-    ops::set_pixel(dir.path(), pixel_req(0, 0, "#FF0000")).await.expect("px");
-    ops::rotate(dir.path(), rotate_req(Some(0), 180)).await.expect("rotate");
+    ops::set_pixel(dir.path(), pixel_req(0, 0, "#FF0000"))
+        .await
+        .expect("px");
+    ops::rotate(dir.path(), rotate_req(Some(0), 180))
+        .await
+        .expect("rotate");
     let doc = load(dir.path());
     assert_eq!(((doc.width, doc.height), px(&doc, 0, 2, 1)), ((3, 2), RED));
 }
@@ -1023,21 +1251,38 @@ async fn adv_rotate_rejects_odd_angles_and_single_layer_on_non_square() {
 // ---------------------------------------------------------------------------
 
 fn resize_req(width: u32, height: u32, anchor: &str) -> ResizeCanvasRequest {
-    ResizeCanvasRequest { doc: DOC.into(), output: None, width, height, anchor: anchor.into() }
+    ResizeCanvasRequest {
+        doc: DOC.into(),
+        output: None,
+        width,
+        height,
+        anchor: anchor.into(),
+    }
 }
 
 #[tokio::test]
 async fn ok_resize_canvas_anchors_place_content() {
     let dir = tempfile::tempdir().expect("tempdir");
     make(dir.path(), 2, 2).await;
-    ops::set_pixel(dir.path(), pixel_req(0, 0, "#FF0000")).await.expect("px");
-    ops::resize_canvas(dir.path(), resize_req(4, 4, "bottom-right")).await.expect("grow");
+    ops::set_pixel(dir.path(), pixel_req(0, 0, "#FF0000"))
+        .await
+        .expect("px");
+    ops::resize_canvas(dir.path(), resize_req(4, 4, "bottom-right"))
+        .await
+        .expect("grow");
     let doc = load(dir.path());
-    assert_eq!((doc.width, doc.height, doc.layers[0].image.width()), (4, 4, 4));
+    assert_eq!(
+        (doc.width, doc.height, doc.layers[0].image.width()),
+        (4, 4, 4)
+    );
     assert_eq!((px(&doc, 0, 2, 2), px(&doc, 0, 0, 0)), (RED, CLEAR));
-    ops::resize_canvas(dir.path(), resize_req(2, 2, "center")).await.expect("shrink");
+    ops::resize_canvas(dir.path(), resize_req(2, 2, "center"))
+        .await
+        .expect("shrink");
     assert_eq!(px(&load(dir.path()), 0, 1, 1), RED);
-    ops::resize_canvas(dir.path(), resize_req(3, 1, "top-left")).await.expect("tl");
+    ops::resize_canvas(dir.path(), resize_req(3, 1, "top-left"))
+        .await
+        .expect("tl");
     let doc = load(dir.path());
     assert_eq!((doc.width, doc.height, px(&doc, 0, 0, 0)), (3, 1, CLEAR));
 }
@@ -1060,16 +1305,29 @@ async fn adv_resize_canvas_rejects_unknown_anchor_and_bad_dims() {
 // ---------------------------------------------------------------------------
 
 fn crop_req(x: u32, y: u32, w: u32, h: u32) -> CropRequest {
-    CropRequest { doc: DOC.into(), output: None, x, y, w, h }
+    CropRequest {
+        doc: DOC.into(),
+        output: None,
+        x,
+        y,
+        w,
+        h,
+    }
 }
 
 #[tokio::test]
 async fn ok_crop_cuts_every_layer() {
     let dir = tempfile::tempdir().expect("tempdir");
     make(dir.path(), 5, 4).await;
-    ops::add_layer(dir.path(), layer_req("a")).await.expect("layer");
-    ops::set_pixel(dir.path(), pixel_req(3, 2, "#FF0000")).await.expect("px");
-    let saved = ops::crop(dir.path(), crop_req(2, 1, 3, 3)).await.expect("crop");
+    ops::add_layer(dir.path(), layer_req("a"))
+        .await
+        .expect("layer");
+    ops::set_pixel(dir.path(), pixel_req(3, 2, "#FF0000"))
+        .await
+        .expect("px");
+    let saved = ops::crop(dir.path(), crop_req(2, 1, 3, 3))
+        .await
+        .expect("crop");
     assert_eq!((saved.width, saved.height), (3, 3));
     let doc = load(dir.path());
     assert_eq!(px(&doc, 0, 1, 1), RED);
@@ -1105,7 +1363,12 @@ async fn ok_tween_frames_linear_interpolates_and_grows_tags() {
     add_frames(dir.path(), 1).await;
     ops::set_frame_duration(
         dir.path(),
-        SetFrameDurationRequest { doc: DOC.into(), output: None, index: 0, duration_ms: 70 },
+        SetFrameDurationRequest {
+            doc: DOC.into(),
+            output: None,
+            index: 0,
+            duration_ms: 70,
+        },
     )
     .await
     .expect("dur");
@@ -1114,8 +1377,12 @@ async fn ok_tween_frames_linear_interpolates_and_grows_tags() {
     m.opacity_mult = Some(0.0);
     m.scale = Some(4.0);
     ops::set_frame_mod(dir.path(), m).await.expect("mod");
-    ops::add_tag(dir.path(), tag_req("move", 0, 1)).await.expect("tag");
-    let saved = ops::tween_frames(dir.path(), tween_req(0, 1, 2, "linear")).await.expect("tween");
+    ops::add_tag(dir.path(), tag_req("move", 0, 1))
+        .await
+        .expect("tag");
+    let saved = ops::tween_frames(dir.path(), tween_req(0, 1, 2, "linear"))
+        .await
+        .expect("tween");
     assert_eq!(saved.frames, 4);
     let doc = load(dir.path());
     let mid = &doc.frames[1].layer_mods[0];
@@ -1137,8 +1404,14 @@ async fn ok_tween_frames_easing_curves_match_formulas() {
         let mut m = mod_req(1, 0);
         m.offset_y = Some(100);
         ops::set_frame_mod(dir.path(), m).await.expect("mod");
-        ops::tween_frames(dir.path(), tween_req(0, 1, 1, easing)).await.expect("tween");
-        assert_eq!(load(dir.path()).frames[1].layer_mods[0].offset_y, expected, "{easing}");
+        ops::tween_frames(dir.path(), tween_req(0, 1, 1, easing))
+            .await
+            .expect("tween");
+        assert_eq!(
+            load(dir.path()).frames[1].layer_mods[0].offset_y,
+            expected,
+            "{easing}"
+        );
     }
 }
 
@@ -1164,10 +1437,14 @@ async fn adv_tween_frames_rejects_exceeding_max_frames() {
     make(dir.path(), 1, 1).await;
     add_frames(dir.path(), 1).await;
     for steps in [256, 256, 256, 250] {
-        ops::tween_frames(dir.path(), tween_req(0, 1, steps, "linear")).await.expect("bulk");
+        ops::tween_frames(dir.path(), tween_req(0, 1, steps, "linear"))
+            .await
+            .expect("bulk");
     }
     assert_eq!(load(dir.path()).frames.len(), 1020);
     assert_bad(ops::tween_frames(dir.path(), tween_req(0, 1, 5, "linear")).await);
-    ops::tween_frames(dir.path(), tween_req(0, 1, 4, "linear")).await.expect("exactly full");
+    ops::tween_frames(dir.path(), tween_req(0, 1, 4, "linear"))
+        .await
+        .expect("exactly full");
     assert_eq!(load(dir.path()).frames.len(), 1024);
 }

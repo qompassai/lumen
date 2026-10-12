@@ -197,7 +197,10 @@ pub async fn dream_ambient(root: &Path, req: DreamAmbientReq) -> Result<DocSaved
             mods[ambient_idx].offset_x = (3.0 * (kf * 0.7).sin()).round() as i32;
             mods[ambient_idx].offset_y = (2.0 * (kf * 0.5).cos()).round() as i32;
         }
-        doc.frames.push(Frame { duration_ms: AMBIENT_FRAME_MS, layer_mods: mods });
+        doc.frames.push(Frame {
+            duration_ms: AMBIENT_FRAME_MS,
+            layer_mods: mods,
+        });
     }
     save_to(root, target, &doc)
 }
@@ -235,9 +238,17 @@ pub async fn dream_act(root: &Path, req: DreamActReq) -> Result<DocSaved, LumenE
         let (offset_y, scale) = match performance {
             "idle" => (full.sin().round() as i32, 1.0 + 0.02 * full.sin()),
             "breathe" => (0, 1.0 + 0.04 * half.sin()),
-            _ => (-(4.0 * half.sin().abs()).round() as i32, 1.0 + 0.03 * full.sin()),
+            _ => (
+                -(4.0 * half.sin().abs()).round() as i32,
+                1.0 + 0.03 * full.sin(),
+            ),
         };
-        let m = LayerMod { offset_x: 0, offset_y, opacity_mult: 1.0, scale };
+        let m = LayerMod {
+            offset_x: 0,
+            offset_y,
+            opacity_mult: 1.0,
+            scale,
+        };
         for slot in &mut frame.layer_mods {
             *slot = m.clone();
         }
@@ -293,7 +304,10 @@ pub async fn dream_transition(
             .zip(to_mods.iter())
             .map(|(a, b)| transition_mod(kind, a, b, t, width))
             .collect();
-        inserted.push(Frame { duration_ms: TRANSITION_FRAME_MS, layer_mods: mods });
+        inserted.push(Frame {
+            duration_ms: TRANSITION_FRAME_MS,
+            layer_mods: mods,
+        });
     }
     let at = req.from_frame + 1;
     doc.frames.splice(at..at, inserted);
@@ -337,7 +351,11 @@ pub async fn dream_text(root: &Path, req: DreamTextReq) -> Result<DocSaved, Lume
         let mut m = identity_mod();
         match effect {
             "typewriter" => {
-                let t = if frames > 1 { kf / (frames - 1) as f32 } else { 1.0 };
+                let t = if frames > 1 {
+                    kf / (frames - 1) as f32
+                } else {
+                    1.0
+                };
                 let eased = 1.0 - (1.0 - t).powi(3);
                 m.offset_y = (height * (1.0 - eased)).round() as i32;
                 m.opacity_mult = t.clamp(0.0, 1.0);
@@ -353,7 +371,10 @@ pub async fn dream_text(root: &Path, req: DreamTextReq) -> Result<DocSaved, Lume
         }
         let mut mods = base.clone();
         mods[req.text_layer] = m;
-        doc.frames.push(Frame { duration_ms: TEXT_FRAME_MS, layer_mods: mods });
+        doc.frames.push(Frame {
+            duration_ms: TEXT_FRAME_MS,
+            layer_mods: mods,
+        });
     }
     save_to(root, target, &doc)
 }
@@ -385,7 +406,11 @@ impl XorShift64 {
     fn new(seed: u64) -> Self {
         let mixed = splitmix64(seed);
         // splitmix64 is a bijection, so exactly one seed maps to 0.
-        let state = if mixed == 0 { 0x9E37_79B9_7F4A_7C15 } else { mixed };
+        let state = if mixed == 0 {
+            0x9E37_79B9_7F4A_7C15
+        } else {
+            mixed
+        };
         Self { state }
     }
 
@@ -419,13 +444,12 @@ impl XorShift64 {
 // Helpers
 // ---------------------------------------------------------------------------
 
-fn find_name(
-    what: &str,
-    name: &str,
-    valid: &[&'static str],
-) -> Result<&'static str, LumenError> {
+fn find_name(what: &str, name: &str, valid: &[&'static str]) -> Result<&'static str, LumenError> {
     valid.iter().copied().find(|v| *v == name).ok_or_else(|| {
-        LumenError::BadParam(format!("unknown {what} {name:?}; valid: {}", valid.join(", ")))
+        LumenError::BadParam(format!(
+            "unknown {what} {name:?}; valid: {}",
+            valid.join(", ")
+        ))
     })
 }
 
@@ -463,7 +487,11 @@ fn lerp(a: f32, b: f32, t: f32) -> f32 {
 
 /// Two-leg path a→mid over t in [0, 0.5), then mid→b over [0.5, 1].
 fn via(a: f32, mid: f32, b: f32, t: f32) -> f32 {
-    if t < 0.5 { lerp(a, mid, t * 2.0) } else { lerp(mid, b, t * 2.0 - 1.0) }
+    if t < 0.5 {
+        lerp(a, mid, t * 2.0)
+    } else {
+        lerp(mid, b, t * 2.0 - 1.0)
+    }
 }
 
 fn transition_mod(kind: &str, a: &LayerMod, b: &LayerMod, t: f32, width: f32) -> LayerMod {
@@ -498,7 +526,13 @@ fn transition_mod(kind: &str, a: &LayerMod, b: &LayerMod, t: f32, width: f32) ->
 fn shift_tags_after(doc: &mut SpriteDoc, after: usize, count: u32) -> Result<(), LumenError> {
     let after = u32::try_from(after)
         .map_err(|_| LumenError::BadParam("frame index exceeds u32".to_string()))?;
-    let shift = |v: u32| if v > after { v.checked_add(count) } else { Some(v) };
+    let shift = |v: u32| {
+        if v > after {
+            v.checked_add(count)
+        } else {
+            Some(v)
+        }
+    };
     for tag in &mut doc.tags {
         match (shift(tag.from_frame), shift(tag.to_frame)) {
             (Some(from), Some(to)) => {
@@ -519,7 +553,9 @@ fn output_target<'a>(input: &'a str, output: Option<&'a str>) -> Result<&'a str,
     match output {
         None => Ok(input),
         Some(o) if o.ends_with(".lumen.json") => Ok(o),
-        Some(_) => Err(LumenError::BadParam("output must end in .lumen.json".to_string())),
+        Some(_) => Err(LumenError::BadParam(
+            "output must end in .lumen.json".to_string(),
+        )),
     }
 }
 

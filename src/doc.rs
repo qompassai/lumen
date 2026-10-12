@@ -240,16 +240,14 @@ pub fn sync_frame_mods(doc: &mut SpriteDoc) {
 
 /// Immutable layer lookup by name.
 pub fn get_layer<'a>(doc: &'a SpriteDoc, name: &str) -> Result<&'a Layer, LumenError> {
-    doc.layers.iter().find(|l| l.name == name).ok_or_else(|| {
-        LumenError::BadParam(format!("no layer named {name:?}"))
-    })
+    doc.layers
+        .iter()
+        .find(|l| l.name == name)
+        .ok_or_else(|| LumenError::BadParam(format!("no layer named {name:?}")))
 }
 
 /// Mutable layer lookup by name.
-pub fn get_layer_mut<'a>(
-    doc: &'a mut SpriteDoc,
-    name: &str,
-) -> Result<&'a mut Layer, LumenError> {
+pub fn get_layer_mut<'a>(doc: &'a mut SpriteDoc, name: &str) -> Result<&'a mut Layer, LumenError> {
     doc.layers
         .iter_mut()
         .find(|l| l.name == name)
@@ -347,11 +345,7 @@ fn decode_layer_png(
 
 /// Save a document atomically: encode and validate first, then temp-file +
 /// rename so a failure never leaves a half-written document.
-pub fn save_doc(
-    root: &Path,
-    doc: &SpriteDoc,
-    user_path: &str,
-) -> Result<PathBuf, LumenError> {
+pub fn save_doc(root: &Path, doc: &SpriteDoc, user_path: &str) -> Result<PathBuf, LumenError> {
     check_dims(doc.width, doc.height)?;
     if doc.layers.is_empty() || doc.layers.len() > DOC_MAX_LAYERS {
         return Err(LumenError::DocInvalid(format!(
@@ -421,8 +415,8 @@ pub fn save_doc(
         tags: doc.tags.clone(),
         palette: doc.palette.clone(),
     };
-    let bytes =
-        serde_json::to_vec(&stored).map_err(|e| LumenError::Io(format!("doc encode failed: {e}")))?;
+    let bytes = serde_json::to_vec(&stored)
+        .map_err(|e| LumenError::Io(format!("doc encode failed: {e}")))?;
     if bytes.len() as u64 > MAX_SPRITE_BYTES {
         return Err(LumenError::DocInvalid(format!(
             "encoded document exceeds {MAX_SPRITE_BYTES} bytes"
@@ -430,9 +424,7 @@ pub fn save_doc(
     }
     let path = resolve_doc_path(user_path, root, false)?;
     let tmp = path.with_extension(format!("json.tmp-{}", std::process::id()));
-    if let Err(e) = std::fs::write(&tmp, &bytes)
-        .and_then(|()| std::fs::rename(&tmp, &path))
-    {
+    if let Err(e) = std::fs::write(&tmp, &bytes).and_then(|()| std::fs::rename(&tmp, &path)) {
         let _ = std::fs::remove_file(&tmp);
         return Err(LumenError::from(e));
     }
@@ -613,12 +605,7 @@ fn scaled_layer_image(doc: &SpriteDoc, layer: &Layer, scale: f32) -> RgbaImage {
     let sh = (doc.height as f32 * scale)
         .round()
         .clamp(1.0, DOC_MAX_DIMENSION as f32) as u32;
-    image::imageops::resize(
-        &layer.image,
-        sw,
-        sh,
-        image::imageops::FilterType::Nearest,
-    )
+    image::imageops::resize(&layer.image, sw, sh, image::imageops::FilterType::Nearest)
 }
 
 /// Composite one frame: layers bottom-to-top, honoring visibility, opacity,
@@ -638,8 +625,7 @@ pub fn composite_frame(doc: &SpriteDoc, frame_idx: usize) -> Result<RgbaImage, L
             doc.layers.len()
         )));
     }
-    let mut canvas: RgbaImage =
-        ImageBuffer::from_pixel(doc.width, doc.height, Rgba([0, 0, 0, 0]));
+    let mut canvas: RgbaImage = ImageBuffer::from_pixel(doc.width, doc.height, Rgba([0, 0, 0, 0]));
     for (layer, lm) in doc.layers.iter().zip(frame.layer_mods.iter()) {
         if !layer.visible {
             continue;
@@ -681,11 +667,7 @@ pub fn load_png_rgba(root: &Path, user_path: &str) -> Result<RgbaImage, LumenErr
 }
 
 /// Write an RGBA image as PNG, atomically (temp file + rename).
-pub fn save_png(
-    root: &Path,
-    image: &RgbaImage,
-    user_path: &str,
-) -> Result<ImageSaved, LumenError> {
+pub fn save_png(root: &Path, image: &RgbaImage, user_path: &str) -> Result<ImageSaved, LumenError> {
     check_dims(image.width(), image.height())?;
     let path = resolve_write_path(user_path, root, &["png"])?;
     let tmp = path.with_extension(format!("png.tmp-{}", std::process::id()));

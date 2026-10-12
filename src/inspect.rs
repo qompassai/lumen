@@ -251,16 +251,16 @@ pub async fn histogram(root: &Path, req: HistogramRequest) -> Result<Histogram, 
     sorted.truncate(req.max_entries as usize);
     let entries = sorted
         .into_iter()
-        .map(|(c, count)| CountedColor { color: hex_rgba(c), count })
+        .map(|(c, count)| CountedColor {
+            color: hex_rgba(c),
+            count,
+        })
         .collect();
     Ok(Histogram { entries })
 }
 
 /// Which layers contain an exact RGBA match for `color`, and how often.
-pub async fn color_usage(
-    root: &Path,
-    req: ColorUsageRequest,
-) -> Result<ColorUsage, LumenError> {
+pub async fn color_usage(root: &Path, req: ColorUsageRequest) -> Result<ColorUsage, LumenError> {
     let color = parse_color(&req.color)?;
     let doc = load_doc(root, &req.doc)?;
     let hits = doc
@@ -269,10 +269,17 @@ pub async fn color_usage(
         .enumerate()
         .filter_map(|(layer, l)| {
             let count = l.image.pixels().filter(|px| px.0 == color).count() as u64;
-            (count > 0).then(|| LayerHit { layer, name: l.name.clone(), count })
+            (count > 0).then(|| LayerHit {
+                layer,
+                name: l.name.clone(),
+                count,
+            })
         })
         .collect();
-    Ok(ColorUsage { color: hex_rgba(color), hits })
+    Ok(ColorUsage {
+        color: hex_rgba(color),
+        hits,
+    })
 }
 
 // ---------------------------------------------------------------------------
@@ -330,5 +337,10 @@ fn content_bbox(image: &RgbaImage) -> Option<BBox> {
             Some((x0, y0, x1, y1)) => (x0.min(x), y0.min(y), x1.max(x), y1.max(y)),
         });
     }
-    bounds.map(|(x0, y0, x1, y1)| BBox { x: x0, y: y0, w: x1 - x0 + 1, h: y1 - y0 + 1 })
+    bounds.map(|(x0, y0, x1, y1)| BBox {
+        x: x0,
+        y: y0,
+        w: x1 - x0 + 1,
+        h: y1 - y0 + 1,
+    })
 }

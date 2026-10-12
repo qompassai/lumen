@@ -96,7 +96,9 @@ impl A2aConfig {
         };
         match raw.parse::<u16>() {
             Ok(port) if port != 0 => Ok(Some(Self::loopback(port, project_root))),
-            _ => Err(LumenError::BadParam("LUMEN_A2A_PORT must be 1..=65535".to_string())),
+            _ => Err(LumenError::BadParam(
+                "LUMEN_A2A_PORT must be 1..=65535".to_string(),
+            )),
         }
     }
 }
@@ -136,9 +138,10 @@ pub async fn bind(config: A2aConfig) -> Result<A2aServer, LumenError> {
             TASK_DEADLINE_MAX.as_secs()
         )));
     }
-    let root = config.project_root.canonicalize().map_err(|e| {
-        LumenError::PathRejected(format!("project root not accessible: {e}"))
-    })?;
+    let root = config
+        .project_root
+        .canonicalize()
+        .map_err(|e| LumenError::PathRejected(format!("project root not accessible: {e}")))?;
     let listener = TcpListener::bind(config.bind).await?;
     let local_addr = listener.local_addr()?;
     let shared = Shared {
@@ -147,7 +150,13 @@ pub async fn bind(config: A2aConfig) -> Result<A2aServer, LumenError> {
         store: Mutex::new(Store::default()),
         card: build_card(&format!("http://{local_addr}/")),
     };
-    Ok(A2aServer { listener, agent: Agent { shared: Arc::new(shared) }, local_addr })
+    Ok(A2aServer {
+        listener,
+        agent: Agent {
+            shared: Arc::new(shared),
+        },
+        local_addr,
+    })
 }
 
 impl A2aServer {
@@ -175,7 +184,11 @@ pub fn artifact_relative_path(root: &Path, path: &Path) -> Result<String, LumenE
     let root = root
         .canonicalize()
         .map_err(|e| LumenError::PathRejected(format!("project root not accessible: {e}")))?;
-    let joined = if path.is_absolute() { path.to_path_buf() } else { root.join(path) };
+    let joined = if path.is_absolute() {
+        path.to_path_buf()
+    } else {
+        root.join(path)
+    };
     let canonical = joined
         .canonicalize()
         .map_err(|_| LumenError::PathRejected("artifact does not exist".to_string()))?;
@@ -185,7 +198,9 @@ pub fn artifact_relative_path(root: &Path, path: &Path) -> Result<String, LumenE
     let mut parts = Vec::new();
     for component in rel.components() {
         let Component::Normal(name) = component else {
-            return Err(LumenError::PathRejected("artifact path is not normal".to_string()));
+            return Err(LumenError::PathRejected(
+                "artifact path is not normal".to_string(),
+            ));
         };
         let name = name
             .to_str()
@@ -193,7 +208,9 @@ pub fn artifact_relative_path(root: &Path, path: &Path) -> Result<String, LumenE
         parts.push(name);
     }
     if parts.is_empty() {
-        return Err(LumenError::PathRejected("artifact is the project root".to_string()));
+        return Err(LumenError::PathRejected(
+            "artifact is the project root".to_string(),
+        ));
     }
     Ok(parts.join("/"))
 }
@@ -274,7 +291,10 @@ pub(crate) struct RpcError {
 }
 
 fn rpc_err(code: i64, message: impl Into<String>) -> RpcError {
-    RpcError { code, message: message.into() }
+    RpcError {
+        code,
+        message: message.into(),
+    }
 }
 
 fn invalid_params(message: impl Into<String>) -> RpcError {
@@ -293,7 +313,11 @@ pub(crate) fn result_envelope(id: &Value, result: Value) -> Value {
 pub(crate) enum Reply {
     Json(Value),
     /// SSE: `first` is the task snapshot; then events until one is final.
-    Stream { id: Value, first: Value, events: broadcast::Receiver<TaskEvent> },
+    Stream {
+        id: Value,
+        first: Value,
+        events: broadcast::Receiver<TaskEvent>,
+    },
 }
 
 struct RpcRequest {
@@ -303,24 +327,40 @@ struct RpcRequest {
 }
 
 fn parse_request(body: &[u8]) -> Result<RpcRequest, (Value, RpcError)> {
-    let value: Value = serde_json::from_slice(body)
-        .map_err(|_| (Value::Null, rpc_err(codes::PARSE_ERROR, "body is not valid JSON")))?;
+    let value: Value = serde_json::from_slice(body).map_err(|_| {
+        (
+            Value::Null,
+            rpc_err(codes::PARSE_ERROR, "body is not valid JSON"),
+        )
+    })?;
     let Value::Object(mut obj) = value else {
-        return Err((Value::Null, rpc_err(codes::INVALID_REQUEST, "batch/non-object request")));
+        return Err((
+            Value::Null,
+            rpc_err(codes::INVALID_REQUEST, "batch/non-object request"),
+        ));
     };
     let id = match obj.remove("id") {
         Some(id @ Value::Number(_)) => id,
         Some(Value::String(s)) if s.len() <= ID_BYTES_MAX => Value::String(s),
         _ => {
-            let err = rpc_err(codes::INVALID_REQUEST, "id must be a number or short string");
+            let err = rpc_err(
+                codes::INVALID_REQUEST,
+                "id must be a number or short string",
+            );
             return Err((Value::Null, err));
         }
     };
     if obj.get("jsonrpc").and_then(Value::as_str) != Some("2.0") {
-        return Err((id, rpc_err(codes::INVALID_REQUEST, "jsonrpc must be \"2.0\"")));
+        return Err((
+            id,
+            rpc_err(codes::INVALID_REQUEST, "jsonrpc must be \"2.0\""),
+        ));
     }
     let Some(Value::String(method)) = obj.remove("method") else {
-        return Err((id, rpc_err(codes::INVALID_REQUEST, "method must be a string")));
+        return Err((
+            id,
+            rpc_err(codes::INVALID_REQUEST, "method must be a string"),
+        ));
     };
     let params = obj.remove("params").unwrap_or(Value::Null);
     Ok(RpcRequest { id, method, params })
@@ -356,8 +396,15 @@ struct DecisionPayload {
 }
 
 enum Incoming {
-    New { context_id: Option<String>, steps: Vec<Step>, review_after: Option<usize> },
-    Continue { task_id: String, decision: Decision },
+    New {
+        context_id: Option<String>,
+        steps: Vec<Step>,
+        review_after: Option<usize>,
+    },
+    Continue {
+        task_id: String,
+        decision: Decision,
+    },
 }
 
 fn short_id(value: Option<&Value>, field: &str) -> Result<Option<String>, RpcError> {
@@ -368,7 +415,9 @@ fn short_id(value: Option<&Value>, field: &str) -> Result<Option<String>, RpcErr
         {
             Ok(Some(s.clone()))
         }
-        Some(_) => Err(invalid_params(format!("{field} must be a short printable string"))),
+        Some(_) => Err(invalid_params(format!(
+            "{field} must be a short printable string"
+        ))),
     }
 }
 
@@ -393,7 +442,9 @@ fn extract_payload(message: &Value) -> Result<Value, RpcError> {
             let text = part.get("text").and_then(Value::as_str).unwrap_or_default();
             match serde_json::from_str::<Value>(text) {
                 Ok(obj @ Value::Object(_)) => Ok(obj),
-                _ => Err(invalid_params("text part must hold a JSON object task payload")),
+                _ => Err(invalid_params(
+                    "text part must hold a JSON object task payload",
+                )),
             }
         }
         _ => Err(invalid_params("part kind must be \"data\" or \"text\"")),
@@ -404,12 +455,22 @@ fn parse_steps(payload: Value) -> Result<(Vec<Step>, Option<usize>), RpcError> {
     let p: TaskPayload = serde_json::from_value(payload)
         .map_err(|e| invalid_params(format!("task payload: {e}")))?;
     let raw = match (p.skill, p.steps) {
-        (Some(skill), None) => vec![StepPayload { skill, arguments: p.arguments }],
+        (Some(skill), None) => vec![StepPayload {
+            skill,
+            arguments: p.arguments,
+        }],
         (None, Some(steps)) if p.arguments.is_none() => steps,
-        _ => return Err(invalid_params("give either skill+arguments or steps, not both")),
+        _ => {
+            return Err(invalid_params(
+                "give either skill+arguments or steps, not both",
+            ));
+        }
     };
     if raw.is_empty() || raw.len() > task::STEPS_MAX {
-        return Err(invalid_params(format!("steps must hold 1..={}", task::STEPS_MAX)));
+        return Err(invalid_params(format!(
+            "steps must hold 1..={}",
+            task::STEPS_MAX
+        )));
     }
     if p.review_after.is_some_and(|k| k >= raw.len()) {
         return Err(invalid_params("review_after must index an existing step"));
@@ -421,7 +482,11 @@ fn parse_steps(payload: Value) -> Result<(Vec<Step>, Option<usize>), RpcError> {
         let arguments = match s.arguments {
             None => Value::Object(serde_json::Map::new()),
             Some(obj @ Value::Object(_)) => obj,
-            Some(_) => return Err(invalid_params(format!("step {index}: arguments not object"))),
+            Some(_) => {
+                return Err(invalid_params(format!(
+                    "step {index}: arguments not object"
+                )));
+            }
         };
         steps.push(Step { skill, arguments });
     }
@@ -432,14 +497,20 @@ fn parse_decision(payload: Value) -> Result<Decision, RpcError> {
     let d: DecisionPayload = serde_json::from_value(payload)
         .map_err(|e| invalid_params(format!("decision payload: {e}")))?;
     let reasons_ok = d.reasons.len() <= REASONS_MAX
-        && d.reasons.iter().all(|r| r.chars().count() <= REASON_CHARS_MAX);
+        && d.reasons
+            .iter()
+            .all(|r| r.chars().count() <= REASON_CHARS_MAX);
     if !reasons_ok {
-        return Err(invalid_params(format!("reasons: at most {REASONS_MAX} short strings")));
+        return Err(invalid_params(format!(
+            "reasons: at most {REASONS_MAX} short strings"
+        )));
     }
     match d.decision.as_str() {
         "approve" if d.reasons.is_empty() => Ok(Decision::Approve),
         "reject" => Ok(Decision::Reject(d.reasons)),
-        _ => Err(invalid_params("decision must be \"approve\" (no reasons) or \"reject\"")),
+        _ => Err(invalid_params(
+            "decision must be \"approve\" (no reasons) or \"reject\"",
+        )),
     }
 }
 
@@ -463,11 +534,18 @@ fn parse_message(params: &Value) -> Result<(Incoming, bool), RpcError> {
         .unwrap_or(true);
     let payload = extract_payload(message)?;
     let incoming = match short_id(message.get("taskId"), "message.taskId")? {
-        Some(task_id) => Incoming::Continue { task_id, decision: parse_decision(payload)? },
+        Some(task_id) => Incoming::Continue {
+            task_id,
+            decision: parse_decision(payload)?,
+        },
         None => {
             let context_id = short_id(message.get("contextId"), "message.contextId")?;
             let (steps, review_after) = parse_steps(payload)?;
-            Incoming::New { context_id, steps, review_after }
+            Incoming::New {
+                context_id,
+                steps,
+                review_after,
+            }
         }
     };
     Ok((incoming, blocking))
@@ -531,12 +609,14 @@ impl Agent {
             "message/stream" => Err(rpc_err(codes::UNSUPPORTED_OPERATION, "use HTTP for SSE")),
             "tasks/get" => self.tasks_get(&req.params).map(Reply::Json),
             "tasks/cancel" => self.tasks_cancel(&req.params).await.map(Reply::Json),
-            m if m.starts_with("tasks/pushNotificationConfig/") => {
-                Err(rpc_err(codes::PUSH_NOT_SUPPORTED, "push notifications are not supported"))
-            }
-            "tasks/resubscribe" | "agent/getAuthenticatedExtendedCard" => {
-                Err(rpc_err(codes::UNSUPPORTED_OPERATION, "method not supported"))
-            }
+            m if m.starts_with("tasks/pushNotificationConfig/") => Err(rpc_err(
+                codes::PUSH_NOT_SUPPORTED,
+                "push notifications are not supported",
+            )),
+            "tasks/resubscribe" | "agent/getAuthenticatedExtendedCard" => Err(rpc_err(
+                codes::UNSUPPORTED_OPERATION,
+                "method not supported",
+            )),
             _ => Err(rpc_err(codes::METHOD_NOT_FOUND, "method not found")),
         };
         match outcome {
@@ -548,11 +628,16 @@ impl Agent {
 
     fn snapshot(&self, task_id: &str) -> Result<Value, RpcError> {
         let store = self.shared.store.lock().map_err(|_| poisoned())?;
-        store.get(task_id).map(|t| t.to_wire()).ok_or_else(|| not_found(task_id))
+        store
+            .get(task_id)
+            .map(|t| t.to_wire())
+            .ok_or_else(|| not_found(task_id))
     }
 
     fn spawn_runner(&self, task_id: &str) {
-        let Some(seq) = task::parse_task_id(task_id) else { return };
+        let Some(seq) = task::parse_task_id(task_id) else {
+            return;
+        };
         tokio::spawn(task::run_task(Arc::clone(&self.shared), seq));
     }
 
@@ -563,10 +648,16 @@ impl Agent {
         let (task_id, mut events, run) = {
             let mut store = self.shared.store.lock().map_err(|_| poisoned())?;
             match incoming {
-                Incoming::New { context_id, steps, review_after } => {
-                    let seq = store.create(context_id, steps, review_after).ok_or_else(|| {
-                        rpc_err(codes::SERVER_BUSY, "live task limit reached; retry later")
-                    })?;
+                Incoming::New {
+                    context_id,
+                    steps,
+                    review_after,
+                } => {
+                    let seq = store
+                        .create(context_id, steps, review_after)
+                        .ok_or_else(|| {
+                            rpc_err(codes::SERVER_BUSY, "live task limit reached; retry later")
+                        })?;
                     let id = format!("lumen-task-{seq}");
                     let entry = store.get(&id).ok_or_else(poisoned)?;
                     (id, entry.events.subscribe(), true)
@@ -575,7 +666,9 @@ impl Agent {
                     let entry = store.get_mut(&task_id).ok_or_else(|| not_found(&task_id))?;
                     if entry.state != TaskState::InputRequired {
                         let state = entry.state.as_str();
-                        return Err(invalid_params(format!("task is {state}, not input-required")));
+                        return Err(invalid_params(format!(
+                            "task is {state}, not input-required"
+                        )));
                     }
                     let events = entry.events.subscribe();
                     let run = matches!(task::apply_decision(entry, decision), Resumed::Run);
@@ -588,7 +681,11 @@ impl Agent {
         }
         if stream {
             let first = self.snapshot(&task_id)?;
-            return Ok(Reply::Stream { id: Value::Null, first, events });
+            return Ok(Reply::Stream {
+                id: Value::Null,
+                first,
+                events,
+            });
         }
         if blocking {
             wait_settled(&mut events, self.shared.task_deadline + CANCEL_ACK_WAIT).await;
@@ -600,7 +697,10 @@ impl Agent {
         let task_id = task_id_param(params)?;
         let mut store = self.shared.store.lock().map_err(|_| poisoned())?;
         store.sweep(std::time::Instant::now());
-        store.get(&task_id).map(|t| t.to_wire()).ok_or_else(|| not_found(&task_id))
+        store
+            .get(&task_id)
+            .map(|t| t.to_wire())
+            .ok_or_else(|| not_found(&task_id))
     }
 
     async fn tasks_cancel(&self, params: &Value) -> Result<Value, RpcError> {
@@ -610,7 +710,10 @@ impl Agent {
             let entry = store.get_mut(&task_id).ok_or_else(|| not_found(&task_id))?;
             if entry.state.is_terminal() {
                 let state = entry.state.as_str();
-                return Err(rpc_err(codes::TASK_NOT_CANCELABLE, format!("task is {state}")));
+                return Err(rpc_err(
+                    codes::TASK_NOT_CANCELABLE,
+                    format!("task is {state}"),
+                ));
             }
             if entry.state == TaskState::InputRequired {
                 task::cancel_paused(entry);

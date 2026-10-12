@@ -199,15 +199,25 @@ pub fn clean_transparency_cc(img: &mut RgbaImage) {
 pub fn trim_scale_center(img: &RgbaImage, target_w: u32, target_h: u32) -> RgbaImage {
     // Find content bounds
     let (w, h) = (img.width(), img.height());
-    let mut min_x = w; let mut max_x = 0;
-    let mut min_y = h; let mut max_y = 0;
+    let mut min_x = w;
+    let mut max_x = 0;
+    let mut min_y = h;
+    let mut max_y = 0;
     for y in 0..h {
         for x in 0..w {
             if img.get_pixel(x, y)[3] > 0 {
-                if x < min_x { min_x = x; }
-                if x > max_x { max_x = x; }
-                if y < min_y { min_y = y; }
-                if y > max_y { max_y = y; }
+                if x < min_x {
+                    min_x = x;
+                }
+                if x > max_x {
+                    max_x = x;
+                }
+                if y < min_y {
+                    min_y = y;
+                }
+                if y > max_y {
+                    max_y = y;
+                }
             }
         }
     }
@@ -251,14 +261,14 @@ pub fn build_gif(
         if f.width() != w || f.height() != h {
             return Err(LumenError::BadParam(format!(
                 "frame {i} is {}x{}, expected {w}x{h}",
-                f.width(), f.height()
+                f.width(),
+                f.height()
             )));
         }
     }
 
-    let file = std::fs::File::create(output).map_err(|e| {
-        LumenError::Io(format!("creating GIF {}: {e}", output.display()))
-    })?;
+    let file = std::fs::File::create(output)
+        .map_err(|e| LumenError::Io(format!("creating GIF {}: {e}", output.display())))?;
     let mut encoder = image::codecs::gif::GifEncoder::new(file);
     encoder
         .set_repeat(image::codecs::gif::Repeat::Infinite)
@@ -271,9 +281,9 @@ pub fn build_gif(
             image::Rgba([px[0], px[1], px[2], px[3]])
         });
         let gif_frame = image::Frame::from_parts(buffer, 0, 0, delay);
-        encoder.encode_frame(gif_frame).map_err(|e| {
-            LumenError::Io(format!("encoding GIF frame: {e}"))
-        })?;
+        encoder
+            .encode_frame(gif_frame)
+            .map_err(|e| LumenError::Io(format!("encoding GIF frame: {e}")))?;
     }
     Ok(())
 }
@@ -284,7 +294,6 @@ pub fn build_gif(
 pub fn count_opaque(img: &RgbaImage, threshold: u8) -> u32 {
     img.pixels().filter(|px| px[3] > threshold).count() as u32
 }
-
 
 // ---------------------------------------------------------------------------
 // Tag frame expansion
@@ -408,7 +417,11 @@ mod tag_tests {
 
     #[test]
     fn expand_single_frame() {
-        for d in [TagDirection::Forward, TagDirection::Reverse, TagDirection::PingPong] {
+        for d in [
+            TagDirection::Forward,
+            TagDirection::Reverse,
+            TagDirection::PingPong,
+        ] {
             assert_eq!(expand_tag_frames(3, 3, d).unwrap(), vec![3]);
         }
     }
@@ -451,7 +464,6 @@ mod tag_tests {
         assert_eq!(sanitize_tag_name("_lead_"), "lead");
     }
 }
-
 
 // ---------------------------------------------------------------------------
 // Magenta chrominance matting
@@ -504,7 +516,11 @@ fn ycc_to_rgb(y: f64, cb: f64, cr: f64) -> (f64, f64, f64) {
     let r = y + 1.402 * (cr - 128.0);
     let g = y - 0.344136 * (cb - 128.0) - 0.714136 * (cr - 128.0);
     let b = y + 1.772 * (cb - 128.0);
-    (r.clamp(0.0, 255.0), g.clamp(0.0, 255.0), b.clamp(0.0, 255.0))
+    (
+        r.clamp(0.0, 255.0),
+        g.clamp(0.0, 255.0),
+        b.clamp(0.0, 255.0),
+    )
 }
 
 /// Hermite smoothstep: 0 below e0, 1 above e1, smooth in between.
@@ -567,9 +583,11 @@ fn detect_background_key(img: &RgbaImage) -> (f64, f64, f64) {
         .collect();
     if magenta_samples.len() * 100 >= samples.len() * 12 {
         let n = magenta_samples.len() as f64;
-        let (sr, sg, sb) = magenta_samples.iter().fold((0.0, 0.0, 0.0), |(ar, ag, ab), (r, g, b)| {
-            (ar + *r as f64, ag + *g as f64, ab + *b as f64)
-        });
+        let (sr, sg, sb) = magenta_samples
+            .iter()
+            .fold((0.0, 0.0, 0.0), |(ar, ag, ab), (r, g, b)| {
+                (ar + *r as f64, ag + *g as f64, ab + *b as f64)
+            });
         return (sr / n, sg / n, sb / n);
     }
 
@@ -659,8 +677,11 @@ fn matte_with_key(img: &RgbaImage, key: (f64, f64, f64)) -> (RgbaImage, f64) {
                 let vy = pcr - 128.0;
                 let proj = (vx * kvb + vy * kvr) / klen;
                 if proj > 0.0 {
-                    let wgt = smoothstep(0.0, 1.0, (MAGENTA_DESPILL_BAND - dist) / MAGENTA_DESPILL_BAND)
-                        * MAGENTA_DESPILL_SCALE;
+                    let wgt = smoothstep(
+                        0.0,
+                        1.0,
+                        (MAGENTA_DESPILL_BAND - dist) / MAGENTA_DESPILL_BAND,
+                    ) * MAGENTA_DESPILL_SCALE;
                     let ub = kvb / klen;
                     let ur = kvr / klen;
                     let ncb = 128.0 + (vx - ub * proj * wgt);
@@ -686,9 +707,7 @@ fn matte_with_key(img: &RgbaImage, key: (f64, f64, f64)) -> (RgbaImage, f64) {
     }
 
     // Border flood-fill: key pixels connected to the border become transparent.
-    let is_key = |x: u32, y: u32| -> bool {
-        dist_map[(y * w + x) as usize] <= MAGENTA_FLOOD_TOL
-    };
+    let is_key = |x: u32, y: u32| -> bool { dist_map[(y * w + x) as usize] <= MAGENTA_FLOOD_TOL };
     let mut visited = vec![false; (w * h) as usize];
     let mut queue = std::collections::VecDeque::new();
 
@@ -713,7 +732,12 @@ fn matte_with_key(img: &RgbaImage, key: (f64, f64, f64)) -> (RgbaImage, f64) {
     // BFS flood fill.
     while let Some((x, y)) = queue.pop_front() {
         out.get_pixel_mut(x, y)[3] = 0;
-        for (nx, ny) in [(x.wrapping_sub(1), y), (x + 1, y), (x, y.wrapping_sub(1)), (x, y + 1)] {
+        for (nx, ny) in [
+            (x.wrapping_sub(1), y),
+            (x + 1, y),
+            (x, y.wrapping_sub(1)),
+            (x, y + 1),
+        ] {
             if nx < w && ny < h {
                 let idx = (ny * w + nx) as usize;
                 if is_key(nx, ny) && !visited[idx] {
@@ -851,8 +875,8 @@ mod magenta_tests {
 
 #[cfg(test)]
 mod animation_tests {
-    use image::{Rgba, RgbaImage};
     use crate::animation::*;
+    use image::{Rgba, RgbaImage};
 
     fn solid(w: u32, h: u32) -> RgbaImage {
         RgbaImage::from_pixel(w, h, Rgba([255, 0, 0, 255]))
@@ -872,9 +896,9 @@ mod animation_tests {
     // Validation: clean_transparency kills faint pixels, keeps solid
     #[test]
     fn clean_kills_faint() {
-        let mut img = RgbaImage::from_pixel(2, 1, Rgba([0,0,0,0]));
-        img.put_pixel(0, 0, Rgba([255,255,255,10])); // below threshold
-        img.put_pixel(1, 0, Rgba([255,255,255,200])); // above threshold
+        let mut img = RgbaImage::from_pixel(2, 1, Rgba([0, 0, 0, 0]));
+        img.put_pixel(0, 0, Rgba([255, 255, 255, 10])); // below threshold
+        img.put_pixel(1, 0, Rgba([255, 255, 255, 200])); // above threshold
         clean_transparency(&mut img);
         assert_eq!(img.get_pixel(0, 0)[3], 0);
         assert_eq!(img.get_pixel(1, 0)[3], 255);

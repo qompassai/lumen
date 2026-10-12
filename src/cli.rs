@@ -35,7 +35,6 @@ pub const MAX_IMAGE_DIMENSION: u32 = 8192;
 /// Per-path debounce window for the watcher: editor save bursts collapse.
 pub const WATCH_DEBOUNCE_MS: u64 = 750;
 
-
 // ---------------------------------------------------------------------------
 // split-tags
 // ---------------------------------------------------------------------------
@@ -129,8 +128,7 @@ pub fn run_split_tags(
                 tag.name, tag.from_frame, tag.to_frame, summary.frames
             )));
         }
-        let frame_indices =
-            expand_tag_frames(tag.from_frame, tag.to_frame, tag.direction)?;
+        let frame_indices = expand_tag_frames(tag.from_frame, tag.to_frame, tag.direction)?;
 
         // Sanitize + deduplicate name.
         let base = sanitize_tag_name(&tag.name);
@@ -156,9 +154,8 @@ pub fn run_split_tags(
 
         let output = if format == "png" {
             let tag_dir = out_dir.join(&out_name);
-            std::fs::create_dir_all(&tag_dir).map_err(|e| {
-                LumenError::Io(format!("creating {}: {e}", tag_dir.display()))
-            })?;
+            std::fs::create_dir_all(&tag_dir)
+                .map_err(|e| LumenError::Io(format!("creating {}: {e}", tag_dir.display())))?;
             for (i, (_, img)) in rendered.iter().enumerate() {
                 let path = tag_dir.join(format!("frame_{i:03}.png"));
                 write_png_atomic(&path, img)?;
@@ -182,19 +179,19 @@ pub fn run_split_tags(
             let sidecar_path = out_dir.join(format!("{out_name}.json"));
             let tmp = sidecar_path.with_extension("json.tmp");
             std::fs::write(&tmp, serde_json::to_string_pretty(&meta).unwrap())
-                .map_err(|e| {
-                    LumenError::Io(format!("writing {}: {e}", tmp.display()))
-                })?;
-            std::fs::rename(&tmp, &sidecar_path).map_err(|e| {
-                LumenError::Io(format!("renaming {}: {e}", tmp.display()))
-            })?;
+                .map_err(|e| LumenError::Io(format!("writing {}: {e}", tmp.display())))?;
+            std::fs::rename(&tmp, &sidecar_path)
+                .map_err(|e| LumenError::Io(format!("renaming {}: {e}", tmp.display())))?;
             tag_dir
         } else {
             // GIF mode: per-frame durations honored.
             let gif_path = out_dir.join(format!("{out_name}.gif"));
             write_gif_with_delays(
                 &gif_path,
-                &rendered.iter().map(|(_, img)| img.clone()).collect::<Vec<_>>(),
+                &rendered
+                    .iter()
+                    .map(|(_, img)| img.clone())
+                    .collect::<Vec<_>>(),
                 &rendered.iter().map(|(d, _)| *d).collect::<Vec<_>>(),
             )?;
             gif_path

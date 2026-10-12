@@ -185,13 +185,20 @@ impl Findings {
 
     fn into_report(mut self) -> SceneReport {
         if self.errors_suppressed > 0 {
-            self.errors.push(format!("{} further errors suppressed", self.errors_suppressed));
+            self.errors.push(format!(
+                "{} further errors suppressed",
+                self.errors_suppressed
+            ));
         }
         if self.warnings_suppressed > 0 {
             let note = format!("{} further warnings suppressed", self.warnings_suppressed);
             self.warnings.push(note);
         }
-        SceneReport { valid: self.errors.is_empty(), errors: self.errors, warnings: self.warnings }
+        SceneReport {
+            valid: self.errors.is_empty(),
+            errors: self.errors,
+            warnings: self.warnings,
+        }
     }
 }
 
@@ -235,7 +242,9 @@ fn check_name(what: &str, name: &str, findings: &mut Findings) {
     if name.is_empty() {
         findings.error(format!("{what} has an empty name"));
     } else if name.chars().count() > DOC_MAX_NAME_CHARS {
-        findings.error(format!("{what} name exceeds {DOC_MAX_NAME_CHARS} characters"));
+        findings.error(format!(
+            "{what} name exceeds {DOC_MAX_NAME_CHARS} characters"
+        ));
     }
 }
 
@@ -247,12 +256,18 @@ fn check_canvas_and_layers(raw: &RawDoc, findings: &mut Findings) {
         findings.error(e.to_string());
     }
     if raw.layers.is_empty() || raw.layers.len() > DOC_MAX_LAYERS {
-        findings.error(format!("layer count {} outside 1..={DOC_MAX_LAYERS}", raw.layers.len()));
+        findings.error(format!(
+            "layer count {} outside 1..={DOC_MAX_LAYERS}",
+            raw.layers.len()
+        ));
     }
     for (idx, layer) in raw.layers.iter().take(DOC_MAX_LAYERS).enumerate() {
         check_name(&format!("layer {idx}"), &layer.name, findings);
         if !layer.opacity.is_finite() || !(0.0..=1.0).contains(&layer.opacity) {
-            findings.error(format!("layer {idx}: opacity {} outside 0.0..=1.0", layer.opacity));
+            findings.error(format!(
+                "layer {idx}: opacity {} outside 0.0..=1.0",
+                layer.opacity
+            ));
         }
         if !layer.visible {
             findings.warning(format!("layer {idx} ({:.32}) is invisible", layer.name));
@@ -262,7 +277,10 @@ fn check_canvas_and_layers(raw: &RawDoc, findings: &mut Findings) {
 
 fn check_frames(raw: &RawDoc, findings: &mut Findings) {
     if raw.frames.is_empty() || raw.frames.len() > DOC_MAX_FRAMES {
-        findings.error(format!("frame count {} outside 1..={DOC_MAX_FRAMES}", raw.frames.len()));
+        findings.error(format!(
+            "frame count {} outside 1..={DOC_MAX_FRAMES}",
+            raw.frames.len()
+        ));
     }
     let offset_max = DOC_MAX_OFFSET_PX.unsigned_abs();
     for (fidx, frame) in raw.frames.iter().take(DOC_MAX_FRAMES).enumerate() {
@@ -328,7 +346,11 @@ struct Issues {
 impl Issues {
     fn push(&mut self, severity: &str, frame: Option<usize>, message: String) {
         if self.list.len() < MESSAGES_MAX {
-            self.list.push(AnimIssue { severity: severity.to_string(), frame, message });
+            self.list.push(AnimIssue {
+                severity: severity.to_string(),
+                frame,
+                message,
+            });
         } else {
             self.suppressed += 1;
         }
@@ -350,7 +372,10 @@ pub async fn audit_animation(
         if frame.duration_ms == 0 {
             issues.push("error", Some(idx), "duration_ms is 0".to_string());
         } else if frame.duration_ms > DURATION_WARN_MS {
-            let msg = format!("duration_ms {} exceeds {DURATION_WARN_MS}", frame.duration_ms);
+            let msg = format!(
+                "duration_ms {} exceeds {DURATION_WARN_MS}",
+                frame.duration_ms
+            );
             issues.push("warning", Some(idx), msg);
         }
     }
@@ -372,14 +397,21 @@ pub async fn audit_animation(
                 .iter()
                 .all(|f| f.layer_mods.get(lidx).is_none_or(|m| m.opacity_mult <= 0.0));
         if hidden_everywhere {
-            let msg = format!("layer {lidx} ({:.32}) is invisible in every frame", layer.name);
+            let msg = format!(
+                "layer {lidx} ({:.32}) is invisible in every frame",
+                layer.name
+            );
             issues.push("warning", None, msg);
         }
     }
     let mut list = issues.list;
     if issues.suppressed > 0 {
         let message = format!("{} further issues suppressed", issues.suppressed);
-        list.push(AnimIssue { severity: "warning".to_string(), frame: None, message });
+        list.push(AnimIssue {
+            severity: "warning".to_string(),
+            frame: None,
+            message,
+        });
     }
     Ok(AnimationAudit { issues: list })
 }
@@ -391,7 +423,11 @@ fn audit_tags(doc: &SpriteDoc, issues: &mut Issues) {
     let mut valid: Vec<&Tag> = Vec::new();
     for tag in &doc.tags {
         if tag.from_frame > tag.to_frame || tag.from_frame as usize >= frames {
-            issues.push("warning", None, format!("tag {:.32} covers no frames", tag.name));
+            issues.push(
+                "warning",
+                None,
+                format!("tag {:.32} covers no frames", tag.name),
+            );
         } else {
             valid.push(tag);
         }
@@ -443,7 +479,12 @@ pub async fn compare_frames(
         differing_pixels: differing,
         total_pixels: total,
         diff_ratio: (differing as f64 / total as f64) as f32,
-        bbox: bounds.map(|(x0, y0, x1, y1)| BBox { x: x0, y: y0, w: x1 - x0 + 1, h: y1 - y0 + 1 }),
+        bbox: bounds.map(|(x0, y0, x1, y1)| BBox {
+            x: x0,
+            y: y0,
+            w: x1 - x0 + 1,
+            h: y1 - y0 + 1,
+        }),
     })
 }
 
@@ -481,10 +522,7 @@ pub async fn compare_frames(
 ///
 /// Lua errors (runtime, memory, budget) become `LumenError::DocInvalid` with
 /// the Lua message, truncated to 1024 characters.
-pub async fn run_lua_script(
-    root: &Path,
-    req: RunLuaScriptRequest,
-) -> Result<DocSaved, LumenError> {
+pub async fn run_lua_script(root: &Path, req: RunLuaScriptRequest) -> Result<DocSaved, LumenError> {
     if !req.opt_in {
         return Err(LumenError::BadParam(
             "refused: run_lua_script requires explicit opt_in=true".to_string(),
@@ -504,7 +542,11 @@ pub async fn run_lua_script(
         .map(|l| std::mem::replace(&mut l.image, RgbaImage::new(0, 0)))
         .collect();
     let images = run_sandboxed(&req.script, images, doc.width, doc.height)?;
-    assert_eq!(images.len(), doc.layers.len(), "the sandbox never adds or drops layers");
+    assert_eq!(
+        images.len(),
+        doc.layers.len(),
+        "the sandbox never adds or drops layers"
+    );
     for (layer, image) in doc.layers.iter_mut().zip(images) {
         layer.image = image;
     }
@@ -517,7 +559,9 @@ fn output_target<'a>(doc: &'a str, output: Option<&'a str>) -> Result<&'a str, L
     match output {
         None => Ok(doc),
         Some(o) if o.ends_with(".lumen.json") => Ok(o),
-        Some(_) => Err(LumenError::BadParam("output must end in .lumen.json".to_string())),
+        Some(_) => Err(LumenError::BadParam(
+            "output must end in .lumen.json".to_string(),
+        )),
     }
 }
 
@@ -538,7 +582,8 @@ fn run_sandboxed(
 ) -> Result<Vec<RgbaImage>, LumenError> {
     let libs = StdLib::STRING | StdLib::TABLE | StdLib::MATH | StdLib::UTF8;
     let lua = Lua::new_with(libs, LuaOptions::default()).map_err(lua_err)?;
-    lua.set_memory_limit(LUA_MEMORY_BYTES_MAX).map_err(lua_err)?;
+    lua.set_memory_limit(LUA_MEMORY_BYTES_MAX)
+        .map_err(lua_err)?;
     let globals = lua.globals();
     for name in LUA_REMOVED_GLOBALS {
         globals.set(name, Value::Nil).map_err(lua_err)?;
@@ -549,7 +594,9 @@ fn run_sandboxed(
         let total = executed.get() + u64::from(LUA_HOOK_PERIOD_INSTRUCTIONS);
         executed.set(total);
         if total > LUA_INSTRUCTIONS_MAX {
-            return Err(runtime(format!("instruction budget of {LUA_INSTRUCTIONS_MAX} exceeded")));
+            return Err(runtime(format!(
+                "instruction budget of {LUA_INSTRUCTIONS_MAX} exceeded"
+            )));
         }
         Ok(VmState::Continue)
     })
@@ -561,9 +608,11 @@ fn run_sandboxed(
         .set_mode(ChunkMode::Text)
         .exec()
         .map_err(lua_err)?;
-    let images = std::mem::take(&mut *state.try_borrow_mut().map_err(|_| {
-        LumenError::DocInvalid("lua: sprite state still borrowed".to_string())
-    })?);
+    let images = std::mem::take(
+        &mut *state
+            .try_borrow_mut()
+            .map_err(|_| LumenError::DocInvalid("lua: sprite state still borrowed".to_string()))?,
+    );
     Ok(images)
 }
 
@@ -573,7 +622,12 @@ fn layer_index(images: &[RgbaImage], layer: i64) -> mlua::Result<usize> {
     usize::try_from(layer)
         .ok()
         .filter(|&idx| idx < images.len())
-        .ok_or_else(|| runtime(format!("layer {layer} out of range ({} layers)", images.len())))
+        .ok_or_else(|| {
+            runtime(format!(
+                "layer {layer} out of range ({} layers)",
+                images.len()
+            ))
+        })
 }
 
 /// Strict integer arguments: Lua integers, or floats with no fractional part
@@ -585,7 +639,10 @@ fn ints<const N: usize>(values: [Value; N]) -> mlua::Result<[i64; N]> {
             Value::Integer(i) => i,
             Value::Number(f) if f.fract() == 0.0 && f.abs() < 9.0e15 => f as i64,
             other => {
-                return Err(runtime(format!("expected an integer, got {}", other.type_name())));
+                return Err(runtime(format!(
+                    "expected an integer, got {}",
+                    other.type_name()
+                )));
             }
         };
     }
@@ -595,8 +652,8 @@ fn ints<const N: usize>(values: [Value; N]) -> mlua::Result<[i64; N]> {
 fn channels(rgba: [i64; 4]) -> mlua::Result<[u8; 4]> {
     let mut out = [0u8; 4];
     for (slot, value) in out.iter_mut().zip(rgba) {
-        *slot = u8::try_from(value)
-            .map_err(|_| runtime(format!("channel {value} outside 0..=255")))?;
+        *slot =
+            u8::try_from(value).map_err(|_| runtime(format!("channel {value} outside 0..=255")))?;
     }
     Ok(out)
 }
@@ -614,14 +671,18 @@ fn install_sprite_api(lua: &Lua, state: &Layers, width: u32, height: u32) -> mlu
     sprite.set("height", lua.create_function(move |_, ()| Ok(height))?)?;
     let st = Rc::clone(state);
     let count = lua.create_function(move |_, ()| {
-        let images = st.try_borrow().map_err(|_| runtime("sprite state busy".to_string()))?;
+        let images = st
+            .try_borrow()
+            .map_err(|_| runtime("sprite state busy".to_string()))?;
         Ok(images.len())
     })?;
     sprite.set("layers", count)?;
     let st = Rc::clone(state);
     let get = lua.create_function(move |lua, args: (Value, Value, Value)| {
         let [layer, x, y] = ints([args.0, args.1, args.2])?;
-        let images = st.try_borrow().map_err(|_| runtime("sprite state busy".to_string()))?;
+        let images = st
+            .try_borrow()
+            .map_err(|_| runtime("sprite state busy".to_string()))?;
         let image = &images[layer_index(&images, layer)?];
         let (px, py) = on_canvas(image, x, y)
             .ok_or_else(|| runtime(format!("get: ({x}, {y}) is outside the canvas")))?;
@@ -640,8 +701,9 @@ fn install_sprite_api(lua: &Lua, state: &Layers, width: u32, height: u32) -> mlu
         let [layer, x, y, r, g, b, a] =
             ints([args.0, args.1, args.2, args.3, args.4, args.5, args.6])?;
         let rgba = channels([r, g, b, a])?;
-        let mut images =
-            st.try_borrow_mut().map_err(|_| runtime("sprite state busy".to_string()))?;
+        let mut images = st
+            .try_borrow_mut()
+            .map_err(|_| runtime("sprite state busy".to_string()))?;
         let idx = layer_index(&images, layer)?;
         let image = &mut images[idx];
         // Documented: off-canvas writes are clipped silently.
@@ -656,12 +718,15 @@ fn install_sprite_api(lua: &Lua, state: &Layers, width: u32, height: u32) -> mlu
     let fill = lua.create_function(move |_, args: (Value, Value, Value, Value, Value)| {
         let [layer, r, g, b, a] = ints([args.0, args.1, args.2, args.3, args.4])?;
         let rgba = channels([r, g, b, a])?;
-        let mut images =
-            st.try_borrow_mut().map_err(|_| runtime("sprite state busy".to_string()))?;
+        let mut images = st
+            .try_borrow_mut()
+            .map_err(|_| runtime("sprite state busy".to_string()))?;
         let idx = layer_index(&images, layer)?;
         let total = filled.get() + u64::from(width) * u64::from(height);
         if total > LUA_FILL_PIXELS_MAX {
-            return Err(runtime(format!("fill budget of {LUA_FILL_PIXELS_MAX} pixels exceeded")));
+            return Err(runtime(format!(
+                "fill budget of {LUA_FILL_PIXELS_MAX} pixels exceeded"
+            )));
         }
         filled.set(total);
         for px in images[idx].pixels_mut() {

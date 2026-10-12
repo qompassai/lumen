@@ -178,7 +178,9 @@ impl Lumen {
         }
     }
 
-    #[tool(description = "Report width, height, color type and alpha presence of a project .png sprite.")]
+    #[tool(
+        description = "Report width, height, color type and alpha presence of a project .png sprite."
+    )]
     fn sprite_info(&self, Parameters(req): Parameters<SpriteInfoRequest>) -> String {
         match project_root().and_then(|root| sprite_info(&root, &req.path)) {
             Ok(info) => ok_json(&info),
@@ -186,7 +188,9 @@ impl Lumen {
         }
     }
 
-    #[tool(description = "Validate a .png against the Light Show atlas contract: 384x1152, 4x6 grid of 96x192 cells, RGBA.")]
+    #[tool(
+        description = "Validate a .png against the Light Show atlas contract: 384x1152, 4x6 grid of 96x192 cells, RGBA."
+    )]
     fn validate_atlas(&self, Parameters(req): Parameters<ValidateAtlasRequest>) -> String {
         match project_root().and_then(|root| validate_atlas(&root, &req.path)) {
             Ok(info) => ok_json(&info),
@@ -194,7 +198,9 @@ impl Lumen {
         }
     }
 
-    #[tool(description = "Probe a Bevy Remote Protocol endpoint and classify it: BRP-confirmed, JSON-RPC-speaking, unreachable, or not-BRP.")]
+    #[tool(
+        description = "Probe a Bevy Remote Protocol endpoint and classify it: BRP-confirmed, JSON-RPC-speaking, unreachable, or not-BRP."
+    )]
     async fn bevy_discover(&self, Parameters(req): Parameters<BevyDiscoverRequest>) -> String {
         match bevy_discover(req.endpoint.as_deref()).await {
             Ok(d) => ok_json(&d),
@@ -212,7 +218,10 @@ impl ServerHandler for Lumen {
         request: CallToolRequestParams,
         context: RequestContext<RoleServer>,
     ) -> Result<CallToolResponse, ErrorData> {
-        if let Err(denial) = self.enforcer.admit(&request.name, request.arguments.as_ref()) {
+        if let Err(denial) = self
+            .enforcer
+            .admit(&request.name, request.arguments.as_ref())
+        {
             tracing::warn!(rule = %denial.rule, tool = %denial.tool, "policy denied tools/call");
             return Ok(CallToolResult::error(denial.to_json().into_contents()).into());
         }
@@ -235,12 +244,19 @@ fn load_policy() -> Result<(String, Policy), PolicyError> {
             let policy = Policy::load_file(std::path::Path::new(&path))?;
             Ok((path, policy))
         }
-        _ => Ok(("built-in lumen-policy.toml".to_string(), Policy::from_toml_str(DEFAULT_POLICY_TOML)?)),
+        _ => Ok((
+            "built-in lumen-policy.toml".to_string(),
+            Policy::from_toml_str(DEFAULT_POLICY_TOML)?,
+        )),
     }
 }
 
 fn registered_tools() -> Vec<String> {
-    Lumen::tool_router().list_all().into_iter().map(|t| t.name.to_string()).collect()
+    Lumen::tool_router()
+        .list_all()
+        .into_iter()
+        .map(|t| t.name.to_string())
+        .collect()
 }
 
 /// `lumen policy check`: exit 0 iff the policy loads and every tool is labeled.
@@ -258,8 +274,14 @@ fn policy_check() -> i32 {
     println!("policy: {source}");
     println!("registered tools: {} ({})", names.len(), names.join(", "));
     println!("library tools: {}", policy::LIBRARY_TOOLS.len());
-    println!("required tools: {}, labeled tools: {}", report.required_tools, report.labeled_tools);
-    println!("deny rules: {}, allow rules: {}", report.deny_rules, report.allow_rules);
+    println!(
+        "required tools: {}, labeled tools: {}",
+        report.required_tools, report.labeled_tools
+    );
+    println!(
+        "deny rules: {}, allow rules: {}",
+        report.deny_rules, report.allow_rules
+    );
     for problem in &report.problems {
         println!("FAIL {problem}");
     }
@@ -314,46 +336,54 @@ fn run_cli(command: Command) -> i32 {
     }
     let result: Result<(), lumen::LumenError> = match command {
         Command::Policy { .. } => unreachable!("handled above"),
-        Command::Split { input, frames, out_dir, width, height } => {
-            cli::run_split(&input, frames, &out_dir, width, height).map(|written| {
-                println!("split: {} frames -> {}", written.len(), out_dir.display());
-            })
-        }
-        Command::Pack { dir, out, bin_size } => {
-            cli::run_pack(&dir, &out, bin_size).map(|report| {
-                println!(
-                    "pack: {} frames -> {} (+ {}) [{}px bin]",
-                    report.frames.len(),
-                    report.sheet.display(),
-                    report.sidecar.display(),
-                    report.bin_size
-                );
-            })
-        }
-        Command::Clean { dir, out_dir, connected_components, magenta } => {
-            cli::run_clean(&dir, &out_dir, connected_components, magenta).map(|written| {
-                println!("clean: {} files -> {}", written.len(), out_dir.display());
-            })
-        }
+        Command::Split {
+            input,
+            frames,
+            out_dir,
+            width,
+            height,
+        } => cli::run_split(&input, frames, &out_dir, width, height).map(|written| {
+            println!("split: {} frames -> {}", written.len(), out_dir.display());
+        }),
+        Command::Pack { dir, out, bin_size } => cli::run_pack(&dir, &out, bin_size).map(|report| {
+            println!(
+                "pack: {} frames -> {} (+ {}) [{}px bin]",
+                report.frames.len(),
+                report.sheet.display(),
+                report.sidecar.display(),
+                report.bin_size
+            );
+        }),
+        Command::Clean {
+            dir,
+            out_dir,
+            connected_components,
+            magenta,
+        } => cli::run_clean(&dir, &out_dir, connected_components, magenta).map(|written| {
+            println!("clean: {} files -> {}", written.len(), out_dir.display());
+        }),
         Command::Watch { dir } => cli::run_watch(&dir),
-        Command::Upscale { dir, out, model } => {
-            lumen::upscale::run_upscale(&dir, &out, &model).map(|written| {
+        Command::Upscale { dir, out, model } => lumen::upscale::run_upscale(&dir, &out, &model)
+            .map(|written| {
                 println!("upscale: {} files -> {}", written.len(), out.display());
-            })
-        }
-        Command::SplitTags { input, out, format, prefix, force } => {
-            cli::run_split_tags(&input, &out, &format, &prefix, force).map(|reports| {
-                for r in &reports {
-                    println!(
-                        "split-tags: {} -> {} ({} frames, {:?})",
-                        r.name,
-                        r.output.display(),
-                        r.frames.len(),
-                        r.direction
-                    );
-                }
-            })
-        }
+            }),
+        Command::SplitTags {
+            input,
+            out,
+            format,
+            prefix,
+            force,
+        } => cli::run_split_tags(&input, &out, &format, &prefix, force).map(|reports| {
+            for r in &reports {
+                println!(
+                    "split-tags: {} -> {} ({} frames, {:?})",
+                    r.name,
+                    r.output.display(),
+                    r.frames.len(),
+                    r.direction
+                );
+            }
+        }),
     };
     match result {
         Ok(()) => 0,
@@ -381,9 +411,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let names: Vec<&str> = registered.iter().map(String::as_str).collect();
     let report = policy::check(&policy, &names);
     if !report.problems.is_empty() {
-        return Err(format!("policy {source} failed check: {}", report.problems.join("; ")).into());
+        return Err(format!(
+            "policy {source} failed check: {}",
+            report.problems.join("; ")
+        )
+        .into());
     }
-    let service = Lumen::new(Arc::new(Enforcer::new(policy))).serve(stdio()).await?;
+    let service = Lumen::new(Arc::new(Enforcer::new(policy)))
+        .serve(stdio())
+        .await?;
     service.waiting().await?;
     Ok(())
 }

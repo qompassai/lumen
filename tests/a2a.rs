@@ -51,7 +51,12 @@ fn data_message(payload: Value) -> Value {
 }
 
 async fn send(agent: &Agent, payload: Value) -> Value {
-    rpc(agent, "message/send", json!({"message": data_message(payload)})).await
+    rpc(
+        agent,
+        "message/send",
+        json!({"message": data_message(payload)}),
+    )
+    .await
 }
 
 async fn send_nonblocking(agent: &Agent, payload: Value) -> Value {
@@ -66,19 +71,31 @@ async fn reply(agent: &Agent, task_id: &str, decision: Value) -> Value {
 }
 
 fn state(envelope: &Value) -> &str {
-    envelope.pointer("/result/status/state").and_then(Value::as_str).unwrap_or("<none>")
+    envelope
+        .pointer("/result/status/state")
+        .and_then(Value::as_str)
+        .unwrap_or("<none>")
 }
 
 fn task_id(envelope: &Value) -> String {
-    envelope.pointer("/result/id").and_then(Value::as_str).expect("task id").to_string()
+    envelope
+        .pointer("/result/id")
+        .and_then(Value::as_str)
+        .expect("task id")
+        .to_string()
 }
 
 fn error_code(envelope: &Value) -> i64 {
-    envelope.pointer("/error/code").and_then(Value::as_i64).unwrap_or(0)
+    envelope
+        .pointer("/error/code")
+        .and_then(Value::as_i64)
+        .unwrap_or(0)
 }
 
 fn status_error(envelope: &Value) -> Value {
-    let parts = envelope.pointer("/result/status/message/parts").and_then(Value::as_array);
+    let parts = envelope
+        .pointer("/result/status/message/parts")
+        .and_then(Value::as_array);
     parts
         .into_iter()
         .flatten()
@@ -132,8 +149,15 @@ async fn http_raw(addr: SocketAddr, request: &[u8]) -> (u16, String) {
     let mut out = Vec::new();
     let _ = tokio::time::timeout(Duration::from_secs(15), stream.read_to_end(&mut out)).await;
     let text = String::from_utf8_lossy(&out).to_string();
-    let status = text.split(' ').nth(1).and_then(|s| s.parse().ok()).unwrap_or(0);
-    let body = text.split_once("\r\n\r\n").map(|(_, b)| b.to_string()).unwrap_or_default();
+    let status = text
+        .split(' ')
+        .nth(1)
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(0);
+    let body = text
+        .split_once("\r\n\r\n")
+        .map(|(_, b)| b.to_string())
+        .unwrap_or_default();
     (status, body)
 }
 
@@ -169,7 +193,10 @@ async fn ok_card_is_served_and_generated_from_registry() {
         let id = skill["id"].as_str().expect("id");
         assert!(find_skill(id).is_some(), "card skill {id} must dispatch");
     }
-    let mut tags: Vec<&str> = skills.iter().filter_map(|s| s["tags"][0].as_str()).collect();
+    let mut tags: Vec<&str> = skills
+        .iter()
+        .filter_map(|s| s["tags"][0].as_str())
+        .collect();
     tags.sort_unstable();
     tags.dedup();
     let mut want = vec![
@@ -231,8 +258,18 @@ async fn ok_multi_step_task_yields_one_artifact_per_step() {
     assert_eq!(state(&out), "completed", "{out}");
     let artifacts = out["result"]["artifacts"].as_array().expect("artifacts");
     assert_eq!(artifacts.len(), 2);
-    assert!(artifacts[0]["artifactId"].as_str().expect("id").ends_with("-step-0"));
-    assert!(artifacts[1]["artifactId"].as_str().expect("id").ends_with("-step-1"));
+    assert!(
+        artifacts[0]["artifactId"]
+            .as_str()
+            .expect("id")
+            .ends_with("-step-0")
+    );
+    assert!(
+        artifacts[1]["artifactId"]
+            .as_str()
+            .expect("id")
+            .ends_with("-step-1")
+    );
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -253,13 +290,22 @@ async fn ok_review_pauses_then_approval_resumes_the_same_task() {
         "review_after": 0});
     let paused = send(&agent, payload).await;
     assert_eq!(state(&paused), "input-required", "{paused}");
-    assert_eq!(paused["result"]["artifacts"].as_array().map(Vec::len), Some(1));
-    assert!(!dir.path().join("fleet.lumen.json").exists(), "fleet waits for approval");
+    assert_eq!(
+        paused["result"]["artifacts"].as_array().map(Vec::len),
+        Some(1)
+    );
+    assert!(
+        !dir.path().join("fleet.lumen.json").exists(),
+        "fleet waits for approval"
+    );
     let id = task_id(&paused);
     let done = reply(&agent, &id, json!({"decision": "approve"})).await;
     assert_eq!(state(&done), "completed", "{done}");
     assert_eq!(task_id(&done), id);
-    assert_eq!(done["result"]["artifacts"].as_array().map(Vec::len), Some(2));
+    assert_eq!(
+        done["result"]["artifacts"].as_array().map(Vec::len),
+        Some(2)
+    );
     assert!(dir.path().join("fleet.lumen.json").is_file());
 }
 
@@ -277,7 +323,10 @@ async fn ok_review_rejection_is_structured_and_keeps_trial_artifacts() {
     assert_eq!(err["code"], "review_rejected");
     assert_eq!(err["reasons"][0], "eyes too large");
     assert_eq!(out["result"]["artifacts"].as_array().map(Vec::len), Some(1));
-    assert!(dir.path().join("trial.lumen.json").is_file(), "trial artifacts are kept");
+    assert!(
+        dir.path().join("trial.lumen.json").is_file(),
+        "trial artifacts are kept"
+    );
     assert!(!dir.path().join("fleet.lumen.json").exists());
 }
 
@@ -327,7 +376,10 @@ async fn ok_message_stream_emits_sse_progress_then_final() {
     assert!(events.len() >= 2, "{sse}");
     assert!(events.iter().all(|e| e["id"] == "s1"));
     assert_eq!(events[0]["result"]["kind"], "task");
-    let kinds: Vec<&str> = events.iter().filter_map(|e| e["result"]["kind"].as_str()).collect();
+    let kinds: Vec<&str> = events
+        .iter()
+        .filter_map(|e| e["result"]["kind"].as_str())
+        .collect();
     assert!(kinds.contains(&"artifact-update"), "{kinds:?}");
     let last = events.last().expect("final");
     assert_eq!(last["result"]["kind"], "status-update");
@@ -344,7 +396,10 @@ async fn ok_nonblocking_send_returns_early_and_settles_later() {
     let first = send_nonblocking(&agent, payload).await;
     assert!(matches!(state(&first), "submitted" | "working"), "{first}");
     let done = wait_for_state(&agent, &task_id(&first), "completed").await;
-    assert_eq!(done["result"]["artifacts"][0]["parts"][0]["data"]["speaks_brp"], true);
+    assert_eq!(
+        done["result"]["artifacts"][0]["parts"][0]["data"]["speaks_brp"],
+        true
+    );
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -367,8 +422,11 @@ async fn ok_task_deadline_fails_a_slow_step_with_timeout() {
     let dir = tempfile::tempdir().expect("tempdir");
     let (agent, _) = agent_with(dir.path(), Duration::from_millis(200)).await;
     let endpoint = slow_brp(Duration::from_secs(3)).await;
-    let out = send(&agent, json!({"skill": "bevy_status", "arguments": {"endpoint": endpoint}}))
-        .await;
+    let out = send(
+        &agent,
+        json!({"skill": "bevy_status", "arguments": {"endpoint": endpoint}}),
+    )
+    .await;
     assert_eq!(state(&out), "failed", "{out}");
     assert_eq!(status_error(&out)["code"], "timeout");
 }
@@ -391,7 +449,12 @@ fn ok_state_machine_accepts_every_documented_edge() {
         (InputRequired, Failed),
     ];
     for (from, to) in legal {
-        assert!(from.can_transition_to(to), "{} -> {}", from.as_str(), to.as_str());
+        assert!(
+            from.can_transition_to(to),
+            "{} -> {}",
+            from.as_str(),
+            to.as_str()
+        );
     }
     assert_eq!(InputRequired.as_str(), "input-required");
 }
@@ -402,9 +465,15 @@ fn ok_artifact_paths_are_project_relative() {
     std::fs::create_dir_all(dir.path().join("a/b")).expect("mkdir");
     std::fs::write(dir.path().join("a/b/x.png"), b"x").expect("write");
     let abs = dir.path().join("a/b/x.png");
-    assert_eq!(a2a::artifact_relative_path(dir.path(), &abs).expect("rel"), "a/b/x.png");
+    assert_eq!(
+        a2a::artifact_relative_path(dir.path(), &abs).expect("rel"),
+        "a/b/x.png"
+    );
     let rel = Path::new("a/./b/x.png");
-    assert_eq!(a2a::artifact_relative_path(dir.path(), rel).expect("rel"), "a/b/x.png");
+    assert_eq!(
+        a2a::artifact_relative_path(dir.path(), rel).expect("rel"),
+        "a/b/x.png"
+    );
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -468,8 +537,12 @@ async fn adv_unknown_and_unsupported_methods_are_refused() {
     assert_eq!(error_code(&out), codes::UNSUPPORTED_OPERATION);
     // Raw Lua is not reachable over A2A, by any name.
     assert!(find_skill("run_lua_script").is_none());
-    let out = send(&agent, json!({"skill": "run_lua_script",
-        "arguments": {"doc": "x.lumen.json", "script": "", "opt_in": true}})).await;
+    let out = send(
+        &agent,
+        json!({"skill": "run_lua_script",
+        "arguments": {"doc": "x.lumen.json", "script": "", "opt_in": true}}),
+    )
+    .await;
     assert_eq!(error_code(&out), codes::INVALID_PARAMS);
 }
 
@@ -482,8 +555,14 @@ async fn adv_oversized_body_is_refused_before_it_is_read() {
     let started = std::time::Instant::now();
     let (status, _) = http_raw(addr, head.as_bytes()).await;
     assert_eq!(status, 413);
-    assert!(started.elapsed() < Duration::from_secs(5), "no wait for the body");
-    let huge = format!("GET / HTTP/1.1\r\nHost: 127.0.0.1\r\nX-Pad: {}", "a".repeat(20_000));
+    assert!(
+        started.elapsed() < Duration::from_secs(5),
+        "no wait for the body"
+    );
+    let huge = format!(
+        "GET / HTTP/1.1\r\nHost: 127.0.0.1\r\nX-Pad: {}",
+        "a".repeat(20_000)
+    );
     let (status, _) = http_raw(addr, huge.as_bytes()).await;
     assert_eq!(status, 431);
 }
@@ -493,13 +572,25 @@ async fn adv_smuggling_shaped_requests_are_refused() {
     let dir = tempfile::tempdir().expect("tempdir");
     let (_agent, addr) = agent(dir.path()).await;
     let cases: [(&str, u16); 5] = [
-        ("POST / HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Type: application/json\r\n\
-          Transfer-Encoding: chunked\r\n\r\n0\r\n\r\n", 501),
-        ("POST / HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Type: application/json\r\n\
-          Content-Length: 2\r\nContent-Length: 2\r\n\r\n{}", 400),
-        ("POST / HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Type: application/json\r\n\r\n", 411),
-        ("POST / HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Type: application/json\r\n\
-          Content-Length: -1\r\n\r\n", 400),
+        (
+            "POST / HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Type: application/json\r\n\
+          Transfer-Encoding: chunked\r\n\r\n0\r\n\r\n",
+            501,
+        ),
+        (
+            "POST / HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Type: application/json\r\n\
+          Content-Length: 2\r\nContent-Length: 2\r\n\r\n{}",
+            400,
+        ),
+        (
+            "POST / HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Type: application/json\r\n\r\n",
+            411,
+        ),
+        (
+            "POST / HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Type: application/json\r\n\
+          Content-Length: -1\r\n\r\n",
+            400,
+        ),
         ("POST / HTTP/2\r\nHost: 127.0.0.1\r\n\r\n", 505),
     ];
     for (request, want) in cases {
@@ -539,7 +630,13 @@ async fn adv_cancel_or_get_of_a_nonexistent_task_is_not_found() {
     let dir = tempfile::tempdir().expect("tempdir");
     let (agent, _) = agent(dir.path()).await;
     let overflow = format!("lumen-task-{}", "9".repeat(25));
-    let ids = ["lumen-task-999", "lumen-task-", "lumen-task-01x", "../../etc", &overflow];
+    let ids = [
+        "lumen-task-999",
+        "lumen-task-",
+        "lumen-task-01x",
+        "../../etc",
+        &overflow,
+    ];
     for id in ids {
         let out = rpc(&agent, "tasks/cancel", json!({"id": id})).await;
         assert_eq!(error_code(&out), codes::TASK_NOT_FOUND, "{id}");
@@ -561,7 +658,11 @@ async fn adv_cancel_of_a_settled_task_is_not_cancelable() {
     let out = rpc(&agent, "tasks/cancel", json!({"id": id})).await;
     assert_eq!(error_code(&out), codes::TASK_NOT_CANCELABLE, "{out}");
     let again = rpc(&agent, "tasks/get", json!({"id": id})).await;
-    assert_eq!(state(&again), "completed", "a refused cancel changes nothing");
+    assert_eq!(
+        state(&again),
+        "completed",
+        "a refused cancel changes nothing"
+    );
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -572,7 +673,11 @@ async fn adv_path_escape_in_task_arguments_fails_closed() {
     let (agent, _) = agent(&root).await;
     let outside = dir.path().join("escape.lumen.json");
     let abs = outside.to_str().expect("utf8").to_string();
-    for output in ["../escape.lumen.json", abs.as_str(), "a/../../escape.lumen.json"] {
+    for output in [
+        "../escape.lumen.json",
+        abs.as_str(),
+        "a/../../escape.lumen.json",
+    ] {
         let out = send(&agent, new_sprite(output)).await;
         assert_eq!(state(&out), "failed", "{output}: {out}");
         assert_eq!(status_error(&out)["code"], "operation_failed");
@@ -605,11 +710,23 @@ async fn adv_symlink_escape_is_refused_for_writes_and_artifacts() {
 #[test]
 fn adv_illegal_state_transitions_are_refused() {
     use TaskState::*;
-    let all = [Submitted, Working, InputRequired, Completed, Failed, Canceled, Rejected];
+    let all = [
+        Submitted,
+        Working,
+        InputRequired,
+        Completed,
+        Failed,
+        Canceled,
+        Rejected,
+    ];
     for terminal in [Completed, Failed, Canceled, Rejected] {
         assert!(terminal.is_terminal());
         for next in all {
-            assert!(!terminal.can_transition_to(next), "{} is terminal", terminal.as_str());
+            assert!(
+                !terminal.can_transition_to(next),
+                "{} is terminal",
+                terminal.as_str()
+            );
         }
     }
     let illegal = [
@@ -624,7 +741,12 @@ fn adv_illegal_state_transitions_are_refused() {
         (InputRequired, InputRequired),
     ];
     for (from, to) in illegal {
-        assert!(!from.can_transition_to(to), "{} -> {}", from.as_str(), to.as_str());
+        assert!(
+            !from.can_transition_to(to),
+            "{} -> {}",
+            from.as_str(),
+            to.as_str()
+        );
     }
 }
 
@@ -657,7 +779,11 @@ async fn adv_bad_task_payloads_are_refused_without_creating_tasks() {
     ];
     for payload in payloads {
         let out = send(&agent, payload.clone()).await;
-        assert_eq!(error_code(&out), codes::INVALID_PARAMS, "{payload} -> {out}");
+        assert_eq!(
+            error_code(&out),
+            codes::INVALID_PARAMS,
+            "{payload} -> {out}"
+        );
     }
     let messages = [
         json!({"role": "agent", "parts": [{"kind": "data", "data": {"skill": "style_list"}}]}),
@@ -671,10 +797,18 @@ async fn adv_bad_task_payloads_are_refused_without_creating_tasks() {
     ];
     for message in messages {
         let out = rpc(&agent, "message/send", json!({"message": message})).await;
-        assert_eq!(error_code(&out), codes::INVALID_PARAMS, "{message} -> {out}");
+        assert_eq!(
+            error_code(&out),
+            codes::INVALID_PARAMS,
+            "{message} -> {out}"
+        );
     }
     let out = rpc(&agent, "tasks/get", json!({"id": "lumen-task-0"})).await;
-    assert_eq!(error_code(&out), codes::TASK_NOT_FOUND, "no task was created");
+    assert_eq!(
+        error_code(&out),
+        codes::TASK_NOT_FOUND,
+        "no task was created"
+    );
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -728,8 +862,16 @@ async fn adv_decision_payload_bounds_are_enforced() {
     ];
     for decision in bad {
         let out = reply(&agent, &id, decision.clone()).await;
-        assert_eq!(error_code(&out), codes::INVALID_PARAMS, "{decision} -> {out}");
+        assert_eq!(
+            error_code(&out),
+            codes::INVALID_PARAMS,
+            "{decision} -> {out}"
+        );
     }
     let still = rpc(&agent, "tasks/get", json!({"id": id})).await;
-    assert_eq!(state(&still), "input-required", "refused replies leave the task paused");
+    assert_eq!(
+        state(&still),
+        "input-required",
+        "refused replies leave the task paused"
+    );
 }
