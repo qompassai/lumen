@@ -437,6 +437,7 @@ mod aseprite_tests {
         bytes[4] = 0x00;
         bytes[5] = 0x00;
         let dir = std::env::temp_dir().join("lumen-aseprite-tests");
+        std::fs::create_dir_all(&dir).unwrap();
         let path = dir.join("corrupt.aseprite");
         std::fs::write(&path, &bytes).unwrap();
         assert!(matches!(
@@ -450,6 +451,7 @@ mod aseprite_tests {
     fn truncated_file_rejected() {
         let bytes = fixture_bytes();
         let dir = std::env::temp_dir().join("lumen-aseprite-tests");
+        std::fs::create_dir_all(&dir).unwrap();
         let path = dir.join("truncated.aseprite");
         std::fs::write(&path, &bytes[..100]).unwrap();
         assert!(load_aseprite(&path).is_err());
