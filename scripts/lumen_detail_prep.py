@@ -1,6 +1,6 @@
 """Prepare the detail textures for lumen_detail.py from the source sprite.
 
-Outputs (into the sprite-mcp models/ directory):
+Outputs (into <models_dir>):
   seraphine_face.png   Her face, cropped from her own sprite (bangs,
                        glasses, eyes, smile), transparent margins filled
                        with her cheek tone, upscaled for projection onto

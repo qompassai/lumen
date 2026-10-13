@@ -1,8 +1,7 @@
 # Lumen Emotion Templates
 
 Ratified by Matt, 2026-10-06. Machine-readable source of truth:
-`emotions.json` in this directory (also installed in the sprite-mcp repo at
-`templates/emotions.json`). This document is the human companion: what the
+`emotions.json` in this directory. This document is the human companion: what the
 templates are, and how each medium and engine consumes them.
 
 ## Purpose
