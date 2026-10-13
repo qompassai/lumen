@@ -13,6 +13,11 @@
 #   OpenRPC document listing world.query). Then it is reused and left
 #   running, because this script did not start it. A foreign listener fails.
 #
+# The example_app manifest resolves via LUMEN_EXAMPLE_MANIFEST, defaulting
+# to $XDG_DATA_HOME/bevy_mcp/example_app/Cargo.toml (XDG_DATA_HOME itself
+# defaults to ~/.local/share). A missing manifest fails closed, naming the
+# path tried and the override variable.
+#
 # Audio: example_app uses DefaultPlugins, which opens an audio output device,
 # but the app spawns no sound sources. This script changes no audio or volume
 # settings.
@@ -25,7 +30,8 @@ set -euo pipefail
 LUMEN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 readonly LUMEN_DIR
 readonly ASEPRITE_BIN=/usr/bin/aseprite
-readonly EXAMPLE_MANIFEST=/home/phaedrus/bevy_mcp/example_app/Cargo.toml
+# Rootless resolution: env override first, else the XDG data dir.
+readonly EXAMPLE_MANIFEST="${LUMEN_EXAMPLE_MANIFEST:-${XDG_DATA_HOME:-${HOME}/.local/share}/bevy_mcp/example_app/Cargo.toml}"
 readonly BRP_PORT=15702
 readonly BRP_URL="http://127.0.0.1:${BRP_PORT}"
 readonly BRP_READY_TRIES=120 # one per second
@@ -82,7 +88,8 @@ require_tools() {
         command -v "$tool" >/dev/null || die "required tool not found: ${tool}"
     done
     [[ -x "$ASEPRITE_BIN" ]] || die "Aseprite not found at ${ASEPRITE_BIN}"
-    [[ -f "$EXAMPLE_MANIFEST" ]] || die "bevy_mcp example_app not found: ${EXAMPLE_MANIFEST}"
+    [[ -f "$EXAMPLE_MANIFEST" ]] ||
+        die "bevy_mcp example_app manifest not found: ${EXAMPLE_MANIFEST} (set LUMEN_EXAMPLE_MANIFEST to override)"
 }
 
 start_app() {

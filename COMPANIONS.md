@@ -21,7 +21,9 @@ running Bevy world over the Bevy Remote Protocol.
   `bevy_call` (or a bevy_mcp tool) spawns or hot-reloads it in the live game.
 
 lumen was interop-tested against the bevy_mcp checkout at
-`/home/phaedrus/bevy_mcp` (see `bevy_discover` mock-BRP test in
+`$XDG_DATA_HOME/bevy_mcp` (default `~/.local/share/bevy_mcp`;
+`scripts/interop_check.sh` resolves it there or via
+`LUMEN_EXAMPLE_MANIFEST`; see `bevy_discover` mock-BRP test in
 `tests/tools.rs`; live-game interop is a Milestone 2 gate).
 
 ## Aseprite MCPs (diivi/aseprite-mcp, @iborymagic/aseprite-mcp)
@@ -49,7 +51,8 @@ attachment is roadmap, not v1.
   scene-tree handoff) when that backend lands.
 - **VoidSprite** — file-based interop; VoidSprite is GUI-only with no CLI,
   so lumen exchanges files and defers interactive editing to the editor
-  (findings: `/home/phaedrus/sprite-tools-build`).
+  (findings: `$XDG_DATA_HOME/sprite-tools-build`, default
+  `~/.local/share/sprite-tools-build`).
 
 ## Collision rule
 
