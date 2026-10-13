@@ -4,6 +4,7 @@
 artistry with Bevy live-world interop, written in Rust (edition 2024,
 `rmcp` 3.3). Built for the light-show art pipeline: one operation core
 behind three surfaces —
+<a href="./LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt="License: Apache 2.0"></a>
 
 - **MCP tools** for interactive sprite work: sprite operations,
   inspection, palettes, text, style presets, dream-animation
@@ -43,3 +44,7 @@ failed build produced) is in [HISTORY.md](HISTORY.md).
   (live-tool gates, ignored by default).
 - `lumen-policy.toml` — the shipped policy; `lumen policy check` and
   `lumen policy replay` are its gates.
+
+## License
+
+This project is licensed under the [Apache License, Version 2.0](./LICENSE).
