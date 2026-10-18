@@ -118,7 +118,7 @@ pub async fn fidelity_set(root: &Path, req: FidelitySetReq) -> Result<DocSaved, 
     save_to(root, target, &doc)
 }
 
-/// List the 13 style presets. `ref_01`..`ref_09` are placeholders awaiting
+/// List the 15 style presets. `ref_01`..`ref_09` are placeholders awaiting
 /// Matt's reference-image naming (each is currently a distinct hue family).
 pub async fn style_list(_root: &Path, _req: StyleListReq) -> Result<StyleList, LumenError> {
     let styles = STYLE_PRESETS
@@ -140,7 +140,7 @@ pub async fn style_list(_root: &Path, _req: StyleListReq) -> Result<StyleList, L
 /// (`out = orig + (graded - orig) * strength`). Alpha is NEVER modified.
 /// `strength == 0.0` is a successful no-op (pixels identical; doc saved).
 ///
-/// Errors: unknown style → `BadParam` listing all 13; strength NaN,
+/// Errors: unknown style → `BadParam` listing all 15; strength NaN,
 /// infinite, or outside 0.0..=1.0 → `BadParam`.
 pub async fn style_apply(root: &Path, req: StyleApplyReq) -> Result<DocSaved, LumenError> {
     let preset = find_style(&req.style)?;
@@ -235,7 +235,7 @@ const fn ref_preset(name: &'static str, index: u8) -> StylePreset {
     }
 }
 
-const STYLE_PRESETS: [StylePreset; 13] = [
+const STYLE_PRESETS: [StylePreset; 15] = [
     ref_preset("ref_01", 1),
     ref_preset("ref_02", 2),
     ref_preset("ref_03", 3),
@@ -252,6 +252,24 @@ const STYLE_PRESETS: [StylePreset; 13] = [
         sat_mult: 0.7,
         light_mult: 0.75,
         contrast: 1.2,
+        posterize: None,
+    },
+    StylePreset {
+        name: "demo_toon",
+        description: "Cel-demo grade after the ZZZ character demos: flat lightness bands, punchy saturation, warm key. Posterized variant, for pixel sprites.",
+        hue_shift_deg: 4.0,
+        sat_mult: 1.15,
+        light_mult: 1.0,
+        contrast: 1.06,
+        posterize: Some(6),
+    },
+    StylePreset {
+        name: "demo_toon_portrait",
+        description: "Cel-demo grade after the ZZZ character demos: flat lightness bands, punchy saturation, warm key. Unposterized variant, for HD painted portraits (posterize speckles painted skin).",
+        hue_shift_deg: 4.0,
+        sat_mult: 1.15,
+        light_mult: 1.0,
+        contrast: 1.06,
         posterize: None,
     },
     StylePreset {
