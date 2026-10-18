@@ -53,17 +53,39 @@ integration-update phase (Matt's amendment, 2026-10-18):
   `demo_toon_fire` climax variant). Factory use: texture painting applies
   the documented grade math to painted textures; if the landed preset's
   parameters differ from the study spec, the landed code wins at
-  integration time.
+  integration time. **P6 verdict: HELD exactly** — the landed
+  `demo_toon` / `demo_toon_portrait` parameters (hue +4.0, sat x1.15,
+  light x1.0, contrast 1.06, posterize Some(6) / None) are numerically
+  identical to the factory's in-crate constants, and the factory's
+  posterize split (non-face zones posterized, face rect not) matches
+  the landed variant split. `demo_toon_fire` does not exist; the
+  landed surface fails closed on it (verified live over MCP) and the
+  factory never references it.
 - **A2.** VRM import op accepts a `.vrm` file and exposes, at minimum, its
   glTF scene (nodes, meshes, skins) and the `VRMC_vrm` humanoid bone
   mapping. Factory use: the VRoid input path (§5, Phase 2b) reads a VRM's
   humanoid proportions + skeleton as an alternative base source.
+  **P6 verdict: BROKE, benign** — the landed `vrm_inspect` reports
+  flavor / meta / texture inventory only; it does not expose the scene
+  graph or the humanoid bone mapping, so structure extraction cannot
+  be delegated to it. The factory keeps its own reader as the only
+  implementation of bone / expression / proportion extraction, with
+  the division of labor stated in `crates/lumen-factory/src/vrm.rs`.
+  Interop is proven, not assumed: the factory reader extracts an
+  identical summary from lumen's `vrm_grade` output
+  (`assets/seraphine_graded.vrm`).
 - **A3.** VRM export op can wrap a GLB with `VRMC_vrm` metadata. Factory
   use: factory GLB output stays plain glTF; VRM emission is delegated to
   that op at integration time (factory does not write its own VRM layer
-  in this program beyond reading).
+  in this program beyond reading). **P6 verdict: BROKE, benign** — no
+  landed op wraps a bare GLB; `vrm_grade` only re-encodes textures of
+  an existing VRM. The factory's `wrap_as_vrm` (Phase 2b) is the
+  estate's only GLB -> VRM path and stays; lumen's ops accept its
+  output (verified over the stdio MCP surface).
 - **A4.** Style ops are callable from the stdio MCP surface (D2) — factory
   CLI does not depend on this; noted for the eventual merged tool surface.
+  **P6 verdict: HELD** — style ops landed on the stdio surface in
+  a3fa3a7; the factory CLI still does not depend on them.
 
 If any assumption breaks, the integration phase updates the factory's
 VRoid stage and re-runs all gates + the end-to-end proof, including one
@@ -170,11 +192,22 @@ truncated GLB, NaN weights, oversized inputs rejected pre-decode).
   one ramp-material render) + side-by-side sheet vs canonical art,
   phone-readable (≤1080 px wide panels), saved to
   `~/workspace/lumen-factory-20261018/proof/`.
-- **P6 (integration update, per amendment)** — after sibling VRoid ops
-  land on main: verify landed contracts from code, reconcile A1–A4,
-  rebase factory branch onto new main (branch-level only), switch VRoid
-  stage to the real ops, re-run ALL gates + P5 proof + one VRM-in →
-  factory → GLB-out proof; report as its own section.
+- **P6 (integration update, per amendment)** — ✅ DONE 2026-10-18
+  (takeover completion). Main merged into the factory branch
+  (ca71a80; branch-level only). A1/A4 held, A2/A3 broke benignly (see
+  §3 verdicts): the VRoid stage keeps its own structure reader/wrap
+  beside lumen's texture ops, with the division of labor documented
+  in `vrm.rs`. New: the VRM proportions bridge
+  (`ParameterRecord::from_identity_with_vrm_proportions` +
+  `params --vrm`), driven by the shared `scales_for_ratios` law, and
+  `tests/vrm_interop.rs` against a real lumen-graded fixture
+  (`assets/seraphine_graded.vrm`, produced over the stdio MCP
+  surface). Gates after the pass: root 406/0, factory 121/0, fmt +
+  strict clippy clean at both levels. End-to-end proof run: lumen
+  `vrm_grade` (demo_toon_portrait) -> factory `vrm-inspect`
+  (identical extraction) -> `params --vrm` -> `build` -> `validate`
+  -> `vrm-wrap`, all green. The P5 Blender render proof was also
+  re-run on the final tree: RENDER_PROOF_PASS in both modes.
 
 ## 7. Asset provenance
 
