@@ -19,6 +19,9 @@
 //!   humanoid bones, expressions, derived proportions).
 //! - `vrm-wrap --in <glb> --name <model name> --out <file.vrm>` wraps a
 //!   factory GLB as a VRM 1.0 file (VRMC_vrm humanoid + expressions).
+//! - `validate --in <file.glb|.vrm> [--json]` runs the Phase 4
+//!   structural validator and prints its JSON report to stdout; the
+//!   exit code is nonzero when the report does not pass.
 //! - Failures are typed errors printed to stderr with a nonzero exit.
 
 #![forbid(unsafe_code)]
@@ -33,6 +36,7 @@ use lumen_factory::gltf::{MorphTarget, parse_glb, write_glb};
 use lumen_factory::identity::{ingest, load_record};
 use lumen_factory::params::ParameterRecord;
 use lumen_factory::project::{BuildOptions, build_character, build_character_with_params};
+use lumen_factory::validate::validate_bytes;
 use lumen_factory::vrm::{WrapMeta, inspect_vrm, wrap_as_vrm};
 use lumen_factory::{FactoryError, sha256_hex};
 
@@ -111,6 +115,16 @@ enum Commands {
         /// Input VRM path.
         #[arg(long = "in")]
         input: PathBuf,
+    },
+    /// Structurally validate a GLB/VRM export (Phase 4 gate).
+    Validate {
+        /// Input GLB/VRM path.
+        #[arg(long = "in")]
+        input: PathBuf,
+        /// Emit the report as JSON (the report is always JSON; the
+        /// flag is accepted for call-site clarity).
+        #[arg(long)]
+        json: bool,
     },
     /// Wrap a factory GLB as a VRM 1.0 file.
     VrmWrap {
@@ -362,6 +376,27 @@ fn run() -> Result<(), FactoryError> {
             }
             println!("sha256: {}", sha256_hex(&bytes));
             Ok(())
+        }
+        Commands::Validate { input, json: _ } => {
+            let bytes = std::fs::read(&input)?;
+            let report = validate_bytes(&bytes, &input.display().to_string());
+            let rendered = serde_json::to_string_pretty(&report)
+                .map_err(|e| FactoryError::InvalidGlb(format!("report render: {e}")))?;
+            println!("{rendered}");
+            if report.pass {
+                Ok(())
+            } else {
+                let failed: Vec<&str> = report
+                    .checks
+                    .iter()
+                    .filter(|check| !check.pass)
+                    .map(|check| check.name.as_str())
+                    .collect();
+                Err(FactoryError::InvalidGlb(format!(
+                    "validation failed: {}",
+                    failed.join(", ")
+                )))
+            }
         }
         Commands::VrmWrap { input, name, out } => {
             let bytes = std::fs::read(&input)?;
