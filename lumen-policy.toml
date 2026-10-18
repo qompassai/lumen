@@ -300,6 +300,15 @@ sink = "trusted"
 reads = ["low"]
 sink = "trusted"
 
+# VRM (src/vrm.rs).
+[tools.vrm_grade]
+reads = ["low"]
+sink = "trusted"
+
+[tools.vrm_inspect]
+reads = ["low"]
+sink = "trusted"
+
 # Inspection (src/inspect.rs).
 [tools.inspect_sprite]
 reads = ["low"]

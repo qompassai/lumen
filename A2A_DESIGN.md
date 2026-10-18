@@ -22,7 +22,7 @@ Wire rules (verified against diver's implementation): lowercase
 Served at `/.well-known/agent-card.json`. Advertises capabilities:
 `sprite-core`, `lightshow-pipeline`, `fidelity`, `styles`, `dream-automation`,
 `export-backends` (`wasm4`, `tic80`, `godot` when landed), `bevy-bridge`,
-`policy`. A v1.0 card with `supportedInterfaces[]` is accepted for
+`policy`, `vrm`. A v1.0 card with `supportedInterfaces[]` is accepted for
 discovery. The card is generated from the tool registry so it cannot drift
 from the implementation.
 

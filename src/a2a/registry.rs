@@ -15,7 +15,7 @@ use serde::de::DeserializeOwned;
 use serde_json::Value;
 
 use crate::{
-    LumenError, bevy, dream, export, inspect, palette, pipeline, qa, sprite_ops, style, text,
+    LumenError, bevy, dream, export, inspect, palette, pipeline, qa, sprite_ops, style, text, vrm,
 };
 
 /// Boxed operation future. `Send` so tasks run on the multi-thread runtime.
@@ -35,6 +35,7 @@ pub enum Capability {
     DreamAutomation,
     ExportBackends,
     BevyBridge,
+    Vrm,
 }
 
 impl Capability {
@@ -48,6 +49,7 @@ impl Capability {
             Self::DreamAutomation => "dream-automation",
             Self::ExportBackends => "export-backends",
             Self::BevyBridge => "bevy-bridge",
+            Self::Vrm => "vrm",
         }
     }
 }
@@ -400,6 +402,18 @@ pub static SKILLS: &[SkillSpec] = &[
         Styles,
         "Apply a style preset.",
         op!(style::style_apply)
+    ),
+    skill!(
+        "vrm_grade",
+        Vrm,
+        "Grade a VRM avatar's embedded textures with a style preset.",
+        op!(vrm::vrm_grade)
+    ),
+    skill!(
+        "vrm_inspect",
+        Vrm,
+        "Inspect a VRM avatar: flavor, meta, embedded textures.",
+        op!(vrm::vrm_inspect)
     ),
     skill!(
         "dream_ambient",

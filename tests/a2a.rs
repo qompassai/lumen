@@ -207,6 +207,7 @@ async fn ok_card_is_served_and_generated_from_registry() {
         "dream-automation",
         "export-backends",
         "bevy-bridge",
+        "vrm",
     ];
     want.sort_unstable();
     assert_eq!(tags, want);

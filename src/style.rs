@@ -164,6 +164,31 @@ pub async fn style_apply(root: &Path, req: StyleApplyReq) -> Result<DocSaved, Lu
     save_to(root, target, &doc)
 }
 
+/// Grade one image in place with a named style preset at `strength`.
+///
+/// The shared pixel path: `style_apply` walks document layers, the VRM
+/// texture pipeline (`vrm::vrm_grade`) walks embedded textures — both
+/// end here, so a preset means the same pixels on every surface.
+/// Contract mirrors `style_apply`: unknown style → `BadParam` listing
+/// all 15; non-finite or out-of-range strength → `BadParam`; alpha is
+/// never modified and fully transparent pixels are skipped.
+pub fn grade_image(image: &mut RgbaImage, style: &str, strength: f32) -> Result<(), LumenError> {
+    let preset = find_style(style)?;
+    if !strength.is_finite() || !(0.0..=1.0).contains(&strength) {
+        return Err(LumenError::BadParam(format!(
+            "strength {strength} is outside 0.0..=1.0"
+        )));
+    }
+    if strength > 0.0 {
+        for pixel in image.pixels_mut() {
+            if pixel[3] != 0 {
+                *pixel = grade_pixel(*pixel, preset, strength);
+            }
+        }
+    }
+    Ok(())
+}
+
 // ---------------------------------------------------------------------------
 // Preset tables
 // ---------------------------------------------------------------------------
