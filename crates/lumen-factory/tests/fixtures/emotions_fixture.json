@@ -1,0 +1,195 @@
+{
+  "emotions": [
+    {
+      "arkit": {},
+      "display": "Neutral",
+      "key": "neutral"
+    },
+    {
+      "arkit": {
+        "browOuterUpLeft": 0.15,
+        "browOuterUpRight": 0.15,
+        "cheekSquintLeft": 0.55,
+        "cheekSquintRight": 0.55,
+        "eyeSquintLeft": 0.35,
+        "eyeSquintRight": 0.35,
+        "mouthDimpleLeft": 0.3,
+        "mouthDimpleRight": 0.3,
+        "mouthSmileLeft": 0.75,
+        "mouthSmileRight": 0.75
+      },
+      "display": "Happy",
+      "key": "happy"
+    },
+    {
+      "arkit": {
+        "browDownLeft": 0.9,
+        "browDownRight": 0.9,
+        "eyeSquintLeft": 0.4,
+        "eyeSquintRight": 0.4,
+        "jawForward": 0.2,
+        "mouthFrownLeft": 0.25,
+        "mouthFrownRight": 0.25,
+        "mouthPressLeft": 0.5,
+        "mouthPressRight": 0.5,
+        "noseSneerLeft": 0.45,
+        "noseSneerRight": 0.45
+      },
+      "display": "Angry",
+      "key": "angry"
+    },
+    {
+      "arkit": {
+        "browInnerUp": 0.85,
+        "eyeLookDownLeft": 0.3,
+        "eyeLookDownRight": 0.3,
+        "mouthFrownLeft": 0.7,
+        "mouthFrownRight": 0.7,
+        "mouthStretchLeft": 0.2,
+        "mouthStretchRight": 0.2
+      },
+      "display": "Sad",
+      "key": "sad"
+    },
+    {
+      "arkit": {
+        "browInnerUp": 0.5,
+        "browOuterUpLeft": 0.8,
+        "browOuterUpRight": 0.8,
+        "eyeWideLeft": 0.9,
+        "eyeWideRight": 0.9,
+        "jawOpen": 0.55,
+        "mouthFunnel": 0.2
+      },
+      "display": "Surprised",
+      "key": "surprised"
+    },
+    {
+      "arkit": {
+        "browOuterUpLeft": 0.35,
+        "cheekSquintLeft": 0.5,
+        "cheekSquintRight": 0.5,
+        "eyeSquintLeft": 0.45,
+        "eyeSquintRight": 0.45,
+        "mouthDimpleLeft": 0.35,
+        "mouthSmileLeft": 0.65,
+        "mouthSmileRight": 0.5
+      },
+      "display": "Fun (playful)",
+      "key": "fun"
+    },
+    {
+      "arkit": {
+        "browDownLeft": 0.55,
+        "browDownRight": 0.55,
+        "eyeBlinkLeft": 0.2,
+        "eyeBlinkRight": 0.2,
+        "eyeSquintLeft": 0.5,
+        "eyeSquintRight": 0.5,
+        "mouthFrownLeft": 0.2,
+        "mouthFrownRight": 0.2,
+        "mouthPressLeft": 0.45,
+        "mouthPressRight": 0.45,
+        "noseSneerLeft": 0.2,
+        "noseSneerRight": 0.2
+      },
+      "display": "Annoyed",
+      "key": "annoyed"
+    },
+    {
+      "arkit": {
+        "browInnerUp": 0.7,
+        "browOuterUpLeft": 0.25,
+        "browOuterUpRight": 0.25,
+        "eyeWideLeft": 0.35,
+        "eyeWideRight": 0.35,
+        "jawOpen": 0.1,
+        "mouthFrownLeft": 0.3,
+        "mouthFrownRight": 0.3,
+        "mouthStretchLeft": 0.45,
+        "mouthStretchRight": 0.45
+      },
+      "display": "Worried",
+      "key": "worried"
+    },
+    {
+      "arkit": {
+        "browInnerUp": 0.3,
+        "cheekSquintLeft": 0.35,
+        "cheekSquintRight": 0.35,
+        "eyeLookDownLeft": 0.55,
+        "eyeLookDownRight": 0.55,
+        "eyeSquintLeft": 0.3,
+        "eyeSquintRight": 0.3,
+        "mouthPressLeft": 0.15,
+        "mouthPressRight": 0.15,
+        "mouthSmileLeft": 0.3,
+        "mouthSmileRight": 0.3
+      },
+      "display": "Embarrassed",
+      "key": "embarrassed"
+    },
+    {
+      "arkit": {
+        "browDownLeft": 0.5,
+        "browDownRight": 0.5,
+        "eyeSquintLeft": 0.2,
+        "eyeSquintRight": 0.2,
+        "jawForward": 0.3,
+        "mouthPressLeft": 0.55,
+        "mouthPressRight": 0.55
+      },
+      "display": "Determined",
+      "key": "determined"
+    },
+    {
+      "arkit": {
+        "browOuterUpLeft": 0.3,
+        "cheekSquintLeft": 0.3,
+        "cheekSquintRight": 0.3,
+        "eyeLookDownLeft": 0.1,
+        "eyeLookDownRight": 0.1,
+        "eyeSquintLeft": 0.4,
+        "eyeSquintRight": 0.4,
+        "mouthDimpleLeft": 0.4,
+        "mouthSmileLeft": 0.55,
+        "mouthSmileRight": 0.25
+      },
+      "display": "Smug",
+      "key": "smug"
+    }
+  ],
+  "note": "Small test fixture derived from the ratified repo templates/emotions.json: same shape, full arkit recipes, descriptive fields trimmed.",
+  "procedural_groups": {
+    "blink": [
+      "blink",
+      "blinkLeft",
+      "blinkRight"
+    ],
+    "gaze": [
+      "lookUp",
+      "lookDown",
+      "lookLeft",
+      "lookRight"
+    ],
+    "note": "Not emotions. These compose over any emotion and are defined once for every character, following the VRM 1.0 grouping.",
+    "visemes": [
+      "aa",
+      "ih",
+      "ee",
+      "oh",
+      "ou"
+    ]
+  },
+  "schema": "lumen.emotion-templates",
+  "sheet_mood_mapping": {
+    "alarmed": "surprised with worried brow tension (browInnerUp added)",
+    "blush": "embarrassed (cheek component; pair with neutral or happy at low weight)",
+    "celebrate": "happy at full weight, plus pose",
+    "idle": "neutral",
+    "note": "The existing 2D companion sheet moods (light-show game/src/waifu/sprite.rs MOOD_ROWS) in terms of the canonical templates, so sprite, portrait, and 3D work stay the same faces.",
+    "pout": "annoyed with pushed lower lip (mouthShrugLower emphasis)",
+    "wink": "procedural blinkRight held, over happy or fun"
+  },
+  "version": 1
+}

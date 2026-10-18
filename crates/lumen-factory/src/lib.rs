@@ -5,6 +5,10 @@
 //!   procedural base mesh (no external assets), skin weights with at most
 //!   four influences per vertex, and a deterministic GLB writer plus a
 //!   fail-closed GLB reader for parse-back validation.
+//! - Phase 1b scope: blendshape composition (`blend`) — ARKit channel
+//!   displacement fields over the head region masks, emotion /
+//!   procedural / sheet morph targets composed from the ratified
+//!   templates file at a caller-supplied path.
 //! - Every public function fails closed: invalid input produces a typed
 //!   [`FactoryError`], never a panic and never a partial side effect.
 //! - All generation math is in-crate and ordered: the same inputs always
@@ -14,6 +18,7 @@
 #![forbid(unsafe_code)]
 
 pub mod base;
+pub mod blend;
 pub mod gltf;
 
 use sha2::{Digest, Sha256};
