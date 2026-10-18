@@ -665,26 +665,22 @@ pub const HEAD_RADII: [f32; 3] = [0.086, 0.106, 0.096];
 /// Default jaw-taper threshold height (meters).
 pub const HEAD_JAW_Y: f32 = 1.62;
 
-/// Hair-length parameter's neutral point (Phase 3): at this length
-/// the hair shell is exactly the Phase 1/2 shell, so the Séraphine
-/// regression anchor reproduces byte-for-byte.
+/// Hair length of the generic base build ([`ScaledBuild::default`]).
 pub const HAIR_LENGTH_DEFAULT: f32 = 0.65;
-/// Canonical hair back-panel bottom Y at length 1.0 (long).
-pub const HAIR_BOTTOM_LONG_Y: f32 = 1.28;
-/// Canonical hair back-panel bottom Y at length 0.0 (short).
-pub const HAIR_BOTTOM_SHORT_Y: f32 = 1.50;
-
-/// Canonical hair back-panel bottom Y for a hair `length` in
-/// `0.0..=1.0`: a plain lerp between [`HAIR_BOTTOM_SHORT_Y`] and
-/// [`HAIR_BOTTOM_LONG_Y`]. The shell implements this as a shift
-/// relative to the neutral point [`HAIR_LENGTH_DEFAULT`] (see
-/// `build_head`): the bottom vertex moves by
-/// `(hair_bottom_y(HAIR_LENGTH_DEFAULT) - hair_bottom_y(length))`
-/// scaled by the head's Y scale, so the neutral length changes no
-/// vertex at all.
-pub fn hair_bottom_y(length: f32) -> f32 {
-    HAIR_BOTTOM_SHORT_Y + (HAIR_BOTTOM_LONG_Y - HAIR_BOTTOM_SHORT_Y) * length
-}
+/// Hair cap shell scale over the head radii (projection v2: ~1.5 cm
+/// of hair volume at the default head; v1's 1.07 sat ~6 mm off the
+/// head and read as a rim).
+pub const HAIR_SHELL_SCALE: f32 = 1.15;
+/// Outfit torso shell scale over the body profile (v1: 1.035).
+pub const OUTFIT_TORSO_SCALE: f32 = 1.06;
+/// Outfit leg shell scale over the leg tube radii (v1: 1.05).
+pub const OUTFIT_LEGS_SCALE: f32 = 1.08;
+/// Hair tail root radius as a fraction of the head's X radius.
+pub const HAIR_TAIL_ROOT_FRACTION: f32 = 0.40;
+/// Hair tail tip radius as a fraction of its root radius.
+pub const HAIR_TAIL_TIP_FRACTION: f32 = 0.25;
+/// Ring count of the hair tail's vertical drop (bounded geometry).
+pub const HAIR_TAIL_DROP_RINGS: usize = 4;
 
 /// Ellipsoid head (also the basis for the hair shell when `hair` is set).
 fn build_head(
@@ -694,11 +690,10 @@ fn build_head(
     center: [f32; 3],
     radii: [f32; 3],
     jaw_y: f32,
-    hair_length: f32,
 ) -> (MeshPart, Vec<HeadRegionWeights>) {
     let lat_steps = 14usize;
     let lon_steps = 18usize;
-    let scale = if hair { 1.07 } else { 1.0 };
+    let scale = if hair { HAIR_SHELL_SCALE } else { 1.0 };
     let mut vertices: Vec<Vertex> = Vec::new();
     let mut indices: Vec<u32> = Vec::new();
     let mut grid: Vec<Vec<Option<u32>>> = Vec::new();
@@ -720,19 +715,6 @@ fn build_head(
                 let backness = (-dir[2]).clamp(0.0, 1.0);
                 if dir[1] < 0.0 {
                     pos[1] -= 0.24 * backness * (-dir[1]);
-                }
-                // Hair length (Phase 3): shift the back panel toward
-                // the length's canonical bottom Y (see hair_bottom_y),
-                // weighted by backness * downwardness so the panel's
-                // lowest vertex moves by the full shift and the face
-                // side never moves. The shift is exactly 0.0 at the
-                // neutral length, leaving Phase 1/2 shells untouched.
-                let head_y_scale = radii[1] / HEAD_RADII[1];
-                let shift = (hair_bottom_y(HAIR_LENGTH_DEFAULT) - hair_bottom_y(hair_length))
-                    * head_y_scale;
-                if shift != 0.0 {
-                    let weight = (backness * (-dir[1]).max(0.0) * 2.0).clamp(0.0, 1.0);
-                    pos[1] -= shift * weight;
                 }
                 // Hair covers back and sides; skip the face opening.
                 let face_opening = dir[2] > 0.35 && dir[1] > -0.55;
@@ -801,6 +783,55 @@ fn build_head(
         },
         masks,
     )
+}
+
+/// The hair tail (ponytail mass, projection v2): a tapered tube from
+/// the back of the hair cap near the crown out to a vertical drop
+/// line behind the head and back, then straight down to
+/// `neck_y + (hips_y - neck_y) * hair_length` on the (scaled) joints.
+/// `None` at hair length 0.0 (no hair below the neck).
+fn build_hair_tail(params: &ScaledBuild, joints: &[Joint]) -> Option<MeshPart> {
+    if params.hair_length <= 0.0 {
+        return None;
+    }
+    let center = params.head_center;
+    let radii = params.head_radii;
+    let neck_y = joint_pos(joints, "Neck")[1];
+    let hips_y = joint_pos(joints, "Hips")[1];
+    let bottom_y = neck_y + (hips_y - neck_y) * params.hair_length;
+    let root_radius = HAIR_TAIL_ROOT_FRACTION * radii[0];
+    let body_back = params
+        .profile
+        .iter()
+        .map(|&(_, _, rz)| rz)
+        .fold(0.0f32, f32::max)
+        * params.radial_scale
+        * OUTFIT_TORSO_SCALE;
+    let head_back = radii[2] * HAIR_SHELL_SCALE;
+    // The drop line clears both the hair cap and the outfit's back.
+    let drop_z = center[2] - head_back.max(body_back) - root_radius;
+    let mut points = vec![[
+        center[0],
+        center[1] + 0.35 * radii[1],
+        center[2] - 0.9 * head_back,
+    ]];
+    for ring in 0..=HAIR_TAIL_DROP_RINGS {
+        let t = ring as f32 / HAIR_TAIL_DROP_RINGS as f32;
+        points.push([center[0], center[1] + (bottom_y - center[1]) * t, drop_z]);
+    }
+    let last = (points.len() - 1) as f32;
+    let tube_radii: Vec<f32> = (0..points.len())
+        .map(|ring| root_radius * (1.0 - (1.0 - HAIR_TAIL_TIP_FRACTION) * ring as f32 / last))
+        .collect();
+    Some(build_tube(
+        "hair",
+        &points,
+        &tube_radii,
+        10,
+        false,
+        (0.50, 0.00, 0.75, 0.25),
+        joints,
+    ))
 }
 
 fn gauss(d: f32, sigma: f32) -> f32 {
@@ -949,9 +980,9 @@ pub struct ScaledBuild {
     pub head_center: [f32; 3],
     /// Head ellipsoid radii.
     pub head_radii: [f32; 3],
-    /// Hair length in `0.0..=1.0` (see [`hair_bottom_y`]); the
-    /// neutral [`HAIR_LENGTH_DEFAULT`] reproduces the Phase 1/2
-    /// hair shell exactly.
+    /// Hair length in `0.0..=1.0`: how far the hair tail reaches
+    /// below the `Neck` joint, as a fraction of the way to the `Hips`
+    /// joint; 0.0 builds no tail.
     pub hair_length: f32,
     /// Jaw-taper threshold height.
     pub jaw_y: f32,
@@ -1149,16 +1180,22 @@ pub fn build_base_mesh_parametric(params: &ScaledBuild) -> Result<BaseMesh, Fact
         &joints,
     ))?);
 
-    // Hair shell and head.
-    let (hair_part, _) = build_head(
+    // Hair shell (cap plus tail, one part) and head.
+    let (mut hair_part, _) = build_head(
         "hair",
         true,
         &joints,
         params.head_center,
         params.head_radii,
         params.jaw_y,
-        params.hair_length,
     );
+    if let Some(tail) = build_hair_tail(params, &joints) {
+        let base_idx = hair_part.vertices.len() as u32;
+        hair_part.vertices.extend(tail.vertices);
+        hair_part
+            .indices
+            .extend(tail.indices.iter().map(|i| i + base_idx));
+    }
     parts.push(finish_part(hair_part)?);
     let (head_part, head_masks) = build_head(
         "head",
@@ -1167,7 +1204,6 @@ pub fn build_base_mesh_parametric(params: &ScaledBuild) -> Result<BaseMesh, Fact
         params.head_center,
         params.head_radii,
         params.jaw_y,
-        params.hair_length,
     );
     let head_part = finish_part(head_part)?;
 
@@ -1197,7 +1233,7 @@ pub fn build_base_mesh_parametric(params: &ScaledBuild) -> Result<BaseMesh, Fact
         ))?);
     }
 
-    // Outfit leg shells (both legs merged into one part, tubes x1.05).
+    // Outfit leg shells (both legs merged into one part, tubes x OUTFIT_LEGS_SCALE).
     {
         let mut merged_vertices: Vec<Vertex> = Vec::new();
         let mut merged_indices: Vec<u32> = Vec::new();
@@ -1211,9 +1247,9 @@ pub fn build_base_mesh_parametric(params: &ScaledBuild) -> Result<BaseMesh, Fact
                 "outfit_legs",
                 &chain,
                 &[
-                    0.078 * 1.05 * radial,
-                    0.054 * 1.05 * radial,
-                    0.036 * 1.05 * radial,
+                    0.078 * OUTFIT_LEGS_SCALE * radial,
+                    0.054 * OUTFIT_LEGS_SCALE * radial,
+                    0.036 * OUTFIT_LEGS_SCALE * radial,
                 ],
                 12,
                 false,
@@ -1231,7 +1267,7 @@ pub fn build_base_mesh_parametric(params: &ScaledBuild) -> Result<BaseMesh, Fact
         })?);
     }
 
-    // Outfit torso shell (lathe x1.035, y 0.97..1.47).
+    // Outfit torso shell (lathe x OUTFIT_TORSO_SCALE, y 0.97..1.47).
     parts.push(finish_part(build_lathe(
         "outfit_torso",
         profile,
@@ -1239,7 +1275,7 @@ pub fn build_base_mesh_parametric(params: &ScaledBuild) -> Result<BaseMesh, Fact
         params.outfit_y.1,
         16,
         16,
-        1.035 * radial,
+        OUTFIT_TORSO_SCALE * radial,
         (0.50, 0.25, 0.75, 0.50),
         &joints,
     ))?);

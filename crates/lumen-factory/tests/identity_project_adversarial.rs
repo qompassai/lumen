@@ -308,6 +308,74 @@ fn extreme_head_scales_never_stretch_one_axis() {
     }
 }
 
+fn seraphine_record() -> lumen_factory::identity::IdentityRecord {
+    lumen_factory::identity::load_record(
+        &PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("assets/seraphine.identity.json"),
+    )
+    .expect("record")
+}
+
+#[test]
+fn hair_past_the_hips_or_degenerate_bands_fail_closed() {
+    let mut record = seraphine_record();
+    let m = record.sprite_measurements;
+    // Hair below the hip row is outside the modeled range: an error,
+    // never a clamp to 1.0.
+    record.sprite_measurements.hair_bottom_row = Some(m.hip_row + 5);
+    let err = record.hair_length().expect_err("past the hips");
+    assert!(err.to_string().contains("not clamped"), "error: {err}");
+    assert!(lumen_factory::params::ParameterRecord::from_identity(&record).is_err());
+    // Exactly at the hips is the top of the range.
+    record.sprite_measurements.hair_bottom_row = Some(m.hip_row);
+    assert_eq!(record.hair_length().expect("at hips"), 1.0);
+    // Hip at or above the neck: degenerate bands, no division.
+    record.sprite_measurements.hip_row = m.neck_row;
+    assert!(record.hair_length().is_err());
+}
+
+#[test]
+fn hair_length_bounds_build_no_tail_and_a_hip_length_tail() {
+    let record = seraphine_record();
+    let templates = load_templates(&fixture_templates()).expect("templates");
+    let hair_min_y = |length: f64| {
+        let mut params = lumen_factory::params::ParameterRecord::from_identity(&record).unwrap();
+        params.hair.length = length;
+        params.record_hash = params.compute_hash().unwrap();
+        let bytes = lumen_factory::project::build_character_with_params(
+            &record,
+            &templates,
+            &params,
+            BuildOptions::default(),
+        )
+        .expect("bounds-valid hair length builds");
+        let parts = lumen_factory::gltf::parse_glb_parts(&bytes).expect("parts");
+        let json = &parts.json;
+        let hair = json["meshes"][0]["primitives"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|p| json["materials"][p["material"].as_u64().unwrap() as usize]["name"] == "hair")
+            .expect("hair primitive");
+        let accessor =
+            &json["accessors"][hair["attributes"]["POSITION"].as_u64().unwrap() as usize];
+        (accessor["min"][1].as_f64().unwrap() as f32, params.scales())
+    };
+    let (no_tail_y, scales) = hair_min_y(0.0);
+    let joints = lumen_factory::base::scaled_joint_table(scales.0, scales.1, scales.2);
+    let y_of = |name: &str| joints.iter().find(|j| j.name == name).unwrap().position[1];
+    // Length 0: only the cap remains, its back panel ending above the
+    // hips by far (the tail is the only geometry that reaches down).
+    assert!(
+        no_tail_y > y_of("Hips") + 0.3,
+        "no-tail hair min y {no_tail_y}"
+    );
+    let (hip_tail_y, _) = hair_min_y(1.0);
+    assert!(
+        (hip_tail_y - y_of("Hips")).abs() < 1e-3,
+        "hip-length tail {hip_tail_y}"
+    );
+}
+
 #[test]
 fn invalid_companion_name_errors() {
     let dir = temp_dir("badname");

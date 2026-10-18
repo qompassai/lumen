@@ -44,7 +44,13 @@ fn from_identity_reproduces_phase2_scales_and_defaults() {
     assert_eq!(params.companion, "seraphine");
     assert_eq!(params.schema, "lumen.factory-params");
     assert_eq!(params.version, 1);
-    assert_eq!(params.hair.length, 0.65, "hair length default");
+    // Projection v2: hair length is the measured hair mass (mature
+    // sprite: hair bottom row 124, neck 45, hip 144 -> 79/99).
+    assert_eq!(
+        params.hair.length,
+        record.hair_length().expect("hair length")
+    );
+    assert!((params.hair.length - 79.0 / 99.0).abs() < 1e-12);
     assert_eq!(params.face.eye_scale, 1.0, "eye scale default");
     assert_eq!(
         params.appearance.skin.as_deref(),
@@ -78,10 +84,11 @@ fn anchor_seraphine_build_with_derived_params_is_byte_identical() {
     let expected = std::fs::read(asset_path("seraphine.glb")).expect("anchor glb");
     // Deliberate re-anchors (projection v2, docs/factory/FACTORY-PLAN.md
     // §9): Phase 2/3 cd7abaca... -> fix 1 (color-segmented head)
-    // d41e41ac... -> fix 2 (uniform head scale).
+    // d41e41ac... -> fix 2 (uniform head scale) 5f93fd6e... -> fix 3
+    // (shell offsets + hair tail).
     assert_eq!(
         sha256_hex(&expected),
-        "5f93fd6ea87c5f0e232f49eb914992e85b97c116535854b6101547f92773f37c",
+        "5bcaa972879b17a9f7a84b1ef2f00896329f53624d806ddca0c2dde6ab059552",
         "anchor asset is the projection v2 Séraphine build"
     );
     let via_params = build_character_with_params(

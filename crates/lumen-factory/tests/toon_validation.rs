@@ -17,8 +17,9 @@ use lumen_factory::validate::validate_bytes;
 /// SHA-256 anchor of the Séraphine build (committed asset). Deliberate
 /// re-anchors (projection v2, docs/factory/FACTORY-PLAN.md §9):
 /// Phase 2/3 cd7abaca... -> fix 1 (color-segmented head) d41e41ac...
-/// -> fix 2 (uniform head scale).
-const SERAPHINE_ANCHOR: &str = "5f93fd6ea87c5f0e232f49eb914992e85b97c116535854b6101547f92773f37c";
+/// -> fix 2 (uniform head scale) 5f93fd6e... -> fix 3 (shell offsets +
+/// hair tail).
+const SERAPHINE_ANCHOR: &str = "5bcaa972879b17a9f7a84b1ef2f00896329f53624d806ddca0c2dde6ab059552";
 
 fn manifest_path(parts: &[&str]) -> PathBuf {
     let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));

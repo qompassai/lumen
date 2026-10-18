@@ -426,3 +426,45 @@ fn seraphine_head_keeps_base_aspect_and_measured_fraction() {
         "head fraction {head_fraction} vs color-segmented skull {skull_fraction}"
     );
 }
+
+#[test]
+fn synthetic_hair_length_is_the_measured_hair_mass() {
+    let dir = temp_art_dir("hairlen", false);
+    let record = ingest(&dir, "testina").expect("ingest");
+    // Hair bottom row 59, neck 36, hip 88 (proportions test above).
+    let length = record.hair_length().expect("hair length");
+    assert!((length - 23.0 / 52.0).abs() < 1e-12, "length {length}");
+    let params = lumen_factory::params::ParameterRecord::from_identity(&record).expect("params");
+    assert_eq!(params.hair.length, length);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn seraphine_shells_have_real_offsets_and_the_tail_reaches_its_length() {
+    let glb = asset_bytes("seraphine.glb");
+    let half_width = |part: &str| {
+        let (lo, hi) = extent(&glb, Some(part));
+        (hi[0] - lo[0]) / 2.0
+    };
+    // v1 sat the hair cap ~6 mm and the outfit torso ~5 mm off.
+    let hair_offset = half_width("hair") - half_width("head");
+    assert!(hair_offset >= 0.012, "hair cap offset {hair_offset} m");
+    let outfit_offset = half_width("outfit_torso") - half_width("body");
+    assert!(outfit_offset >= 0.008, "outfit offset {outfit_offset} m");
+    // The tail bottom sits at neck + (hips - neck) * hair length on
+    // the scaled skeleton the build used.
+    let params = lumen_factory::params::ParameterRecord::load(
+        &PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("assets/seraphine.params.json"),
+    )
+    .expect("params");
+    let (head, torso, leg) = params.scales();
+    let joints = lumen_factory::base::scaled_joint_table(head, torso, leg);
+    let y_of = |name: &str| joints.iter().find(|j| j.name == name).unwrap().position[1];
+    let expected = y_of("Neck") + (y_of("Hips") - y_of("Neck")) * params.hair.length as f32;
+    let (hair_lo, _) = extent(&glb, Some("hair"));
+    assert!(
+        (hair_lo[1] - expected).abs() < 1e-3,
+        "tail bottom {} vs expected {expected}",
+        hair_lo[1]
+    );
+}

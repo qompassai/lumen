@@ -376,6 +376,36 @@ impl IdentityRecord {
         let p = &self.proportions;
         scales_for_ratios(p.head_ratio, p.torso_ratio, p.leg_ratio)
     }
+
+    /// The hair length this record measures, in the parameter
+    /// record's `hair.length` units: how far the sprite's hair mass
+    /// reaches below the neck row, as a fraction of the torso band
+    /// (neck row to hip row) — the same band the build maps it onto
+    /// (`base.rs`, the hair tail). Hair ending at or above the neck
+    /// has no length below it (0.0), as does a record with no hair
+    /// mass. Fails closed when the bands are degenerate or the hair
+    /// reaches past the hips (> 1.0 is outside the modeled range;
+    /// never clamped).
+    pub fn hair_length(&self) -> Result<f64, FactoryError> {
+        let m = &self.sprite_measurements;
+        let Some(hair_bottom) = m.hair_bottom_row else {
+            return Ok(0.0);
+        };
+        if m.hip_row <= m.neck_row {
+            return Err(FactoryError::BadParam(format!(
+                "sprite bands degenerate (neck {}, hip {})",
+                m.neck_row, m.hip_row
+            )));
+        }
+        let below_neck = f64::from(hair_bottom.saturating_sub(m.neck_row));
+        let length = below_neck / f64::from(m.hip_row - m.neck_row);
+        if length > 1.0 {
+            return Err(FactoryError::BadParam(format!(
+                "hair reaches {length:.3} of the torso band (past the hips; fail closed, not clamped)"
+            )));
+        }
+        Ok(length)
+    }
 }
 
 /// The applied-scales law for any measured `(head, torso, leg)` ratio
