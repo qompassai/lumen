@@ -13,10 +13,14 @@
 //!   output sorted by population then RGB). Signature anchors are
 //!   derived from documented image regions with named threshold
 //!   constants; every derivation is deterministic.
-//! - Proportions come from the sprite frame-0 alpha channel: a
-//!   row-alpha profile gives total height, the head band (top to the
-//!   neck, defined below), the hip row, and the leg span. A fully
-//!   transparent or otherwise degenerate sprite fails closed.
+//! - Proportions come from frame 0 of the mature sprite when one is
+//!   present (the mature set is the default target, factory plan §1),
+//!   else from the base sprite; `proportions_source` records which.
+//!   The head is segmented by color as well as alpha (see "Head
+//!   segmentation" below), so the head band measures the head, not
+//!   the hair mass around it. A fully transparent sprite, a sprite
+//!   with no skin-colored face, or one whose head cannot be segmented
+//!   fails closed.
 //! - The record serializes as canonical JSON (sorted keys) and carries
 //!   `record_hash`: the SHA-256 of the canonical JSON with the hash
 //!   field itself empty. Re-ingesting the same art yields the same
@@ -42,11 +46,33 @@
 //! - Outfit primaries: the two most populous sprite colors (median-cut)
 //!   that match neither skin nor hair.
 //!
-//! Neck definition (sprite): the head's widest row is found in the
-//! upper 40% of the alpha bounding box; the neck is the narrowest row
-//! from that row down to the 40% line. (The naive "narrowest row in
-//! the upper 40%" is the hair tip at the very top of the sprite and
-//! is never the neck.)
+//! Head segmentation (sprite, v2). Pixels "match" an anchor when
+//! opaque and within [`COLOR_MATCH_DIST`] of the portrait-derived
+//! skin or hair color. The upper band is the top 40% of the alpha
+//! bounding box.
+//! - Face column: the median x of skin-matching pixels in the upper
+//!   band (at least [`SPRITE_FACE_MIN_SKIN_PIXELS`]).
+//! - Center run: per row, the width of the contiguous opaque run that
+//!   contains the face column (0 when that pixel is transparent).
+//!   Hair masses that hang beside the body, and a ponytail tip that
+//!   rises off-center, are not part of it.
+//! - Scalp: the first row with a non-zero center run. Rows above it
+//!   (an off-center ponytail tip) are excluded from the figure.
+//! - Chin: from the first center run that contains skin, the first
+//!   stretch of rows narrower than [`JAW_NARROW_FRACTION`] of the
+//!   widest run so far is the jaw/neck narrowing; the chin is its
+//!   narrowest row (first on ties).
+//! - Neck: the chin plus the canonical base's neck allowance
+//!   ([`crate::base::base_neck_per_skull`] skull heights), so the
+//!   head band (scalp to neck) has the same definition as the base's
+//!   (`Neck` joint to the top) and the scales law is unchanged.
+//! - Hip: the widest alpha row inside the 40..60% band of the figure.
+//! - Hair bottom: tracing down from the scalp, the last row holding a
+//!   hair-matching pixel before a run of more than
+//!   [`HAIR_MAX_GAP_ROWS`] hair-free rows (`None` when the trace finds
+//!   no hair).
+//!
+//! All rows in [`SpriteMeasurements`] are relative to the scalp.
 
 #![forbid(unsafe_code)]
 
@@ -61,8 +87,10 @@ use crate::{FactoryError, sha256_hex};
 
 /// Schema identifier emitted in every record.
 pub const IDENTITY_SCHEMA: &str = "lumen.factory-identity";
-/// Schema version emitted in every record.
-pub const IDENTITY_VERSION: u32 = 1;
+/// Schema version emitted in every record. Version 2 (projection v2)
+/// changed what the head band measures (color-segmented head instead
+/// of the alpha band that counted hair mass); v1 records fail closed.
+pub const IDENTITY_VERSION: u32 = 2;
 
 /// Minimum accepted proportion band scale (see
 /// [`IdentityRecord::applied_scales`]). The range was widened from
@@ -105,6 +133,15 @@ pub const SKIN_MIN_PIXELS: usize = 24;
 pub const PORTRAIT_SAMPLE_STRIDE: u32 = 4;
 /// Total collected-sample bound across all palette inputs.
 pub const MAX_PALETTE_SAMPLES: usize = 400_000;
+/// Minimum skin-matching pixels in the sprite's upper band before the
+/// face column is trusted (see the head segmentation module docs).
+pub const SPRITE_FACE_MIN_SKIN_PIXELS: usize = 8;
+/// A center run narrower than this fraction of the widest run seen
+/// from the scalp belongs to the jaw/neck narrowing.
+pub const JAW_NARROW_FRACTION: f64 = 0.6;
+/// Hair-free rows tolerated inside the hair mass when tracing it down
+/// from the scalp (pixel-art strands break up near the tips).
+pub const HAIR_MAX_GAP_ROWS: u32 = 3;
 
 /// Face region: `(x0, x1, y0, y1)` fractions of the portrait.
 pub const FACE_REGION: (f64, f64, f64, f64) = (0.34, 0.66, 0.24, 0.46);
@@ -170,22 +207,34 @@ pub struct Proportions {
     pub torso_ratio: f64,
 }
 
-/// Raw sprite measurements behind the ratios (pixels).
+/// Raw sprite measurements behind the ratios (pixels). Rows are
+/// relative to the scalp row (the figure top; see the head
+/// segmentation module docs).
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub struct SpriteMeasurements {
-    /// Widest alpha row inside the 40..60% band (row index from top
-    /// of the alpha bounding box).
+    /// Chin row: the narrowest row of the jaw/neck narrowing.
+    pub chin_row: u32,
+    /// Face column (x) the center run is measured through.
+    pub face_center_x: u32,
+    /// Last row of the hair mass traced down from the scalp, `None`
+    /// when no hair-matching pixel was found.
+    pub hair_bottom_row: Option<u32>,
+    /// Widest alpha row inside the 40..60% band of the figure.
     pub hip_row: u32,
-    /// Head band height (neck row minus top row).
+    /// Head band height (scalp to the neck row).
     pub head_height_px: u32,
-    /// Leg span (bottom row minus hip row).
+    /// Leg span (hip row to the bottom of the figure).
     pub leg_span_px: u32,
-    /// Narrowest row at or below the head's widest row, inside the
-    /// upper 40% (row index from top of the bounding box).
+    /// Neck row: the chin plus the base's neck allowance.
     pub neck_row: u32,
-    /// Torso span (hip row minus neck row).
+    /// Rows between the alpha bounding-box top and the scalp (an
+    /// off-center ponytail tip, excluded from the figure).
+    pub scalp_offset_px: u32,
+    /// Skull height (scalp to chin), the color-segmented head.
+    pub skull_height_px: u32,
+    /// Torso span (neck row to hip row).
     pub torso_height_px: u32,
-    /// Alpha bounding-box height.
+    /// Figure height (scalp to the bottom alpha row, inclusive).
     pub total_height_px: u32,
     /// Sprite frame width.
     pub width_px: u32,
@@ -214,6 +263,9 @@ pub struct IdentityRecord {
     pub palette_dominant: Vec<PaletteEntry>,
     /// Measured body proportions.
     pub proportions: Proportions,
+    /// Role tag of the sprite the proportions were measured from
+    /// (`sprite_mature` when present, else `sprite_base`).
+    pub proportions_source: String,
     /// SHA-256 of the canonical JSON with this field empty.
     pub record_hash: String,
     /// Schema identifier ([`IDENTITY_SCHEMA`]).
@@ -756,87 +808,189 @@ fn derive_outfit(sprite: &RgbaImage, hair: [u8; 3], skin: [u8; 3]) -> Vec<ColorE
     out
 }
 
-// --- proportions from the sprite alpha channel ---
+// --- proportions from the sprite (color-aware head segmentation) ---
 
-/// Measure body proportions from a sprite frame's alpha channel.
-///
-/// Row profile: per-row count of pixels with alpha >=
-/// [`ALPHA_OPAQUE`]. The bounding box of non-empty rows is the total
-/// height; the neck and hip rows follow the module-doc definitions.
-/// Fails closed on a fully transparent or degenerate sprite.
-pub fn measure_proportions(
+fn pixel_matches(sprite: &RgbaImage, x: u32, y: u32, anchor: [u8; 3]) -> bool {
+    let px = sprite.get_pixel(x, y);
+    px[3] >= ALPHA_OPAQUE && color_dist([px[0], px[1], px[2]], anchor) < COLOR_MATCH_DIST
+}
+
+fn row_matches(sprite: &RgbaImage, y: u32, anchor: [u8; 3]) -> bool {
+    (0..sprite.width()).any(|x| pixel_matches(sprite, x, y, anchor))
+}
+
+/// The contiguous opaque run of row `y` containing column `x`, as
+/// `(width, left, right)`; width 0 when that pixel is transparent.
+fn center_run(sprite: &RgbaImage, x: u32, y: u32) -> (u32, u32, u32) {
+    let opaque = |cx: u32| sprite.get_pixel(cx, y)[3] >= ALPHA_OPAQUE;
+    if !opaque(x) {
+        return (0, x, x);
+    }
+    let mut left = x;
+    while left > 0 && opaque(left - 1) {
+        left -= 1;
+    }
+    let mut right = x;
+    while right + 1 < sprite.width() && opaque(right + 1) {
+        right += 1;
+    }
+    (right - left + 1, left, right)
+}
+
+/// Median x of skin-matching pixels in rows `top..upper_end`.
+fn face_column(
     sprite: &RgbaImage,
-) -> Result<(Proportions, SpriteMeasurements), FactoryError> {
-    let (w, h) = (sprite.width(), sprite.height());
-    let mut row_counts: Vec<u32> = vec![0; h as usize];
-    for (x, y, px) in sprite.enumerate_pixels() {
-        let _ = x;
-        if px[3] >= ALPHA_OPAQUE {
-            row_counts[y as usize] += 1;
+    skin: [u8; 3],
+    top: u32,
+    upper_end: u32,
+) -> Result<u32, FactoryError> {
+    let mut xs: Vec<u32> = Vec::new();
+    for y in top..upper_end {
+        for x in 0..sprite.width() {
+            if pixel_matches(sprite, x, y, skin) {
+                xs.push(x);
+            }
         }
     }
-    let top = row_counts.iter().position(|&c| c > 0);
-    let bottom = row_counts.iter().rposition(|&c| c > 0);
+    if xs.len() < SPRITE_FACE_MIN_SKIN_PIXELS {
+        return Err(FactoryError::BadParam(format!(
+            "sprite upper band has {} skin-colored pixels (< {SPRITE_FACE_MIN_SKIN_PIXELS}); \
+             cannot locate the face",
+            xs.len()
+        )));
+    }
+    xs.sort_unstable();
+    Ok(xs[xs.len() / 2])
+}
+
+/// The chin row: narrowest row of the first jaw/neck narrowing below
+/// the face (module docs), or `None` when no narrowing is found.
+fn find_chin(sprite: &RgbaImage, face_x: u32, skin: [u8; 3], scalp: u32, end: u32) -> Option<u32> {
+    let mut head_width = 0u32;
+    let mut in_face = false;
+    let mut best: Option<(u32, u32)> = None;
+    for y in scalp..end {
+        let (width, left, right) = center_run(sprite, face_x, y);
+        if !in_face {
+            in_face = width > 0 && (left..=right).any(|x| pixel_matches(sprite, x, y, skin));
+        }
+        let narrow = f64::from(width) < JAW_NARROW_FRACTION * f64::from(head_width);
+        match best {
+            None if in_face && narrow => best = Some((width, y)),
+            None => head_width = head_width.max(width),
+            Some(_) if !narrow => break,
+            Some((best_width, _)) if width < best_width => best = Some((width, y)),
+            Some(_) => {}
+        }
+    }
+    best.map(|(_, y)| y)
+}
+
+/// Last row of the hair mass traced down from `scalp` (module docs).
+fn hair_bottom(sprite: &RgbaImage, hair: [u8; 3], scalp: u32, bottom: u32) -> Option<u32> {
+    let mut last: Option<u32> = None;
+    let mut gap = 0u32;
+    for y in scalp..=bottom {
+        if row_matches(sprite, y, hair) {
+            last = Some(y);
+            gap = 0;
+        } else {
+            gap += 1;
+            if gap > HAIR_MAX_GAP_ROWS {
+                break;
+            }
+        }
+    }
+    last
+}
+
+/// Alpha bounding rows `(top, bottom)` of a sprite; fails closed when
+/// fully transparent or shorter than [`MIN_SPRITE_EDGE`].
+fn alpha_rows(sprite: &RgbaImage) -> Result<(u32, u32), FactoryError> {
+    let opaque_row =
+        |y: u32| (0..sprite.width()).any(|x| sprite.get_pixel(x, y)[3] >= ALPHA_OPAQUE);
+    let top = (0..sprite.height()).find(|&y| opaque_row(y));
+    let bottom = (0..sprite.height()).rev().find(|&y| opaque_row(y));
     let (Some(top), Some(bottom)) = (top, bottom) else {
         return Err(FactoryError::BadParam(
             "sprite is fully transparent".to_string(),
         ));
     };
-    let total = (bottom - top + 1) as u32;
+    let total = bottom - top + 1;
     if total < MIN_SPRITE_EDGE {
         return Err(FactoryError::BadParam(format!(
             "sprite alpha height {total} is degenerate"
         )));
     }
-    let rel = |row: usize| row - top;
-    let upper_end = (total as f64 * 0.40) as usize;
-    // Head's widest row within the upper 40%.
-    let mut head_widest = 0usize;
-    for i in 0..upper_end.max(1) {
-        if row_counts[top + i] > row_counts[top + head_widest] {
-            head_widest = i;
+    Ok((top, bottom))
+}
+
+/// Widest alpha row in rows `lo..=hi` (first on ties).
+fn widest_row(sprite: &RgbaImage, lo: u32, hi: u32) -> u32 {
+    let count = |y: u32| {
+        (0..sprite.width())
+            .filter(|&x| sprite.get_pixel(x, y)[3] >= ALPHA_OPAQUE)
+            .count()
+    };
+    let mut widest = lo;
+    for y in lo..=hi {
+        if count(y) > count(widest) {
+            widest = y;
         }
     }
-    // Neck: narrowest row from the head's widest row to the 40% line.
-    let mut neck = head_widest;
-    for i in head_widest..upper_end.max(1) {
-        if row_counts[top + i] < row_counts[top + neck] {
-            neck = i;
-        }
-    }
-    // Hip: widest row within the 40..60% band.
-    let band_lo = (total as f64 * 0.40) as usize;
-    let band_hi = ((total as f64 * 0.60) as usize).min(total as usize - 1);
-    let mut hip = band_lo;
-    for i in band_lo..=band_hi {
-        if row_counts[top + i] > row_counts[top + hip] {
-            hip = i;
-        }
-    }
-    if neck == 0 || hip <= neck {
+    widest
+}
+
+/// Measure body proportions from a sprite frame, segmenting the head
+/// by color (`skin` / `hair` anchors from the portrait) as well as
+/// alpha; see the module docs for every definition. Fails closed on a
+/// transparent or degenerate sprite, a sprite with no skin-colored
+/// face, no jaw narrowing below the face, or degenerate bands.
+pub fn measure_proportions(
+    sprite: &RgbaImage,
+    skin: [u8; 3],
+    hair: [u8; 3],
+) -> Result<(Proportions, SpriteMeasurements), FactoryError> {
+    let (alpha_top, bottom) = alpha_rows(sprite)?;
+    let upper_end = alpha_top + ((bottom - alpha_top + 1) as f64 * 0.40) as u32;
+    let face_x = face_column(sprite, skin, alpha_top, upper_end)?;
+    let scalp = (alpha_top..upper_end)
+        .find(|&y| center_run(sprite, face_x, y).0 > 0)
+        .ok_or_else(|| FactoryError::BadParam("sprite face column has no head".to_string()))?;
+    let chin = find_chin(sprite, face_x, skin, scalp, upper_end).ok_or_else(|| {
+        FactoryError::BadParam("no jaw narrowing below the face; cannot segment the head".into())
+    })?;
+    let total = bottom - scalp + 1;
+    let skull = chin - scalp;
+    let neck = skull + (skull as f32 * crate::base::base_neck_per_skull()).round() as u32;
+    let band_lo = scalp + (total as f64 * 0.40) as u32;
+    let band_hi = (scalp + (total as f64 * 0.60) as u32).min(bottom);
+    let hip = widest_row(sprite, band_lo, band_hi) - scalp;
+    if skull == 0 || hip <= neck {
         return Err(FactoryError::BadParam(format!(
-            "sprite bands degenerate (neck {neck}, hip {hip}, total {total})"
+            "sprite bands degenerate (skull {skull}, neck {neck}, hip {hip}, total {total})"
         )));
     }
-    let head_px = neck as u32;
-    let torso_px = (hip - neck) as u32;
-    let leg_px = total - hip as u32;
-    let total_f = total as f64;
+    let total_f = f64::from(total);
     let proportions = Proportions {
-        head_ratio: head_px as f64 / total_f,
-        leg_ratio: leg_px as f64 / total_f,
-        torso_ratio: torso_px as f64 / total_f,
+        head_ratio: f64::from(neck) / total_f,
+        leg_ratio: f64::from(total - hip) / total_f,
+        torso_ratio: f64::from(hip - neck) / total_f,
     };
     let measurements = SpriteMeasurements {
-        hip_row: hip as u32,
-        head_height_px: head_px,
-        leg_span_px: leg_px,
-        neck_row: neck as u32,
-        torso_height_px: torso_px,
+        chin_row: skull,
+        face_center_x: face_x,
+        hair_bottom_row: hair_bottom(sprite, hair, scalp, bottom).map(|y| y - scalp),
+        hip_row: hip,
+        head_height_px: neck,
+        leg_span_px: total - hip,
+        neck_row: neck,
+        scalp_offset_px: scalp - alpha_top,
+        skull_height_px: skull,
+        torso_height_px: hip - neck,
         total_height_px: total,
-        width_px: w,
+        width_px: sprite.width(),
     };
-    let _ = rel;
     Ok((proportions, measurements))
 }
 
@@ -953,8 +1107,14 @@ pub fn ingest(art_dir: &Path, companion: &str) -> Result<IdentityRecord, Factory
     }
     let palette_dominant = median_cut(&samples, PALETTE_ENTRIES);
 
-    // Proportions from the sprite alpha channel.
-    let (proportions, sprite_measurements) = measure_proportions(&sprite)?;
+    // Proportions: mature sprite when present (the default target),
+    // segmented by the portrait's skin and hair anchors.
+    let mature = mature_path.as_deref().map(load_gif_frame0).transpose()?;
+    let (measured, proportions_source) = match &mature {
+        Some(frame) => (frame, "sprite_mature"),
+        None => (&sprite, "sprite_base"),
+    };
+    let (proportions, sprite_measurements) = measure_proportions(measured, skin, hair)?;
 
     let mut record = IdentityRecord {
         companion: companion.to_string(),
@@ -967,6 +1127,7 @@ pub fn ingest(art_dir: &Path, companion: &str) -> Result<IdentityRecord, Factory
         },
         palette_dominant,
         proportions,
+        proportions_source: proportions_source.to_string(),
         record_hash: String::new(),
         schema: IDENTITY_SCHEMA.to_string(),
         sources,

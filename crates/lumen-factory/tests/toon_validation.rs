@@ -14,8 +14,10 @@ use lumen_factory::sha256_hex;
 use lumen_factory::toon::{TOON_EXTRAS_KEY, ToonConfig};
 use lumen_factory::validate::validate_bytes;
 
-/// SHA-256 anchor of the Phase 2/3 Séraphine build (committed asset).
-const SERAPHINE_ANCHOR: &str = "cd7abaca01077934ab0eef422f9252b047ec577300251c54f89d6e0e8faa7c64";
+/// SHA-256 anchor of the Séraphine build (committed asset). Deliberate
+/// re-anchors (projection v2, docs/factory/FACTORY-PLAN.md §9):
+/// Phase 2/3 cd7abaca... -> fix 1 (color-segmented head).
+const SERAPHINE_ANCHOR: &str = "d41e41ac4a51eba354570f0d85f8bb9a83809948dc6ab8d8b306df565149eee8";
 
 fn manifest_path(parts: &[&str]) -> PathBuf {
     let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));

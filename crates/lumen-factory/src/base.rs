@@ -999,6 +999,24 @@ pub fn base_proportions() -> (f32, f32, f32) {
     ((total - neck) / total, (neck - hips) / total, hips / total)
 }
 
+/// The canonical base's neck allowance below the chin, as a fraction
+/// of its skull height: `(chin_y - neck_joint_y) / skull_height`, with
+/// the chin at the bottom of the default head ellipsoid. The sprite
+/// measurement in `identity.rs` locates the chin by color and uses
+/// this ratio to place the band boundary that corresponds to the
+/// base's `Neck` joint, so sprite and base head bands share one
+/// definition.
+pub fn base_neck_per_skull() -> f32 {
+    let skull = 2.0 * HEAD_RADII[1];
+    let chin_y = HEAD_CENTER[1] - HEAD_RADII[1];
+    let neck_y = joint_table()
+        .iter()
+        .find(|joint| joint.name == "Neck")
+        .map(|joint| joint.position[1])
+        .unwrap_or(0.0);
+    (chin_y - neck_y) / skull
+}
+
 /// The canonical joint table with Y positions remapped piecewise by
 /// body band: leg-band heights (at or below the hips) scale by
 /// `leg_scale`, torso-band heights by `torso_scale` on top of the
