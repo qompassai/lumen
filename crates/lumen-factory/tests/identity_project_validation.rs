@@ -49,20 +49,27 @@ fn synthetic_portrait() -> RgbaImage {
     img
 }
 
-/// Synthetic sprite 100x200 with known alpha bands:
-/// hair rows 0..50 (w 70), neck 50..60 (w 24), torso 60..120 (w 66),
-/// hips at 100..110 (w 84), legs 120..200 (two columns, total w 44).
+/// Synthetic sprite 100x200 with known color-segmentation landmarks:
+/// an off-center ponytail tip (rows 0..6, x 64..70), the hair cap
+/// (rows 6..18, w 40), the face (rows 18..34: skin x 34..66 framed by
+/// hair), a hair tail hanging off the head's right side (x 70..76,
+/// rows 18..66), the jaw/neck narrowing (rows 34..38, skin w 12), the
+/// torso (rows 38..106, w 60) with hips (rows 94..102, w 80), and two
+/// leg columns (rows 106..200).
 fn synthetic_sprite() -> RgbaImage {
     let mut img = RgbaImage::new(100, 200);
     for p in img.pixels_mut() {
         *p = Rgba([0, 0, 0, 0]);
     }
-    fill(&mut img, 15, 0, 85, 50, px(HAIR));
-    fill(&mut img, 38, 50, 62, 60, px(SKIN));
-    fill(&mut img, 17, 60, 83, 120, px(OUTFIT_A));
-    fill(&mut img, 8, 100, 92, 110, px(OUTFIT_A));
-    fill(&mut img, 20, 120, 42, 200, px(OUTFIT_B));
-    fill(&mut img, 58, 120, 80, 200, px(OUTFIT_B));
+    fill(&mut img, 64, 0, 70, 6, px(HAIR));
+    fill(&mut img, 30, 6, 70, 34, px(HAIR));
+    fill(&mut img, 34, 18, 66, 34, px(SKIN));
+    fill(&mut img, 44, 34, 56, 38, px(SKIN));
+    fill(&mut img, 20, 38, 80, 106, px(OUTFIT_A));
+    fill(&mut img, 10, 94, 90, 102, px(OUTFIT_A));
+    fill(&mut img, 70, 18, 76, 66, px(HAIR));
+    fill(&mut img, 26, 106, 46, 200, px(OUTFIT_B));
+    fill(&mut img, 54, 106, 74, 200, px(OUTFIT_B));
     img
 }
 
@@ -115,16 +122,68 @@ fn median_cut_finds_known_dominant_colors_deterministically() {
 
 #[test]
 fn proportions_on_known_sprite_bands() {
-    let (props, m) = measure_proportions(&synthetic_sprite()).expect("measures");
-    assert_eq!(m.total_height_px, 200);
-    assert_eq!(m.neck_row, 50);
-    assert_eq!(m.hip_row, 100);
-    assert_eq!(m.head_height_px, 50);
-    assert_eq!(m.torso_height_px, 50);
-    assert_eq!(m.leg_span_px, 100);
-    assert!((props.head_ratio - 0.25).abs() < 1e-9);
-    assert!((props.torso_ratio - 0.25).abs() < 1e-9);
-    assert!((props.leg_ratio - 0.50).abs() < 1e-9);
+    let (props, m) = measure_proportions(&synthetic_sprite(), SKIN, HAIR).expect("measures");
+    // Face column: median x of the skin pixels in the upper band.
+    assert_eq!(m.face_center_x, 50);
+    // The ponytail tip (rows 0..6) is off the face column: the scalp
+    // is row 6 and the figure is rows 6..200.
+    assert_eq!(m.scalp_offset_px, 6);
+    assert_eq!(m.total_height_px, 194);
+    // Chin at the jaw narrowing (absolute row 34), not at the hair
+    // tail that keeps the head band wide down to row 66.
+    assert_eq!(m.chin_row, 28);
+    assert_eq!(m.skull_height_px, 28);
+    // Neck = chin + round(28 * base_neck_per_skull) = 28 + 8.
+    assert_eq!(m.neck_row, 36);
+    assert_eq!(m.head_height_px, 36);
+    assert_eq!(m.hip_row, 88);
+    assert_eq!(m.torso_height_px, 52);
+    assert_eq!(m.leg_span_px, 106);
+    // The tail is the hair mass's lowest extent (absolute row 65).
+    assert_eq!(m.hair_bottom_row, Some(59));
+    assert!((props.head_ratio - 36.0 / 194.0).abs() < 1e-12);
+    assert!((props.torso_ratio - 52.0 / 194.0).abs() < 1e-12);
+    assert!((props.leg_ratio - 106.0 / 194.0).abs() < 1e-12);
+}
+
+#[test]
+fn base_neck_allowance_comes_from_the_base_head() {
+    // Chin 1.665 - 0.106 = 1.559 m, Neck joint 1.50 m, skull 0.212 m.
+    let ratio = lumen_factory::base::base_neck_per_skull();
+    assert!((ratio - 0.059 / 0.212).abs() < 1e-5, "ratio {ratio}");
+}
+
+#[test]
+fn ingest_measures_the_mature_sprite_when_present() {
+    let dir = temp_art_dir("mature", false);
+    // Base sprite: a tall-headed chibi-like silhouette the mature
+    // sprite must override.
+    let mut chibi = RgbaImage::from_pixel(100, 200, Rgba([0, 0, 0, 0]));
+    fill(&mut chibi, 20, 0, 80, 70, px(HAIR));
+    fill(&mut chibi, 30, 20, 70, 70, px(SKIN));
+    fill(&mut chibi, 44, 70, 56, 74, px(SKIN));
+    fill(&mut chibi, 20, 74, 80, 200, px(OUTFIT_A));
+    fill(&mut chibi, 10, 110, 90, 116, px(OUTFIT_A));
+    let companions = dir.join("companions");
+    DynamicImage::ImageRgba8(chibi.clone())
+        .save(companions.join("testina_animated_base.gif"))
+        .expect("write base sprite");
+    let without = ingest(&dir, "testina").expect("ingest without mature");
+    assert_eq!(without.proportions_source, "sprite_base");
+    let (chibi_props, _) = measure_proportions(&chibi, SKIN, HAIR).expect("chibi measures");
+    assert_eq!(without.proportions, chibi_props);
+
+    DynamicImage::ImageRgba8(synthetic_sprite())
+        .save(companions.join("testina_animated_mature.gif"))
+        .expect("write mature sprite");
+    let with = ingest(&dir, "testina").expect("ingest with mature");
+    assert_eq!(with.proportions_source, "sprite_mature");
+    let (mature_props, mature_m) =
+        measure_proportions(&synthetic_sprite(), SKIN, HAIR).expect("mature measures");
+    assert_eq!(with.proportions, mature_props);
+    assert_eq!(with.sprite_measurements, mature_m);
+    assert!(with.sources.iter().any(|s| s.role == "sprite_mature"));
+    let _ = std::fs::remove_dir_all(&dir);
 }
 
 #[test]
@@ -150,7 +209,7 @@ fn synthetic_ingest_finds_magenta_hair_and_skin() {
         "outfit primary {primary:?} should be the blue block"
     );
     assert_eq!(record.schema, "lumen.factory-identity");
-    assert_eq!(record.version, 1);
+    assert_eq!(record.version, 2);
     assert!(record.sources.iter().any(|s| s.role == "portrait"));
     assert!(record.sources.iter().any(|s| s.role == "sprite_base"));
     assert!(record.sources.iter().any(|s| s.role == "expression"));

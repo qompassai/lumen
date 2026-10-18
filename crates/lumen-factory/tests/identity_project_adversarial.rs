@@ -104,10 +104,13 @@ fn corrupt_sprite_bytes_error() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
+const SKIN: [u8; 3] = [242, 214, 196];
+const HAIR: [u8; 3] = [230, 70, 170];
+
 #[test]
 fn fully_transparent_sprite_errors() {
     let img = RgbaImage::new(40, 80);
-    assert!(measure_proportions(&img).is_err());
+    assert!(measure_proportions(&img, SKIN, HAIR).is_err());
     let dir = temp_dir("transparent");
     write_valid_pair(&dir);
     // Replace the sprite with a fully transparent one.
@@ -140,7 +143,64 @@ fn degenerate_single_row_sprite_errors() {
     for x in 10..30 {
         img.put_pixel(x, 40, Rgba([200, 100, 100, 255]));
     }
-    assert!(measure_proportions(&img).is_err());
+    assert!(measure_proportions(&img, SKIN, HAIR).is_err());
+}
+
+#[test]
+fn sprite_without_skin_colored_face_fails_closed() {
+    // A clean banded silhouette whose "face" is outfit-blue: the face
+    // column cannot be located, so the head is never guessed.
+    let mut img = RgbaImage::from_pixel(40, 80, Rgba([0, 0, 0, 0]));
+    for y in 0..80u32 {
+        let (x0, x1) = if (20..24).contains(&y) {
+            (17, 23)
+        } else {
+            (8, 32)
+        };
+        for x in x0..x1 {
+            img.put_pixel(x, y, Rgba([60, 80, 200, 255]));
+        }
+    }
+    let err = measure_proportions(&img, SKIN, HAIR).expect_err("no skin face");
+    assert!(err.to_string().contains("skin-colored"), "error: {err}");
+}
+
+#[test]
+fn sprite_without_jaw_narrowing_fails_closed() {
+    // Hair hanging on both sides keeps the face-column run as wide as
+    // the head all the way down (the chibi long-hair case): the head
+    // cannot be segmented, and the measurement must not fall back to
+    // counting the hair mass as head.
+    let mut img = RgbaImage::from_pixel(40, 80, Rgba([0, 0, 0, 0]));
+    for y in 0..80u32 {
+        for x in 8..32 {
+            let skin_face = (10..30).contains(&y) && (14..26).contains(&x);
+            let color = if skin_face { SKIN } else { HAIR };
+            img.put_pixel(x, y, Rgba([color[0], color[1], color[2], 255]));
+        }
+    }
+    let err = measure_proportions(&img, SKIN, HAIR).expect_err("no jaw narrowing");
+    assert!(err.to_string().contains("jaw narrowing"), "error: {err}");
+}
+
+#[test]
+fn version_1_identity_record_is_rejected() {
+    // A v1 record's head ratio measured the alpha band (hair mass
+    // included); v2 changed the meaning, so v1 fails closed even with
+    // a valid hash.
+    let dir = temp_dir("v1record");
+    write_valid_pair(&dir);
+    let mut record = ingest(&dir, "adv").expect("ingest");
+    record.version = 1;
+    record.record_hash = record.compute_hash().expect("re-hash");
+    let path = dir.join("record.json");
+    std::fs::write(&path, record.canonical_json().expect("json")).expect("write");
+    let err = load_record(&path).expect_err("v1 rejected");
+    assert!(
+        err.to_string().contains("unsupported identity schema"),
+        "error: {err}"
+    );
+    let _ = std::fs::remove_dir_all(&dir);
 }
 
 #[test]
