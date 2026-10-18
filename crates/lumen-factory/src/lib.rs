@@ -22,6 +22,7 @@ pub mod blend;
 pub mod gltf;
 pub mod identity;
 pub mod project;
+pub mod vrm;
 
 use sha2::{Digest, Sha256};
 use thiserror::Error;
@@ -53,6 +54,9 @@ pub enum FactoryError {
     /// A mesh invariant was violated during generation.
     #[error("mesh invalid: {0}")]
     MeshInvalid(String),
+    /// The GLB is well-formed but carries no VRM extension.
+    #[error("not a vrm: {0}")]
+    NotVrm(String),
 }
 
 impl From<std::io::Error> for FactoryError {

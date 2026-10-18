@@ -14,6 +14,10 @@
 //!   bounds, and JSON structure with checked arithmetic throughout and
 //!   returns a structural summary; any truncation, bad magic, or
 //!   oversized declared length is a typed error, never a panic.
+//! - [`parse_glb_parts`] / [`build_glb`] expose the raw JSON document
+//!   and binary chunk (and their deterministic re-serialization) so
+//!   the VRM layer in `vrm.rs` reuses this parser instead of forking
+//!   it; the summary reader is built on the same parts parser.
 
 #![forbid(unsafe_code)]
 
@@ -869,9 +873,25 @@ fn read_u32(bytes: &[u8], offset: usize) -> Result<u32, FactoryError> {
     Ok(u32::from_le_bytes([slice[0], slice[1], slice[2], slice[3]]))
 }
 
-/// Parse GLB bytes and return a structural summary. Fail-closed on any
-/// truncation, bad magic, version mismatch, or oversized declared length.
-pub fn parse_glb(bytes: &[u8]) -> Result<GlbSummary, FactoryError> {
+/// Raw GLB parts: the parsed glTF JSON document plus the binary
+/// chunk bytes (empty when the GLB carries no BIN chunk).
+///
+/// This is the minimal surface extension that lets sibling modules
+/// (the VRM reader/wrapper in `vrm.rs`) work on the document without
+/// forking the GLB parser: [`parse_glb_parts`] is the one parser and
+/// [`parse_glb`] is built on it.
+#[derive(Clone, Debug, PartialEq)]
+pub struct GlbParts {
+    /// Binary chunk bytes (the buffer data), verbatim.
+    pub bin: Vec<u8>,
+    /// Parsed glTF JSON document.
+    pub json: Value,
+}
+
+/// Parse GLB bytes into their raw parts. Fail-closed on any
+/// truncation, bad magic, version mismatch, or oversized declared
+/// length — exactly the checks [`parse_glb`] has always applied.
+pub fn parse_glb_parts(bytes: &[u8]) -> Result<GlbParts, FactoryError> {
     if bytes.len() > MAX_GLB_BYTES {
         return Err(FactoryError::InvalidGlb(format!(
             "glb size {} exceeds bound {MAX_GLB_BYTES}",
@@ -920,7 +940,7 @@ pub fn parse_glb(bytes: &[u8]) -> Result<GlbSummary, FactoryError> {
         .map_err(|e| FactoryError::InvalidGlb(format!("bad glTF JSON: {e}")))?;
 
     // BIN chunk (optional at this layer, bounds-checked when present).
-    let mut bin_slice: &[u8] = &[];
+    let mut bin: Vec<u8> = Vec::new();
     if json_end < bytes.len() {
         if json_end + 8 > bytes.len() {
             return Err(FactoryError::InvalidGlb(
@@ -938,8 +958,46 @@ pub fn parse_glb(bytes: &[u8]) -> Result<GlbSummary, FactoryError> {
             .checked_add(bin_len)
             .filter(|end| *end <= bytes.len())
             .ok_or_else(|| FactoryError::InvalidGlb("BIN chunk overruns file".to_string()))?;
-        bin_slice = &bytes[bin_start..bin_end];
+        bin = bytes[bin_start..bin_end].to_vec();
     }
+    Ok(GlbParts { bin, json: root })
+}
+
+/// Serialize a glTF JSON document plus a binary chunk into GLB
+/// bytes: the inverse of [`parse_glb_parts`], using the writer's
+/// deterministic framing (JSON space-padded to 4 bytes, BIN
+/// zero-padded to 4 bytes). The `bin` bytes are emitted verbatim,
+/// so a parse -> modify-JSON-only -> build round trip leaves every
+/// buffer byte untouched.
+pub fn build_glb(json: &Value, bin: &[u8]) -> Result<Vec<u8>, FactoryError> {
+    let mut json_bytes = serde_json::to_vec(json)?;
+    while !json_bytes.len().is_multiple_of(4) {
+        json_bytes.push(b' ');
+    }
+    let mut bin_data = bin.to_vec();
+    while !bin_data.len().is_multiple_of(4) {
+        bin_data.push(0);
+    }
+    let total_len = 12 + 8 + json_bytes.len() + 8 + bin_data.len();
+    let mut out = Vec::with_capacity(total_len);
+    out.extend_from_slice(&GLB_MAGIC.to_le_bytes());
+    out.extend_from_slice(&GLB_VERSION.to_le_bytes());
+    out.extend_from_slice(&(total_len as u32).to_le_bytes());
+    out.extend_from_slice(&(json_bytes.len() as u32).to_le_bytes());
+    out.extend_from_slice(&CHUNK_JSON.to_le_bytes());
+    out.extend_from_slice(&json_bytes);
+    out.extend_from_slice(&(bin_data.len() as u32).to_le_bytes());
+    out.extend_from_slice(&CHUNK_BIN.to_le_bytes());
+    out.extend_from_slice(&bin_data);
+    Ok(out)
+}
+
+/// Parse GLB bytes and return a structural summary. Fail-closed on any
+/// truncation, bad magic, version mismatch, or oversized declared length.
+pub fn parse_glb(bytes: &[u8]) -> Result<GlbSummary, FactoryError> {
+    let parts = parse_glb_parts(bytes)?;
+    let root: &Value = &parts.json;
+    let bin_slice: &[u8] = &parts.bin;
 
     let get_array = |key: &str| -> Vec<Value> {
         root.get(key)
