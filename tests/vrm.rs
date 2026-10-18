@@ -376,7 +376,7 @@ async fn vrm_grade_unknown_style_lists_presets() {
     write_fixture(dir.path(), "fox.vrm", &vrm_1_0());
     let err = vrm_grade(
         dir.path(),
-        grade_req("fox.vrm", Some("out.vrm"), "demo_toon_fire", 1.0),
+        grade_req("fox.vrm", Some("out.vrm"), "no_such_style", 1.0),
     )
     .await
     .expect_err("unknown style must fail");

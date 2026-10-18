@@ -124,7 +124,7 @@ fn stdio_tools_list_includes_style_ops() {
 }
 
 #[test]
-fn stdio_style_list_reports_all_15_presets() {
+fn stdio_style_list_reports_all_16_presets() {
     let project = tempfile::tempdir().expect("tempdir");
     let replies = stdio_requests(
         project.path(),
@@ -134,9 +134,14 @@ fn stdio_style_list_reports_all_15_presets() {
     assert!(!text.contains("policy denied"), "{}", replies[0]);
     let body: Value = serde_json::from_str(&text).expect("style_list returns JSON");
     let styles = body["styles"].as_array().expect("styles array");
-    assert_eq!(styles.len(), 15);
+    assert_eq!(styles.len(), 16);
     let names: Vec<&str> = styles.iter().filter_map(|s| s["name"].as_str()).collect();
-    for expected in ["demo_toon", "demo_toon_portrait", "ukiyo_e"] {
+    for expected in [
+        "demo_toon",
+        "demo_toon_fire",
+        "demo_toon_portrait",
+        "ukiyo_e",
+    ] {
         assert!(names.contains(&expected), "missing {expected}: {names:?}");
     }
 }
@@ -170,14 +175,14 @@ fn stdio_style_apply_unknown_style_fails_closed() {
     let project = tempfile::tempdir().expect("tempdir");
     write_fixture_doc(project.path());
     let before = std::fs::read(project.path().join(DOC)).expect("read fixture");
-    // demo_toon_fire was deliberately not landed (underspecified in the
-    // study spec); through the stdio surface it must fail like any other
-    // unknown style, listing the valid names, and write nothing.
+    // An unregistered style name must fail closed through the stdio
+    // surface, listing the valid names, and write nothing. (The probe was
+    // demo_toon_fire until that preset landed on Matt's 2026-10-18 ruling.)
     let replies = stdio_requests(
         project.path(),
         &[(
             "tools/call",
-            json!({"name": "style_apply", "arguments": {"doc": DOC, "style": "demo_toon_fire", "strength": 1.0}}),
+            json!({"name": "style_apply", "arguments": {"doc": DOC, "style": "no_such_style", "strength": 1.0}}),
         )],
     );
     let text = reply_text(&replies[0]);

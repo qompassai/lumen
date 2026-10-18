@@ -140,7 +140,7 @@ pub async fn style_list(_root: &Path, _req: StyleListReq) -> Result<StyleList, L
 /// (`out = orig + (graded - orig) * strength`). Alpha is NEVER modified.
 /// `strength == 0.0` is a successful no-op (pixels identical; doc saved).
 ///
-/// Errors: unknown style → `BadParam` listing all 15; strength NaN,
+/// Errors: unknown style → `BadParam` listing all 16; strength NaN,
 /// infinite, or outside 0.0..=1.0 → `BadParam`.
 pub async fn style_apply(root: &Path, req: StyleApplyReq) -> Result<DocSaved, LumenError> {
     let preset = find_style(&req.style)?;
@@ -260,7 +260,7 @@ const fn ref_preset(name: &'static str, index: u8) -> StylePreset {
     }
 }
 
-const STYLE_PRESETS: [StylePreset; 15] = [
+const STYLE_PRESETS: [StylePreset; 16] = [
     ref_preset("ref_01", 1),
     ref_preset("ref_02", 2),
     ref_preset("ref_03", 3),
@@ -287,6 +287,15 @@ const STYLE_PRESETS: [StylePreset; 15] = [
         light_mult: 1.0,
         contrast: 1.06,
         posterize: Some(6),
+    },
+    StylePreset {
+        name: "demo_toon_fire",
+        description: "Cel-demo grade after the ZZZ character demos: flat lightness bands, punchy saturation, warm key. Cel-fire variant at four posterize levels, for sprite fire and effects (posterize speckles smoky HD flames).",
+        hue_shift_deg: 4.0,
+        sat_mult: 1.15,
+        light_mult: 1.0,
+        contrast: 1.06,
+        posterize: Some(4),
     },
     StylePreset {
         name: "demo_toon_portrait",

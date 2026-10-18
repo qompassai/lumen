@@ -244,7 +244,7 @@ async fn fidelity_output_escaping_root_is_rejected() {
 // ---------------------------------------------------------------------------
 
 #[tokio::test]
-async fn style_list_has_exactly_the_15_presets() {
+async fn style_list_has_exactly_the_16_presets() {
     let dir = tempfile::tempdir().expect("tempdir");
     let list = style_list(dir.path(), StyleListReq {}).await.expect("list");
     let names: Vec<&str> = list.styles.iter().map(|s| s.name.as_str()).collect();
@@ -253,6 +253,7 @@ async fn style_list_has_exactly_the_15_presets() {
         [
             "dark_fantasy",
             "demo_toon",
+            "demo_toon_fire",
             "demo_toon_portrait",
             "solarpunk",
             "synthwave",
@@ -447,6 +448,7 @@ async fn style_apply_unknown_style_lists_all_15() {
         [
             "dark_fantasy",
             "demo_toon",
+            "demo_toon_fire",
             "demo_toon_portrait",
             "solarpunk",
             "synthwave",
@@ -562,20 +564,30 @@ async fn style_apply_demo_toon_variants_differ_only_in_posterize() {
 }
 
 #[tokio::test]
-async fn style_apply_demo_toon_fire_is_not_a_style() {
-    // The study's fire climax variant was specced without a posterize
-    // value; it is deliberately NOT landed (inventing one would guess at
-    // the study's consequential variable). The name must fail closed.
+async fn style_apply_demo_toon_fire_posterizes_gray_to_level() {
+    // demo_toon_fire landed on Matt's 2026-10-18 ruling with posterize
+    // Some(4) (the study spec had left the value open). Same shared grade
+    // math as its peer presets; only the posterize level differs.
     let dir = tempfile::tempdir().expect("tempdir");
     let root = dir.path();
-    save(root, &gradient_doc());
+    let mut doc = make_doc(2, 2, 1, 1);
+    doc.layers[0]
+        .image
+        .put_pixel(0, 0, Rgba([128, 128, 128, 255]));
+    save(root, &doc);
     let req = StyleApplyReq {
         doc: DOC.to_string(),
         output: None,
         style: "demo_toon_fire".to_string(),
         strength: 1.0,
     };
-    assert_bad_param(style_apply(root, req).await);
+    style_apply(root, req).await.expect("applies");
+    let after = load_doc(root, DOC).expect("load");
+    // l = 0.502 * 1.0 = 0.502 → contrast 1.06 → 0.502 → 4 levels → 2/3.
+    assert_eq!(
+        after.layers[0].image.get_pixel(0, 0),
+        &Rgba([170, 170, 170, 255])
+    );
 }
 
 // ---------------------------------------------------------------------------
