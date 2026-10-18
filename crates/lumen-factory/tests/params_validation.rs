@@ -77,10 +77,11 @@ fn anchor_seraphine_build_with_derived_params_is_byte_identical() {
     let params = ParameterRecord::from_identity(&record).expect("derive params");
     let expected = std::fs::read(asset_path("seraphine.glb")).expect("anchor glb");
     // Deliberate re-anchors (projection v2, docs/factory/FACTORY-PLAN.md
-    // §9): Phase 2/3 cd7abaca... -> fix 1 (color-segmented head).
+    // §9): Phase 2/3 cd7abaca... -> fix 1 (color-segmented head)
+    // d41e41ac... -> fix 2 (uniform head scale).
     assert_eq!(
         sha256_hex(&expected),
-        "d41e41ac4a51eba354570f0d85f8bb9a83809948dc6ab8d8b306df565149eee8",
+        "5f93fd6ea87c5f0e232f49eb914992e85b97c116535854b6101547f92773f37c",
         "anchor asset is the projection v2 Séraphine build"
     );
     let via_params = build_character_with_params(

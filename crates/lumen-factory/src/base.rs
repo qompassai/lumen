@@ -745,9 +745,12 @@ fn build_head(
                 if dir[2] > 0.3 {
                     pos[2] = center[2] + (pos[2] - center[2]) * 0.92;
                 }
-                // Jaw taper below the jaw threshold height.
+                // Jaw taper below the jaw threshold height; the taper
+                // span scales with the head so a scaled head stays a
+                // similar shape (exactly 0.12 m at the default radii).
                 if pos[1] < jaw_y {
-                    let t = ((jaw_y - pos[1]) / 0.12).clamp(0.0, 1.0);
+                    let taper_span = 0.12 * (radii[1] / HEAD_RADII[1]);
+                    let t = ((jaw_y - pos[1]) / taper_span).clamp(0.0, 1.0);
                     pos[0] *= 1.0 - 0.22 * t;
                 }
             }

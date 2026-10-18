@@ -359,3 +359,70 @@ fn toon_grade_is_deterministic_and_changes_non_face_pixels() {
     assert_ne!(plain, graded_a, "grade must change pixels");
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+fn asset_bytes(name: &str) -> Vec<u8> {
+    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("assets")
+        .join(name);
+    std::fs::read(&path).unwrap_or_else(|e| panic!("read {}: {e}", path.display()))
+}
+
+/// POSITION accessor bounds `(min, max)` of the primitive whose
+/// material is named `part`, or of every primitive when `part` is
+/// `None`.
+fn extent(bytes: &[u8], part: Option<&str>) -> ([f32; 3], [f32; 3]) {
+    let parts = lumen_factory::gltf::parse_glb_parts(bytes).expect("glb parts");
+    let json = &parts.json;
+    let mut lo = [f32::INFINITY; 3];
+    let mut hi = [f32::NEG_INFINITY; 3];
+    for primitive in json["meshes"][0]["primitives"]
+        .as_array()
+        .expect("primitives")
+    {
+        let material = primitive["material"].as_u64().expect("material") as usize;
+        let name = json["materials"][material]["name"].as_str().expect("name");
+        if part.is_some_and(|wanted| wanted != name) {
+            continue;
+        }
+        let accessor = &json["accessors"][primitive["attributes"]["POSITION"]
+            .as_u64()
+            .expect("POSITION") as usize];
+        for axis in 0..3 {
+            lo[axis] = lo[axis].min(accessor["min"][axis].as_f64().expect("min") as f32);
+            hi[axis] = hi[axis].max(accessor["max"][axis].as_f64().expect("max") as f32);
+        }
+    }
+    (lo, hi)
+}
+
+#[test]
+fn seraphine_head_keeps_base_aspect_and_measured_fraction() {
+    let aspect = |bytes: &[u8]| {
+        let (lo, hi) = extent(bytes, Some("head"));
+        (hi[1] - lo[1]) / (hi[0] - lo[0])
+    };
+    let base_aspect = aspect(&asset_bytes("base.glb"));
+    let glb = asset_bytes("seraphine.glb");
+    let built_aspect = aspect(&glb);
+    // The commission bound is +-10%; a uniform scale holds it exactly
+    // (to f32 accessor noise).
+    assert!(
+        (built_aspect / base_aspect - 1.0).abs() < 1e-3,
+        "head aspect {built_aspect} vs base {base_aspect}"
+    );
+    // The head's share of the figure matches the color-segmented
+    // skull fraction from the identity record.
+    let record = lumen_factory::identity::load_record(
+        &PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("assets/seraphine.identity.json"),
+    )
+    .expect("record");
+    let m = record.sprite_measurements;
+    let skull_fraction = f64::from(m.skull_height_px) / f64::from(m.total_height_px);
+    let (head_lo, head_hi) = extent(&glb, Some("head"));
+    let (all_lo, all_hi) = extent(&glb, None);
+    let head_fraction = f64::from((head_hi[1] - head_lo[1]) / (all_hi[1] - all_lo[1]));
+    assert!(
+        (head_fraction / skull_fraction - 1.0).abs() < 0.05,
+        "head fraction {head_fraction} vs color-segmented skull {skull_fraction}"
+    );
+}

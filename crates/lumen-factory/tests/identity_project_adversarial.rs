@@ -243,6 +243,71 @@ fn tampered_record_fails_hash_verification() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
+/// Head primitive `(width, height)` from its POSITION accessor bounds.
+fn head_size(bytes: &[u8]) -> (f32, f32) {
+    let parts = lumen_factory::gltf::parse_glb_parts(bytes).expect("glb parts");
+    let json = &parts.json;
+    for primitive in json["meshes"][0]["primitives"]
+        .as_array()
+        .expect("primitives")
+    {
+        let material = primitive["material"].as_u64().expect("material") as usize;
+        if json["materials"][material]["name"] != "head" {
+            continue;
+        }
+        let accessor = &json["accessors"][primitive["attributes"]["POSITION"]
+            .as_u64()
+            .expect("POSITION") as usize];
+        let span = |axis: usize| {
+            (accessor["max"][axis].as_f64().unwrap() - accessor["min"][axis].as_f64().unwrap())
+                as f32
+        };
+        return (span(0), span(1));
+    }
+    panic!("no head primitive");
+}
+
+#[test]
+fn extreme_head_scales_never_stretch_one_axis() {
+    // At both ends of the accepted range the head must scale as a
+    // whole: v1 scaled only its height, so a 2.0 band scale doubled
+    // the aspect.
+    let record = lumen_factory::identity::load_record(
+        &PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("assets/seraphine.identity.json"),
+    )
+    .expect("record");
+    let templates = load_templates(&fixture_templates()).expect("templates");
+    let build_at = |head_scale: f64| {
+        let mut params = lumen_factory::params::ParameterRecord::from_identity(&record).unwrap();
+        params.proportions.head_scale = head_scale;
+        params.record_hash = params.compute_hash().unwrap();
+        let bytes = lumen_factory::project::build_character_with_params(
+            &record,
+            &templates,
+            &params,
+            BuildOptions::default(),
+        )
+        .expect("bounds-valid head scale builds");
+        head_size(&bytes)
+    };
+    let (unit_w, unit_h) = build_at(1.0);
+    for scale in [0.5f32, 2.0] {
+        let (w, h) = build_at(f64::from(scale));
+        assert!(
+            ((h / w) / (unit_h / unit_w) - 1.0).abs() < 1e-3,
+            "aspect drifts at {scale}"
+        );
+        assert!(
+            (w / unit_w / scale - 1.0).abs() < 1e-3,
+            "width ignores scale {scale}"
+        );
+        assert!(
+            (h / unit_h / scale - 1.0).abs() < 1e-3,
+            "height ignores scale {scale}"
+        );
+    }
+}
+
 #[test]
 fn invalid_companion_name_errors() {
     let dir = temp_dir("badname");
