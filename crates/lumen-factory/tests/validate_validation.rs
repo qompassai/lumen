@@ -46,6 +46,7 @@ fn committed_assets_all_pass() {
         "base_blended.glb",
         "seraphine.glb",
         "seraphine.vrm",
+        "seraphine_graded.vrm",
     ] {
         let bytes = asset_bytes(name);
         let report = validate_bytes(&bytes, name);

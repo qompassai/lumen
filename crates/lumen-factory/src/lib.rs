@@ -14,6 +14,10 @@
 //!   JSON report (schema `lumen.factory-validation` v1).
 //! - Phase 5 scope: ramp/toon material configuration (`toon`) as
 //!   data in GLB extras, plus the Blender render proof.
+//! - Integration update: the factory branch carries lumen main's
+//!   landed VRoid wiring; the VRM proportions bridge (`params`)
+//!   consumes VRM structure alongside it (see `vrm` for the division
+//!   of labor).
 //! - Every public function fails closed: invalid input produces a typed
 //!   [`FactoryError`], never a panic and never a partial side effect.
 //! - All generation math is in-crate and ordered: the same inputs always
