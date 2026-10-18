@@ -6,7 +6,11 @@
 //!   morph targets composed from the emotion templates at `<path>`
 //!   (head primitive only) and writes a GLB.
 //! - `build --identity <record.json> --emotions <path> --out <model.glb>
-//!   [--toon]` projects an identity record into a textured character GLB.
+//!   [--toon] [--params <file.json|file.toml>]` projects an identity
+//!   record into a textured character GLB, optionally driven by a
+//!   parameter record instead of the identity-derived parameters.
+//! - `params --identity <record.json> --out <params.json|.toml>` derives
+//!   a parameter record from an identity record.
 //! - `ingest --art-dir <dir> --companion <name> --out <record.json>`
 //!   ingests canonical companion art into an identity record.
 //! - `inspect --in <path.glb>` parse-back validates a GLB and prints its
@@ -27,7 +31,8 @@ use lumen_factory::base::build_base_mesh;
 use lumen_factory::blend::{compose_targets, load_templates};
 use lumen_factory::gltf::{MorphTarget, parse_glb, write_glb};
 use lumen_factory::identity::{ingest, load_record};
-use lumen_factory::project::{BuildOptions, build_character};
+use lumen_factory::params::ParameterRecord;
+use lumen_factory::project::{BuildOptions, build_character, build_character_with_params};
 use lumen_factory::vrm::{WrapMeta, inspect_vrm, wrap_as_vrm};
 use lumen_factory::{FactoryError, sha256_hex};
 
@@ -66,9 +71,22 @@ enum Commands {
         /// Output GLB path.
         #[arg(long)]
         out: PathBuf,
+        /// Optional parameter record (.json or .toml) driving the
+        /// build instead of the identity-derived parameters.
+        #[arg(long)]
+        params: Option<PathBuf>,
         /// Apply the demo_toon grade to the atlas.
         #[arg(long)]
         toon: bool,
+    },
+    /// Derive a parameter record from an identity record.
+    Params {
+        /// Path to the identity record JSON.
+        #[arg(long)]
+        identity: PathBuf,
+        /// Output parameter record path (.json or .toml).
+        #[arg(long)]
+        out: PathBuf,
     },
     /// Ingest canonical companion art into an identity record.
     Ingest {
@@ -166,17 +184,53 @@ fn run() -> Result<(), FactoryError> {
             emotions,
             identity,
             out,
+            params,
             toon,
         } => {
             let record = load_record(&identity)?;
             let templates = load_templates(&emotions)?;
-            let bytes = build_character(&record, &templates, BuildOptions { toon })?;
+            let (bytes, params_hash) = match &params {
+                Some(params_path) => {
+                    let parameter_record = ParameterRecord::load(params_path)?;
+                    let hash = parameter_record.record_hash.clone();
+                    let bytes = build_character_with_params(
+                        &record,
+                        &templates,
+                        &parameter_record,
+                        BuildOptions { toon },
+                    )?;
+                    (bytes, Some(hash))
+                }
+                None => (
+                    build_character(&record, &templates, BuildOptions { toon })?,
+                    None,
+                ),
+            };
             std::fs::write(&out, &bytes)?;
             println!("companion: {}", record.companion);
             println!("record_hash: {}", record.record_hash);
+            if let Some(hash) = &params_hash {
+                println!("params_hash: {hash}");
+            }
             println!("toon: {toon}");
             println!("glb_bytes: {}", bytes.len());
             println!("sha256: {}", sha256_hex(&bytes));
+            println!("out: {}", out.display());
+            Ok(())
+        }
+        Commands::Params { identity, out } => {
+            let record = load_record(&identity)?;
+            let params = ParameterRecord::from_identity(&record)?;
+            if out.extension().and_then(|e| e.to_str()) == Some("toml") {
+                std::fs::write(&out, params.to_toml()?)?;
+            } else {
+                std::fs::write(&out, format!("{}\n", params.canonical_json()?))?;
+            }
+            println!("companion: {}", params.companion);
+            println!("head_scale: {:.6}", params.proportions.head_scale);
+            println!("torso_scale: {:.6}", params.proportions.torso_scale);
+            println!("leg_scale: {:.6}", params.proportions.leg_scale);
+            println!("record_hash: {}", params.record_hash);
             println!("out: {}", out.display());
             Ok(())
         }

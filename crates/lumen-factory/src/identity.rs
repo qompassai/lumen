@@ -56,12 +56,24 @@ use std::path::{Path, PathBuf};
 use image::{AnimationDecoder, DynamicImage, GenericImageView, RgbaImage};
 use serde::{Deserialize, Serialize};
 
+use crate::base::base_proportions;
 use crate::{FactoryError, sha256_hex};
 
 /// Schema identifier emitted in every record.
 pub const IDENTITY_SCHEMA: &str = "lumen.factory-identity";
 /// Schema version emitted in every record.
 pub const IDENTITY_VERSION: u32 = 1;
+
+/// Minimum accepted proportion band scale (see
+/// [`IdentityRecord::applied_scales`]). The range was widened from
+/// [0.8, 1.25] to [0.5, 2.0] in Phase 2 — Séraphine's measured
+/// proportions fall outside the narrower range; the fail-closed
+/// behavior is unchanged. `project.rs` re-exports these constants
+/// and `params.rs` validates against them: this is the single
+/// source of truth for the scale range.
+pub const SCALE_MIN: f32 = 0.5;
+/// Maximum accepted proportion band scale (see [`SCALE_MIN`]).
+pub const SCALE_MAX: f32 = 2.0;
 
 /// Maximum accepted size of any single source art file.
 pub const MAX_ART_FILE_BYTES: usize = 64 * 1024 * 1024;
@@ -297,6 +309,48 @@ impl IdentityRecord {
     /// Verify `record_hash` matches the record contents.
     pub fn verify_hash(&self) -> Result<bool, FactoryError> {
         Ok(self.compute_hash()? == self.record_hash)
+    }
+
+    /// The proportion band scales `(head, torso, leg)` this record
+    /// applies to the canonical skeleton: each measured ratio divided
+    /// by the canonical base ratio from
+    /// [`crate::base::base_proportions`]. This is the single source
+    /// of truth for applied scales — `project.rs`'s `compute_scales`
+    /// delegates here and `params.rs` derives its `proportions` from
+    /// here. Fails closed when any ratio is non-finite/degenerate or
+    /// any scale falls outside [`SCALE_MIN`]..=[`SCALE_MAX`] (never
+    /// silently clamped).
+    pub fn applied_scales(&self) -> Result<(f32, f32, f32), FactoryError> {
+        let p = &self.proportions;
+        let ratios = [p.head_ratio, p.torso_ratio, p.leg_ratio];
+        if ratios
+            .iter()
+            .any(|r| !r.is_finite() || *r <= 0.0 || *r >= 1.0)
+        {
+            return Err(FactoryError::BadParam(format!(
+                "identity ratios degenerate: {ratios:?}"
+            )));
+        }
+        let sum: f64 = ratios.iter().sum();
+        if (sum - 1.0).abs() > 0.05 {
+            return Err(FactoryError::BadParam(format!(
+                "identity ratios sum to {sum}, expected ~1"
+            )));
+        }
+        let (base_head, base_torso, base_leg) = base_proportions();
+        let scales = (
+            (p.head_ratio as f32 / base_head),
+            (p.torso_ratio as f32 / base_torso),
+            (p.leg_ratio as f32 / base_leg),
+        );
+        for (name, scale) in [("head", scales.0), ("torso", scales.1), ("leg", scales.2)] {
+            if !scale.is_finite() || !(SCALE_MIN..=SCALE_MAX).contains(&scale) {
+                return Err(FactoryError::BadParam(format!(
+                    "{name} scale {scale} outside [{SCALE_MIN}, {SCALE_MAX}] (fail closed, not clamped)"
+                )));
+            }
+        }
+        Ok(scales)
     }
 }
 
