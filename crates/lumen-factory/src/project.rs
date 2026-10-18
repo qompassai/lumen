@@ -8,6 +8,11 @@
 //!   [`crate::base::base_proportions`]. Scales outside
 //!   [`SCALE_MIN`]..=[`SCALE_MAX`] fail closed with an error — they
 //!   are never silently clamped.
+//! - Projection v2: the head ellipsoid scales uniformly by the head
+//!   scale (all three radii, and the jaw taper span with them), so
+//!   the projected head keeps the base head's aspect. v1 scaled only
+//!   the head's height by the band ratio, stretching it (measured
+//!   aspect 2.34 vs the base's 1.23).
 //! - DEVIATION (recorded 2026-10-18): the commissioned clamp range was
 //!   [0.8, 1.25], but Séraphine's measured sprite proportions
 //!   (head ratio 0.299 vs base 0.157 -> scale 1.90; leg ratio 0.406
@@ -69,8 +74,9 @@ pub use crate::identity::SCALE_MAX;
 pub use crate::identity::SCALE_MIN;
 /// Atlas edge length in pixels.
 pub const ATLAS_SIZE: u32 = 1024;
-/// Radial profile scale used by projection v1 (proportions drive Y
-/// only; width grading is a v2 concern).
+/// Radial profile scale for the body, limbs, and shells: proportions
+/// drive their Y only (body width grading is not modeled). The head
+/// is the exception — it scales uniformly by the head scale.
 pub const RADIAL_SCALE: f32 = 1.0;
 
 /// `demo_toon` hue shift (degrees).
@@ -537,10 +543,12 @@ pub fn build_character_with_params(
     let scaled = ScaledBuild {
         body_y: (remap(0.92), remap(1.50)),
         head_center: [HEAD_CENTER[0], remap(HEAD_CENTER[1]), HEAD_CENTER[2]],
+        // Projection v2: the head scales uniformly (width and depth
+        // with height), so the base head aspect is preserved.
         head_radii: [
-            HEAD_RADII[0] * RADIAL_SCALE,
+            HEAD_RADII[0] * head_scale,
             HEAD_RADII[1] * head_scale,
-            HEAD_RADII[2] * RADIAL_SCALE,
+            HEAD_RADII[2] * head_scale,
         ],
         hair_length: params.hair.length as f32,
         jaw_y: remap(HEAD_JAW_Y),
