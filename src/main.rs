@@ -13,6 +13,8 @@ use std::sync::Arc;
 use clap::{Parser, Subcommand};
 use lumen::cli::{self, CLI_DEFAULT_HEIGHT, CLI_DEFAULT_WIDTH};
 use lumen::policy::{self, DEFAULT_POLICY_TOML, Enforcer, Policy, PolicyError};
+use lumen::style::{StyleApplyReq, StyleListReq, style_apply, style_list};
+use lumen::vrm::{VrmGradeReq, VrmInspectReq, vrm_grade, vrm_inspect};
 use lumen::{bevy_discover, project_root, sprite_info, validate_atlas};
 use rmcp::{
     ErrorData, RoleServer, ServerHandler, ServiceExt,
@@ -207,6 +209,67 @@ impl Lumen {
             Err(e) => err_json(e),
         }
     }
+
+    // Style ops are exposed on BOTH surfaces by decision (Matt, 2026-10-18):
+    // this stdio MCP registry and the A2A registry wrap the same library
+    // functions (lumen::style), so the two registrations cannot drift.
+    #[tool(
+        description = "Apply a named style grade preset to every layer of a project .lumen.json document."
+    )]
+    async fn style_apply(&self, Parameters(req): Parameters<StyleApplyReq>) -> String {
+        let root = match project_root() {
+            Ok(root) => root,
+            Err(e) => return err_json(e),
+        };
+        match style_apply(&root, req).await {
+            Ok(saved) => ok_json(&saved),
+            Err(e) => err_json(e),
+        }
+    }
+
+    #[tool(
+        description = "List the style grade presets (name + description) that style_apply accepts."
+    )]
+    async fn style_list(&self, Parameters(_req): Parameters<StyleListReq>) -> String {
+        let root = match project_root() {
+            Ok(root) => root,
+            Err(e) => return err_json(e),
+        };
+        match style_list(&root, StyleListReq {}).await {
+            Ok(list) => ok_json(&list),
+            Err(e) => err_json(e),
+        }
+    }
+
+    // VRM ops follow the D2 pattern: registered on both surfaces (this
+    // stdio registry and the A2A registry), same library functions.
+    #[tool(
+        description = "Grade a VRM avatar's embedded textures with a named style preset; writes the repackaged .vrm."
+    )]
+    async fn vrm_grade(&self, Parameters(req): Parameters<VrmGradeReq>) -> String {
+        let root = match project_root() {
+            Ok(root) => root,
+            Err(e) => return err_json(e),
+        };
+        match vrm_grade(&root, req).await {
+            Ok(graded) => ok_json(&graded),
+            Err(e) => err_json(e),
+        }
+    }
+
+    #[tool(
+        description = "Inspect a VRM avatar file: flavor (VRM 1.0 or 0.x), meta name and author, embedded textures."
+    )]
+    async fn vrm_inspect(&self, Parameters(req): Parameters<VrmInspectReq>) -> String {
+        let root = match project_root() {
+            Ok(root) => root,
+            Err(e) => return err_json(e),
+        };
+        match vrm_inspect(&root, req).await {
+            Ok(info) => ok_json(&info),
+            Err(e) => err_json(e),
+        }
+    }
 }
 
 #[tool_handler]
@@ -231,7 +294,7 @@ impl ServerHandler for Lumen {
 
     fn get_info(&self) -> ServerConfig {
         ServerConfig::new(ServerCapabilities::builder().enable_tools().build())
-            .with_instructions("lumen — Lux in motu. Sprite artistry tools: inspect PNGs, validate Light Show atlases, discover Bevy Remote Protocol endpoints.")
+            .with_instructions("lumen — Lux in motu. Sprite artistry tools: inspect PNGs, validate Light Show atlases, discover Bevy Remote Protocol endpoints, list and apply style grade presets, inspect and grade VRM avatars.")
     }
 }
 

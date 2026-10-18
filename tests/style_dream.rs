@@ -244,12 +244,22 @@ async fn fidelity_output_escaping_root_is_rejected() {
 // ---------------------------------------------------------------------------
 
 #[tokio::test]
-async fn style_list_has_exactly_the_13_presets() {
+async fn style_list_has_exactly_the_15_presets() {
     let dir = tempfile::tempdir().expect("tempdir");
     let list = style_list(dir.path(), StyleListReq {}).await.expect("list");
     let names: Vec<&str> = list.styles.iter().map(|s| s.name.as_str()).collect();
     let mut expected: Vec<String> = (1..=9).map(|i| format!("ref_{i:02}")).collect();
-    expected.extend(["dark_fantasy", "solarpunk", "synthwave", "ukiyo_e"].map(String::from));
+    expected.extend(
+        [
+            "dark_fantasy",
+            "demo_toon",
+            "demo_toon_portrait",
+            "solarpunk",
+            "synthwave",
+            "ukiyo_e",
+        ]
+        .map(String::from),
+    );
     assert_eq!(names, expected);
     for style in &list.styles {
         assert!(!style.description.is_empty());
@@ -299,7 +309,7 @@ async fn style_list_names_all_apply_and_near_misses_do_not() {
 }
 
 // ---------------------------------------------------------------------------
-// style_apply — 3 validation, 4 adversarial
+// style_apply — 7 validation, 4 adversarial
 // ---------------------------------------------------------------------------
 
 #[tokio::test]
@@ -419,7 +429,7 @@ async fn style_apply_rejects_out_of_range_and_non_finite_strength() {
 }
 
 #[tokio::test]
-async fn style_apply_unknown_style_lists_all_13() {
+async fn style_apply_unknown_style_lists_all_15() {
     let dir = tempfile::tempdir().expect("tempdir");
     let root = dir.path();
     save(root, &gradient_doc());
@@ -433,7 +443,17 @@ async fn style_apply_unknown_style_lists_all_13() {
         .await
         .expect_err("unknown style must fail");
     let mut names: Vec<String> = (1..=9).map(|i| format!("ref_{i:02}")).collect();
-    names.extend(["dark_fantasy", "solarpunk", "synthwave", "ukiyo_e"].map(String::from));
+    names.extend(
+        [
+            "dark_fantasy",
+            "demo_toon",
+            "demo_toon_portrait",
+            "solarpunk",
+            "synthwave",
+            "ukiyo_e",
+        ]
+        .map(String::from),
+    );
     let refs: Vec<&str> = names.iter().map(String::as_str).collect();
     assert_bad_param_listing(err, &refs);
 }
@@ -451,6 +471,111 @@ async fn style_apply_missing_doc_is_rejected() {
         .await
         .expect_err("missing doc must fail");
     assert!(matches!(err, LumenError::PathRejected(_)), "got {err:?}");
+}
+
+#[tokio::test]
+async fn style_apply_demo_toon_posterizes_to_six_lightness_bands() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let root = dir.path();
+    // A 256-step gray ramp: posterize must collapse it to <= 6 values.
+    let mut doc = make_doc(256, 1, 1, 1);
+    for x in 0..256u32 {
+        let v = x as u8;
+        doc.layers[0].image.put_pixel(x, 0, Rgba([v, v, v, 255]));
+    }
+    doc.layers[0]
+        .image
+        .put_pixel(0, 0, Rgba([128, 128, 128, 255]));
+    save(root, &doc);
+    let req = StyleApplyReq {
+        doc: DOC.to_string(),
+        output: None,
+        style: "demo_toon".to_string(),
+        strength: 1.0,
+    };
+    style_apply(root, req).await.expect("applies");
+    let after = load_doc(root, DOC).expect("load");
+    let img = &after.layers[0].image;
+    // l = 0.502 -> contrast 1.06 -> 0.502 -> 6 levels -> 0.6.
+    assert_eq!(img.get_pixel(0, 0), &Rgba([153, 153, 153, 255]));
+    let distinct: std::collections::HashSet<u8> = img.pixels().map(|p| p[0]).collect();
+    assert!(
+        distinct.len() <= 6,
+        "posterized ramp must use <= 6 lightness values, got {}",
+        distinct.len()
+    );
+    // Grays stay gray under the grade (sat 0 is hue-independent).
+    assert!(img.pixels().all(|p| p[0] == p[1] && p[1] == p[2]));
+}
+
+#[tokio::test]
+async fn style_apply_demo_toon_portrait_keeps_smooth_ramp_unbanded() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let root = dir.path();
+    let mut doc = make_doc(256, 1, 1, 1);
+    for x in 0..256u32 {
+        let v = x as u8;
+        doc.layers[0].image.put_pixel(x, 0, Rgba([v, v, v, 255]));
+    }
+    save(root, &doc);
+    let req = StyleApplyReq {
+        doc: DOC.to_string(),
+        output: None,
+        style: "demo_toon_portrait".to_string(),
+        strength: 1.0,
+    };
+    style_apply(root, req).await.expect("applies");
+    let after = load_doc(root, DOC).expect("load");
+    let img = &after.layers[0].image;
+    let distinct: std::collections::HashSet<u8> = img.pixels().map(|p| p[0]).collect();
+    assert!(
+        distinct.len() >= 200,
+        "portrait variant must NOT band a smooth ramp, got {} values",
+        distinct.len()
+    );
+}
+
+#[tokio::test]
+async fn style_apply_demo_toon_variants_differ_only_in_posterize() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let root = dir.path();
+    let mut doc = make_doc(1, 1, 1, 1);
+    doc.layers[0]
+        .image
+        .put_pixel(0, 0, Rgba([200, 40, 90, 255]));
+    save(root, &doc);
+    for (style, expected) in [
+        // Same HSL path; posterize snaps l 0.469 -> 0.4 for the sprite cut.
+        ("demo_toon", Rgba([180, 24, 62, 255])),
+        ("demo_toon_portrait", Rgba([211, 28, 73, 255])),
+    ] {
+        let req = StyleApplyReq {
+            doc: DOC.to_string(),
+            output: Some("o.lumen.json".to_string()),
+            style: style.to_string(),
+            strength: 1.0,
+        };
+        style_apply(root, req).await.expect("applies");
+        let after = load_doc(root, "o.lumen.json").expect("load");
+        assert_eq!(after.layers[0].image.get_pixel(0, 0), &expected, "{style}");
+    }
+}
+
+#[tokio::test]
+async fn style_apply_demo_toon_fire_is_not_a_style() {
+    // The study's fire climax variant was specced without a posterize
+    // value; it is deliberately NOT landed (inventing one would guess at
+    // the study's consequential variable). The name must fail closed.
+    let dir = tempfile::tempdir().expect("tempdir");
+    let root = dir.path();
+    save(root, &gradient_doc());
+    let req = StyleApplyReq {
+        doc: DOC.to_string(),
+        output: None,
+        style: "demo_toon_fire".to_string(),
+        strength: 1.0,
+    };
+    assert_bad_param(style_apply(root, req).await);
 }
 
 // ---------------------------------------------------------------------------

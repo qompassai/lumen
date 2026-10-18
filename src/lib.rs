@@ -30,6 +30,7 @@ pub mod sprite_ops;
 pub mod style;
 pub mod text;
 pub mod upscale;
+pub mod vrm;
 
 use std::path::{Path, PathBuf};
 
