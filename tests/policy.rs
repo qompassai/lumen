@@ -23,6 +23,8 @@ const REGISTERED: &[&str] = &[
     "style_apply",
     "style_list",
     "validate_atlas",
+    "vrm_grade",
+    "vrm_inspect",
 ];
 const STDIO_REPLY_TIMEOUT: Duration = Duration::from_secs(20);
 
@@ -329,7 +331,7 @@ fn ok_binary_policy_check_passes() {
     let (code, out) = run_cli("check", None);
     assert_eq!(code, 0, "{out}");
     assert!(out.contains("PASS every required tool is labeled"));
-    assert!(out.contains("registered tools: 5"));
+    assert!(out.contains("registered tools: 7"));
 }
 
 #[test]

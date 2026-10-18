@@ -116,6 +116,8 @@ pub const LIBRARY_TOOLS: &[&str] = &[
     "fidelity_set",
     "style_list",
     "style_apply",
+    "vrm_grade",
+    "vrm_inspect",
     "inspect_sprite",
     "inspect_layer",
     "histogram",

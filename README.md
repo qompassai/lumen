@@ -37,7 +37,7 @@ failed build produced) is in [HISTORY.md](HISTORY.md).
 
 - `src/` — operation core: `sprite_ops`, `inspect`, `palette`,
   `text`, `style`, `dream`, `qa`, `export`, `pipeline`, `policy`,
-  `bevy`, `doc`, and the `a2a/` surface (`mod`, `task`, `http`,
+  `bevy`, `doc`, `vrm`, and the `a2a/` surface (`mod`, `task`, `http`,
   `registry`).
 - `tests/` — validation and adversarial suites, incl. `interop.rs`
   (live-tool gates, ignored by default).

@@ -116,7 +116,9 @@ fn stdio_tools_list_includes_style_ops() {
             "sprite_info",
             "style_apply",
             "style_list",
-            "validate_atlas"
+            "validate_atlas",
+            "vrm_grade",
+            "vrm_inspect"
         ]
     );
 }
