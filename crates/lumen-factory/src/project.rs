@@ -497,7 +497,7 @@ pub fn build_character(
 /// Build a complete character GLB driven by a parameter record:
 /// the record's scales drive the skeleton and mesh, its appearance
 /// overrides drive the atlas, its hair length drives the hair
-/// shell, and its eye scale drives the painted face. The identity
+/// tail, and its eye scale drives the painted face. The identity
 /// record still supplies the morph-template inputs and any color a
 /// `null` appearance field defers to. Fails closed when the params
 /// companion does not match the identity companion, when the params

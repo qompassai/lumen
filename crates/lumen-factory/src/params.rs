@@ -24,11 +24,11 @@
 //!   [`IdentityRecord`]: proportions are the record's applied
 //!   scales (the single source of truth,
 //!   [`IdentityRecord::applied_scales`]), appearance comes from the
-//!   palette anchors, hair length defaults to
-//!   [`DEFAULT_HAIR_LENGTH`] and eye scale to [`DEFAULT_EYE_SCALE`].
-//!   Building Séraphine from her derived record reproduces
-//!   `assets/seraphine.glb` byte-for-byte (the Phase 3 regression
-//!   anchor, asserted in tests and in the real gate).
+//!   palette anchors, hair length is the record's measured hair mass
+//!   ([`IdentityRecord::hair_length`], projection v2), and eye scale
+//!   defaults to [`DEFAULT_EYE_SCALE`]. Building Séraphine from her
+//!   derived record reproduces `assets/seraphine.glb` byte-for-byte
+//!   (the regression anchor, asserted in tests and in the real gate).
 //! - [`ParameterRecord::from_identity_with_vrm_proportions`] is the
 //!   same derivation with the proportion source swapped: the scales
 //!   come from a VRM humanoid skeleton (the VRoid input path, see
@@ -50,11 +50,6 @@ pub const PARAMS_SCHEMA: &str = "lumen.factory-params";
 /// Schema version emitted in every record.
 pub const PARAMS_VERSION: u32 = 1;
 
-/// Hair length applied by [`ParameterRecord::from_identity`]. It is
-/// the hair shell's neutral point (see `base::HAIR_LENGTH_DEFAULT`,
-/// the same value): the derived record builds byte-identically to
-/// the Phase 2 identity-driven build.
-pub const DEFAULT_HAIR_LENGTH: f64 = 0.65;
 /// Eye scale applied by [`ParameterRecord::from_identity`].
 pub const DEFAULT_EYE_SCALE: f64 = 1.0;
 /// Minimum accepted hair length.
@@ -102,8 +97,9 @@ pub struct AppearanceParams {
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct HairParams {
-    /// Hair length, finite in [HAIR_LENGTH_MIN, HAIR_LENGTH_MAX]
-    /// (see `base::hair_bottom_y` for how length maps to geometry).
+    /// Hair length, finite in [HAIR_LENGTH_MIN, HAIR_LENGTH_MAX]: how
+    /// far the hair tail reaches below the neck, as a fraction of the
+    /// torso band (see `base::ScaledBuild::hair_length`).
     pub length: f64,
 }
 
@@ -270,7 +266,7 @@ impl ParameterRecord {
                 eye_scale: DEFAULT_EYE_SCALE,
             },
             hair: HairParams {
-                length: DEFAULT_HAIR_LENGTH,
+                length: record.hair_length()?,
             },
             proportions: ProportionParams {
                 head_scale: head as f64,
