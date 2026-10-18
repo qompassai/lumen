@@ -377,6 +377,65 @@ fn hair_length_bounds_build_no_tail_and_a_hip_length_tail() {
 }
 
 #[test]
+fn face_paint_stays_on_the_front_of_the_head_island() {
+    // At both eye-scale bounds, painting may change only front-facing
+    // pixels of the head island (UV 0..0.25): nothing on other zones,
+    // nothing on the back of the head.
+    let record = seraphine_record();
+    let paint_at = |eye_scale: f64| {
+        let mut params = lumen_factory::params::ParameterRecord::from_identity(&record).unwrap();
+        params.face.eye_scale = eye_scale;
+        lumen_factory::project::paint_atlas_with_params(&record, &params, false).unwrap()
+    };
+    let small = paint_at(lumen_factory::params::EYE_SCALE_MIN);
+    let large = paint_at(lumen_factory::params::EYE_SCALE_MAX);
+    let island = small.width() / 4;
+    let skin = record.palette.skin.rgb;
+    for (x, y, px) in large.enumerate_pixels() {
+        if x >= island || y >= island {
+            assert_eq!(px, small.get_pixel(x, y), "eye scale leaked to ({x}, {y})");
+            continue;
+        }
+        let theta = ((x as f32 + 0.5) / small.width() as f32 / 0.25) * std::f32::consts::TAU;
+        let phi = ((y as f32 + 0.5) / small.width() as f32 / 0.25) * std::f32::consts::PI;
+        if phi.sin() * theta.sin() <= 0.0 {
+            assert_eq!(
+                px.0[0..3],
+                skin,
+                "feature painted on the back of the head at ({x}, {y})"
+            );
+        }
+    }
+}
+
+#[test]
+fn mirrored_v1_face_island_carries_no_features() {
+    // v1's bottom-left UV origin put the face on the island at
+    // x < 256, y >= 768 — sampled by no head vertex. A re-flipped
+    // painter would put the eye color back there.
+    let record = seraphine_record();
+    let atlas = lumen_factory::project::paint_atlas(&record, false);
+    let eye = record.palette.eye.as_ref().expect("eye").rgb;
+    let size = atlas.width();
+    for y in (size * 3 / 4)..size {
+        for x in 0..(size / 4) {
+            assert_ne!(
+                atlas.get_pixel(x, y).0[0..3],
+                eye,
+                "eye color at mirrored ({x}, {y})"
+            );
+        }
+    }
+    let (ex, ey) = lumen_factory::project::face_point_px(0.36 + 0.08, 0.12);
+    assert!(ey < size / 4, "the eye lands on the top-left island");
+    assert_eq!(
+        atlas.get_pixel(ex, ey).0[0..3],
+        eye,
+        "iris present on the sampled island"
+    );
+}
+
+#[test]
 fn invalid_companion_name_errors() {
     let dir = temp_dir("badname");
     assert!(ingest(&dir, "../escape").is_err());

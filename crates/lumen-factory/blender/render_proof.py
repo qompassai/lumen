@@ -10,7 +10,8 @@ Contract:
   imported character's bounding box (no hardcoded scene positions):
   full-body views sit at distance 2.2 x height with the camera eye at
   0.62 x height; face views sit at 1.1 x the head-span estimate
-  (height x 0.17) from the Head bone's world position.
+  (height x 0.17) from the centre of the head primitive's bounding
+  box (the faces using the "head" material slot).
 - Lights: a key Sun (energy 3) plus a point fill, over a mid-grey
   (0.35) world so both pale skin and dark hair read against it.
 - EEVEE renders: full body at 480x640 (portrait), faces at 512x512.
@@ -20,11 +21,11 @@ Contract:
 - In `ramp` mode every material slot of the mesh is replaced with a
   LumenRamp node material built from the `lumen_toon` configuration
   read out of the GLB's own mesh extras (never hardcoded here):
-  texture -> Diffuse BSDF -> ShaderToRGB -> CONSTANT ColorRamp whose
-  band output multiplies the texture color into a roughness-1
-  Principled BSDF. The middle ramp stop is neutral white, so the mid
-  band passes the texture through; the shadow and highlight stops
-  carry the configured tints.
+  white Diffuse BSDF (the lit value alone) -> ShaderToRGB -> CONSTANT
+  ColorRamp whose band output multiplies the texture color into a
+  roughness-1 Principled BSDF. The middle ramp stop is neutral white,
+  so the mid band passes the texture through; the shadow and
+  highlight stops carry the configured tints.
 - Saves the six PNGs to <outdir>, prints RENDER_PROOF_PASS, and exits
   non-zero on any failure.
 """
@@ -139,10 +140,14 @@ def build_ramp_material(original, config, thresholds, shadow_rgba, highlight_rgb
         rgb.outputs["Color"].default_value = fallback
         tex_color = rgb.outputs["Color"]
 
+    # The band is chosen by the lit value alone: the diffuse shader
+    # sees white, not the texture. (Feeding it the texture banded on
+    # albedo x light, so any dark-ish albedo — the magenta hair, the
+    # navy outfit — sat in the shadow band under full light.)
     diffuse = nodes.new("ShaderNodeBsdfDiffuse")
     diffuse.location = (-380, -100)
     diffuse.inputs["Roughness"].default_value = 1.0
-    links.new(tex_color, diffuse.inputs["Color"])
+    diffuse.inputs["Color"].default_value = (1.0, 1.0, 1.0, 1.0)
 
     to_rgb = nodes.new("ShaderNodeShaderToRGB")
     to_rgb.location = (-160, -100)
@@ -259,16 +264,29 @@ def main():
     print(f"bbox_max: {tuple(round(v, 4) for v in gmax)}")
     print(f"height: {height:.4f}")
 
-    # Head bone world position for face framing.
+    # Head bone world position (structural check) and face framing.
     if "Head" not in armature.data.bones:
         fail(f"Head bone missing (bones: {[b.name for b in armature.data.bones]})")
     head_bone = armature.data.bones["Head"]
     head_pos = armature.matrix_world @ head_bone.head_local
     head_span = height * 0.17
-    # The Head joint sits at the base of the head; half a head span
-    # up lands on the face centre.
-    face_target = head_pos + Vector((0.0, 0.0, 0.50 * head_span))
+    # Face views aim at the centre of the head primitive's own bounding
+    # box (the faces using the "head" material slot), so framing follows
+    # the projected head instead of a fixed offset above the Head bone
+    # (v2's head is ~0.23 m tall, v1's was 0.40 m).
+    head_slots = [i for i, slot in enumerate(character.material_slots)
+                  if slot.material is not None and slot.material.name.split(".")[0] == "head"]
+    if not head_slots:
+        fail(f"no 'head' material slot (slots: {[s.name for s in character.material_slots]})")
+    head_verts = {v for poly in character.data.polygons if poly.material_index in head_slots
+                  for v in poly.vertices}
+    head_world = [character.matrix_world @ character.data.vertices[i].co for i in head_verts]
+    hmin = Vector(tuple(min(p[axis] for p in head_world) for axis in range(3)))
+    hmax = Vector(tuple(max(p[axis] for p in head_world) for axis in range(3)))
+    face_target = (hmin + hmax) / 2.0
     print(f"head_bone_world: {tuple(round(v, 4) for v in head_pos)}")
+    print(f"head_bbox: {tuple(round(v, 4) for v in hmin)} .. {tuple(round(v, 4) for v in hmax)}")
+    print(f"face_target: {tuple(round(v, 4) for v in face_target)}")
     print(f"head_span_estimate: {head_span:.4f}")
 
     # Shape keys / expressions.
