@@ -231,3 +231,41 @@ truncated GLB, NaN weights, oversized inputs rejected pre-decode).
   all generation math is in-crate and ordered; if any step proves
   non-deterministic, the gate is downgraded to structure-identical with
   the cause documented (never silently).
+
+## 9. Projection v2 (2026-10-18, Matt's commission) — DONE, branch-only
+
+Branch `factory/projection-v2-20261018` off merged main 3944a06.
+No merge to main, no push — integration stays Matt's word.
+The dispatched worker exhausted its 150 turns after fixes 1–3;
+Pax takeover completed fix 4 and all gates (record:
+`~/workspace/lumen-factory-20261018/proof-v2/IDENTITY-READ-V2.md`).
+
+- Fix 1 (166a5fe) — color-segmented head ingest: `head_ratio`
+  0.2989 → 0.1711; color-segmented head fraction 0.1331; identity
+  schema v2 (v1 records fail closed).
+- Fix 2 (1e7343a) — uniform head scale: head aspect 1.34 → 1.230
+  (base 1.233); head 12.9% of figure vs 13.3% measured.
+- Fix 3 (4e06124) — real shell offsets + hair tail: hair offset
+  6 → 14 mm, outfit torso 5 → 9 mm; `hair.length` measured 0.7980;
+  tail bottom y 0.941 m.
+- Fix 4 — glTF UV registration + face-scale features + hairline:
+  v1 painted with a bottom-left UV origin (glTF is top-left), so
+  every atlas zone was mirrored and the face sat on an unsampled
+  island; v2 paints in glTF convention, features rasterized over
+  the sampled head island (eyes 1/5 of face width), hair cap face
+  opening fixed, ramp bands on lit value alone, face framing from
+  the head primitive bbox.
+
+DELIBERATE RE-ANCHOR chain (Séraphine build hash, params_validation
++ toon_validation): cd7abaca… (v1) → d41e41ac… (fix 1) →
+5f93fd6e… (fix 2) → 5bcaa972… (fix 3) → ce45290a… (fix 4). Each
+step justified by the measurements above; no silent hash bumps.
+
+Final gates (Pax personally re-ran): factory 136/0, root 406/0,
+fmt clean both levels, strict clippy factory clean, Blender
+RENDER_PROOF_PASS textured + ramp. Expressions: happy 9.69% /
+fun 8.90% of face pixels vs neutral (bar ≥1%; v1 0.04%). Head
+aspect 1.233 vs base 1.23. Verdict: every v2 bar clears; the model
+reads as Séraphine-identified (magenta ponytail, visible face,
+correct outfit registration) at stylized-low-poly fidelity — not
+yet a likeness; sculpt refinement is follow-up scope.
