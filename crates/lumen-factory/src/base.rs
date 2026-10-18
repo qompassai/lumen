@@ -658,10 +658,22 @@ fn build_lathe(
     }
 }
 
+/// Default head ellipsoid center (meters, world space).
+pub const HEAD_CENTER: [f32; 3] = [0.0, 1.665, 0.005];
+/// Default head ellipsoid radii (meters).
+pub const HEAD_RADII: [f32; 3] = [0.086, 0.106, 0.096];
+/// Default jaw-taper threshold height (meters).
+pub const HEAD_JAW_Y: f32 = 1.62;
+
 /// Ellipsoid head (also the basis for the hair shell when `hair` is set).
-fn build_head(name: &str, hair: bool, joints: &[Joint]) -> (MeshPart, Vec<HeadRegionWeights>) {
-    let center = [0.0f32, 1.665, 0.005];
-    let radii = [0.086f32, 0.106, 0.096];
+fn build_head(
+    name: &str,
+    hair: bool,
+    joints: &[Joint],
+    center: [f32; 3],
+    radii: [f32; 3],
+    jaw_y: f32,
+) -> (MeshPart, Vec<HeadRegionWeights>) {
     let lat_steps = 14usize;
     let lon_steps = 18usize;
     let scale = if hair { 1.07 } else { 1.0 };
@@ -698,9 +710,9 @@ fn build_head(name: &str, hair: bool, joints: &[Joint]) -> (MeshPart, Vec<HeadRe
                 if dir[2] > 0.3 {
                     pos[2] = center[2] + (pos[2] - center[2]) * 0.92;
                 }
-                // Jaw taper below y = 1.62.
-                if pos[1] < 1.62 {
-                    let t = ((1.62 - pos[1]) / 0.12).clamp(0.0, 1.0);
+                // Jaw taper below the jaw threshold height.
+                if pos[1] < jaw_y {
+                    let t = ((jaw_y - pos[1]) / 0.12).clamp(0.0, 1.0);
                     pos[0] *= 1.0 - 0.22 * t;
                 }
             }
@@ -886,14 +898,150 @@ pub fn build_base_mesh() -> Result<BaseMesh, FactoryError> {
     build_base_mesh_with_profile(&default_body_profile())
 }
 
+/// Parameters for a scaled/parameterized base build (Phase 2
+/// projection). The default parameter set (canonical joints, default
+/// profile, radial scale 1.0, default head ellipsoid) reproduces the
+/// Phase 1a base byte-for-byte: every scale enters the math as a
+/// multiplication by exactly 1.0 or as a literal-identical constant.
+#[derive(Clone, Debug, PartialEq)]
+pub struct ScaledBuild {
+    /// Body lathe height span `(y0, y1)`.
+    pub body_y: (f32, f32),
+    /// Head ellipsoid center (world space).
+    pub head_center: [f32; 3],
+    /// Head ellipsoid radii.
+    pub head_radii: [f32; 3],
+    /// Jaw-taper threshold height.
+    pub jaw_y: f32,
+    /// Joint table to build against (possibly Y-scaled).
+    pub joints: Vec<Joint>,
+    /// Outfit torso lathe height span `(y0, y1)`.
+    pub outfit_y: (f32, f32),
+    /// Torso profile (possibly Y-remapped).
+    pub profile: Vec<(f32, f32, f32)>,
+    /// Uniform radial (XZ) scale for tube/lathe radii.
+    pub radial_scale: f32,
+}
+
+impl Default for ScaledBuild {
+    fn default() -> Self {
+        Self {
+            body_y: (0.92, 1.50),
+            head_center: HEAD_CENTER,
+            head_radii: HEAD_RADII,
+            jaw_y: HEAD_JAW_Y,
+            joints: joint_table(),
+            outfit_y: (0.97, 1.47),
+            profile: default_body_profile(),
+            radial_scale: 1.0,
+        }
+    }
+}
+
+/// Base proportions from the canonical joint table, using the same
+/// band definitions as the sprite measurement in `identity.rs`:
+/// total height is the `HeadTop_End` height; the head band runs from
+/// the neck joint to the top; the torso band from the hips joint to
+/// the neck joint; the leg span from the ground to the hips joint.
+/// Returns `(head_ratio, torso_ratio, leg_ratio)`; they sum to 1.
+pub fn base_proportions() -> (f32, f32, f32) {
+    let joints = joint_table();
+    let y_of = |name: &str| {
+        joints
+            .iter()
+            .find(|joint| joint.name == name)
+            .map(|joint| joint.position[1])
+            .unwrap_or(0.0)
+    };
+    let total = y_of("HeadTop_End");
+    let neck = y_of("Neck");
+    let hips = y_of("Hips");
+    ((total - neck) / total, (neck - hips) / total, hips / total)
+}
+
+/// The canonical joint table with Y positions remapped piecewise by
+/// body band: leg-band heights (at or below the hips) scale by
+/// `leg_scale`, torso-band heights by `torso_scale` on top of the
+/// scaled hips, and head-band heights by `head_scale` on top of the
+/// scaled neck. X/Z are unchanged. With all scales at 1.0 the result
+/// equals [`joint_table`] exactly.
+pub fn scaled_joint_table(head_scale: f32, torso_scale: f32, leg_scale: f32) -> Vec<Joint> {
+    let joints = joint_table();
+    let y_of = |name: &str| {
+        joints
+            .iter()
+            .find(|joint| joint.name == name)
+            .map(|joint| joint.position[1])
+            .unwrap_or(0.0)
+    };
+    let hips_y = y_of("Hips");
+    let neck_y = y_of("Neck");
+    joints
+        .into_iter()
+        .map(|mut joint| {
+            let y = joint.position[1];
+            joint.position[1] = remap_band_y(y, hips_y, neck_y, head_scale, torso_scale, leg_scale);
+            joint
+        })
+        .collect()
+}
+
+/// Piecewise band remap used by [`scaled_joint_table`] and by the
+/// profile remap in `project.rs` (same anchors, same math).
+pub fn remap_band_y(
+    y: f32,
+    hips_y: f32,
+    neck_y: f32,
+    head_scale: f32,
+    torso_scale: f32,
+    leg_scale: f32,
+) -> f32 {
+    let scaled_hips = hips_y * leg_scale;
+    if y <= hips_y {
+        y * leg_scale
+    } else if y <= neck_y {
+        scaled_hips + (y - hips_y) * torso_scale
+    } else {
+        scaled_hips + (neck_y - hips_y) * torso_scale + (y - neck_y) * head_scale
+    }
+}
+
 /// Build the base mesh with a caller-supplied torso profile.
 ///
 /// Fails closed on non-finite values, non-positive radii, or a
 /// non-ascending / out-of-bounds profile.
 pub fn build_base_mesh_with_profile(profile: &[(f32, f32, f32)]) -> Result<BaseMesh, FactoryError> {
+    let params = ScaledBuild {
+        profile: profile.to_vec(),
+        ..ScaledBuild::default()
+    };
+    build_base_mesh_parametric(&params)
+}
+
+/// Build the base mesh from explicit scaled parameters.
+///
+/// Fails closed on the same profile/joint validation as
+/// [`build_base_mesh_with_profile`], plus non-finite or non-positive
+/// radial scale / head radii.
+pub fn build_base_mesh_parametric(params: &ScaledBuild) -> Result<BaseMesh, FactoryError> {
+    if !params.radial_scale.is_finite() || params.radial_scale <= 0.0 {
+        return Err(FactoryError::BadParam(
+            "radial scale must be finite and positive".to_string(),
+        ));
+    }
+    if !params.head_center.iter().all(|v| v.is_finite())
+        || !params.head_radii.iter().all(|v| v.is_finite() && *v > 0.0)
+        || !params.jaw_y.is_finite()
+    {
+        return Err(FactoryError::BadParam(
+            "head parameters must be finite with positive radii".to_string(),
+        ));
+    }
+    let profile: &[(f32, f32, f32)] = &params.profile;
     validate_profile(profile)?;
-    let joints = joint_table();
+    let joints = params.joints.clone();
     validate_joints(&joints)?;
+    let radial = params.radial_scale;
 
     let mut parts: Vec<MeshPart> = Vec::new();
 
@@ -908,7 +1056,12 @@ pub fn build_base_mesh_with_profile(profile: &[(f32, f32, f32)]) -> Result<BaseM
         parts.push(finish_part(build_tube(
             &format!("arm_{side_name}"),
             &chain,
-            &[0.045, 0.038, 0.030, 0.026],
+            &[
+                0.045 * radial,
+                0.038 * radial,
+                0.030 * radial,
+                0.026 * radial,
+            ],
             10,
             true,
             (0.0, 0.25, 0.25, 0.50),
@@ -920,19 +1073,33 @@ pub fn build_base_mesh_with_profile(profile: &[(f32, f32, f32)]) -> Result<BaseM
     parts.push(finish_part(build_lathe(
         "body",
         profile,
-        0.92,
-        1.50,
+        params.body_y.0,
+        params.body_y.1,
         18,
         16,
-        1.0,
+        radial,
         (0.25, 0.0, 0.50, 0.50),
         &joints,
     ))?);
 
     // Hair shell and head.
-    let (hair_part, _) = build_head("hair", true, &joints);
+    let (hair_part, _) = build_head(
+        "hair",
+        true,
+        &joints,
+        params.head_center,
+        params.head_radii,
+        params.jaw_y,
+    );
     parts.push(finish_part(hair_part)?);
-    let (head_part, head_masks) = build_head("head", false, &joints);
+    let (head_part, head_masks) = build_head(
+        "head",
+        false,
+        &joints,
+        params.head_center,
+        params.head_radii,
+        params.jaw_y,
+    );
     let head_part = finish_part(head_part)?;
 
     // Legs (thigh .078->.056, shin .054->.036, foot toe box).
@@ -947,7 +1114,13 @@ pub fn build_base_mesh_with_profile(profile: &[(f32, f32, f32)]) -> Result<BaseM
         parts.push(finish_part(build_tube(
             &format!("leg_{side_name}"),
             &chain,
-            &[0.078, 0.054, 0.036, 0.030, 0.018],
+            &[
+                0.078 * radial,
+                0.054 * radial,
+                0.036 * radial,
+                0.030 * radial,
+                0.018 * radial,
+            ],
             12,
             true,
             (0.0, 0.25, 0.25, 0.50),
@@ -968,7 +1141,11 @@ pub fn build_base_mesh_with_profile(profile: &[(f32, f32, f32)]) -> Result<BaseM
             let tube = build_tube(
                 "outfit_legs",
                 &chain,
-                &[0.078 * 1.05, 0.054 * 1.05, 0.036 * 1.05],
+                &[
+                    0.078 * 1.05 * radial,
+                    0.054 * 1.05 * radial,
+                    0.036 * 1.05 * radial,
+                ],
                 12,
                 false,
                 (0.0, 0.50, 0.25, 0.75),
@@ -989,11 +1166,11 @@ pub fn build_base_mesh_with_profile(profile: &[(f32, f32, f32)]) -> Result<BaseM
     parts.push(finish_part(build_lathe(
         "outfit_torso",
         profile,
-        0.97,
-        1.47,
+        params.outfit_y.0,
+        params.outfit_y.1,
         16,
         16,
-        1.035,
+        1.035 * radial,
         (0.50, 0.25, 0.75, 0.50),
         &joints,
     ))?);

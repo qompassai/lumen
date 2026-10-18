@@ -20,6 +20,8 @@
 pub mod base;
 pub mod blend;
 pub mod gltf;
+pub mod identity;
+pub mod project;
 
 use sha2::{Digest, Sha256};
 use thiserror::Error;

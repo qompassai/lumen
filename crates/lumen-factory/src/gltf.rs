@@ -222,6 +222,46 @@ struct GltfJson {
     nodes: Vec<NodeDef>,
     scenes: Vec<SceneDef>,
     skins: Vec<SkinDef>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    images: Vec<ImageDef>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    samplers: Vec<SamplerDef>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    textures: Vec<TextureDef>,
+}
+
+#[derive(Serialize)]
+struct ImageDef {
+    #[serde(rename = "bufferView")]
+    buffer_view: usize,
+    #[serde(rename = "mimeType")]
+    mime_type: String,
+    name: String,
+}
+
+#[derive(Serialize)]
+struct SamplerDef {
+    #[serde(rename = "magFilter")]
+    mag_filter: u32,
+    #[serde(rename = "minFilter")]
+    min_filter: u32,
+    #[serde(rename = "wrapS")]
+    wrap_s: u32,
+    #[serde(rename = "wrapT")]
+    wrap_t: u32,
+}
+
+#[derive(Serialize)]
+struct TextureDef {
+    sampler: usize,
+    source: usize,
+}
+
+#[derive(Serialize)]
+struct TexRef {
+    index: usize,
+    #[serde(rename = "texCoord")]
+    tex_coord: usize,
 }
 
 #[derive(Serialize)]
@@ -281,6 +321,8 @@ struct Material {
 struct Pbr {
     #[serde(rename = "baseColorFactor")]
     base_color_factor: [f32; 4],
+    #[serde(rename = "baseColorTexture", skip_serializing_if = "Option::is_none")]
+    base_color_texture: Option<TexRef>,
     #[serde(rename = "metallicFactor")]
     metallic_factor: f32,
     #[serde(rename = "roughnessFactor")]
@@ -390,6 +432,27 @@ fn min_max_3(values: &[[f32; 3]]) -> (Vec<f32>, Vec<f32>) {
 /// Serialize the base mesh (plus optional morph targets for the head
 /// primitive) into a deterministic GLB byte vector.
 pub fn write_glb(mesh: &BaseMesh, morph_targets: &[MorphTarget]) -> Result<Vec<u8>, FactoryError> {
+    write_glb_impl(mesh, morph_targets, None)
+}
+
+/// Serialize like [`write_glb`], additionally embedding a PNG texture
+/// atlas as the shared `baseColorTexture` of every material. When a
+/// texture is present the per-material `baseColorFactor` is white so
+/// the painted atlas colors render unmodified. With `None` this is
+/// exactly [`write_glb`].
+pub fn write_glb_with_texture(
+    mesh: &BaseMesh,
+    morph_targets: &[MorphTarget],
+    texture_png: Option<&[u8]>,
+) -> Result<Vec<u8>, FactoryError> {
+    write_glb_impl(mesh, morph_targets, texture_png)
+}
+
+fn write_glb_impl(
+    mesh: &BaseMesh,
+    morph_targets: &[MorphTarget],
+    texture_png: Option<&[u8]>,
+) -> Result<Vec<u8>, FactoryError> {
     if morph_targets.len() > MAX_MORPH_TARGETS {
         return Err(FactoryError::BadParam(format!(
             "morph target count {} exceeds bound",
@@ -590,11 +653,23 @@ pub fn write_glb(mesh: &BaseMesh, morph_targets: &[MorphTarget]) -> Result<Vec<u
             .find(|(name, _)| *name == part.name)
             .map(|(_, color)| *color)
             .unwrap_or([0.8, 0.8, 0.8, 1.0]);
+        let (factor, tex_ref) = if texture_png.is_some() {
+            (
+                [1.0, 1.0, 1.0, 1.0],
+                Some(TexRef {
+                    index: 0,
+                    tex_coord: 0,
+                }),
+            )
+        } else {
+            (color, None)
+        };
         materials.push(Material {
             double_sided: true,
             name: part.name.clone(),
             pbr: Pbr {
-                base_color_factor: color,
+                base_color_factor: factor,
+                base_color_texture: tex_ref,
                 metallic_factor: 0.0,
                 roughness_factor: 0.85,
             },
@@ -707,6 +782,31 @@ pub fn write_glb(mesh: &BaseMesh, morph_targets: &[MorphTarget]) -> Result<Vec<u
         Some(vec![0.0; target_names.len()])
     };
 
+    // Optional embedded texture atlas (PNG bytes ride in the BIN chunk).
+    let (images, samplers, textures) = match texture_png {
+        Some(png) => {
+            let view = bin.push(png, None);
+            (
+                vec![ImageDef {
+                    buffer_view: view,
+                    mime_type: "image/png".to_string(),
+                    name: "atlas".to_string(),
+                }],
+                vec![SamplerDef {
+                    mag_filter: 9729,
+                    min_filter: 9729,
+                    wrap_s: 10497,
+                    wrap_t: 10497,
+                }],
+                vec![TextureDef {
+                    sampler: 0,
+                    source: 0,
+                }],
+            )
+        }
+        None => (Vec::new(), Vec::new(), Vec::new()),
+    };
+
     let gltf = GltfJson {
         accessors,
         asset: Asset {
@@ -717,6 +817,9 @@ pub fn write_glb(mesh: &BaseMesh, morph_targets: &[MorphTarget]) -> Result<Vec<u
         buffers: vec![BufferDef {
             byte_length: bin.data.len(),
         }],
+        images,
+        samplers,
+        textures,
         materials,
         meshes: vec![MeshDef {
             extras,
