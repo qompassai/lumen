@@ -11,6 +11,10 @@
 //!   ingests canonical companion art into an identity record.
 //! - `inspect --in <path.glb>` parse-back validates a GLB and prints its
 //!   structural summary, including morph target names when present.
+//! - `vrm-inspect --in <file.vrm>` prints the VRM summary (flavor, meta,
+//!   humanoid bones, expressions, derived proportions).
+//! - `vrm-wrap --in <glb> --name <model name> --out <file.vrm>` wraps a
+//!   factory GLB as a VRM 1.0 file (VRMC_vrm humanoid + expressions).
 //! - Failures are typed errors printed to stderr with a nonzero exit.
 
 #![forbid(unsafe_code)]
@@ -24,6 +28,7 @@ use lumen_factory::blend::{compose_targets, load_templates};
 use lumen_factory::gltf::{MorphTarget, parse_glb, write_glb};
 use lumen_factory::identity::{ingest, load_record};
 use lumen_factory::project::{BuildOptions, build_character};
+use lumen_factory::vrm::{WrapMeta, inspect_vrm, wrap_as_vrm};
 use lumen_factory::{FactoryError, sha256_hex};
 
 #[derive(Parser)]
@@ -82,6 +87,24 @@ enum Commands {
         /// Input GLB path.
         #[arg(long = "in")]
         input: PathBuf,
+    },
+    /// Inspect a VRM file and print its summary.
+    VrmInspect {
+        /// Input VRM path.
+        #[arg(long = "in")]
+        input: PathBuf,
+    },
+    /// Wrap a factory GLB as a VRM 1.0 file.
+    VrmWrap {
+        /// Input GLB path.
+        #[arg(long = "in")]
+        input: PathBuf,
+        /// Model name for the VRM meta block.
+        #[arg(long)]
+        name: String,
+        /// Output VRM path.
+        #[arg(long)]
+        out: PathBuf,
     },
 }
 
@@ -218,6 +241,87 @@ fn run() -> Result<(), FactoryError> {
             println!("weight_sum_min: {:.6}", summary.weight_sum_min);
             println!("weight_sum_max: {:.6}", summary.weight_sum_max);
             println!("sha256: {}", sha256_hex(&bytes));
+            Ok(())
+        }
+        Commands::VrmInspect { input } => {
+            let bytes = std::fs::read(&input)?;
+            let summary = inspect_vrm(&bytes)?;
+            println!("flavor: {}", summary.flavor);
+            println!(
+                "spec_version: {}",
+                summary.spec_version.as_deref().unwrap_or("none")
+            );
+            println!("name: {}", summary.meta.name.as_deref().unwrap_or("none"));
+            println!(
+                "version: {}",
+                summary.meta.version.as_deref().unwrap_or("none")
+            );
+            println!(
+                "authors: {}",
+                if summary.meta.authors.is_empty() {
+                    "none".to_string()
+                } else {
+                    summary.meta.authors.join(",")
+                }
+            );
+            println!(
+                "license_url: {}",
+                summary.meta.license_url.as_deref().unwrap_or("none")
+            );
+            println!("nodes: {}", summary.node_count);
+            println!("bones: {}", summary.humanoid_bones.len());
+            println!(
+                "bone_map: {}",
+                summary
+                    .humanoid_bones
+                    .iter()
+                    .map(|(bone, node)| format!("{bone}={node}"))
+                    .collect::<Vec<_>>()
+                    .join(",")
+            );
+            println!(
+                "expressions_preset: {}",
+                summary
+                    .preset_expressions
+                    .iter()
+                    .map(|e| e.name.clone())
+                    .collect::<Vec<_>>()
+                    .join(",")
+            );
+            println!(
+                "expressions_custom: {}",
+                summary
+                    .custom_expressions
+                    .iter()
+                    .map(|e| e.name.clone())
+                    .collect::<Vec<_>>()
+                    .join(",")
+            );
+            match summary.proportions {
+                Some(p) => {
+                    println!("total_height: {:.4}", p.total_height);
+                    println!("head_ratio: {:.4}", p.head_ratio);
+                    println!("torso_ratio: {:.4}", p.torso_ratio);
+                    println!("leg_ratio: {:.4}", p.leg_ratio);
+                }
+                None => println!("proportions: none"),
+            }
+            println!("sha256: {}", sha256_hex(&bytes));
+            Ok(())
+        }
+        Commands::VrmWrap { input, name, out } => {
+            let bytes = std::fs::read(&input)?;
+            let wrapped = wrap_as_vrm(&bytes, &WrapMeta::new(&name))?;
+            std::fs::write(&out, &wrapped)?;
+            let summary = inspect_vrm(&wrapped)?;
+            println!("flavor: {}", summary.flavor);
+            println!("name: {}", summary.meta.name.as_deref().unwrap_or("none"));
+            println!("bones: {}", summary.humanoid_bones.len());
+            println!("expressions_preset: {}", summary.preset_expressions.len());
+            println!("expressions_custom: {}", summary.custom_expressions.len());
+            println!("glb_bytes: {}", wrapped.len());
+            println!("sha256: {}", sha256_hex(&wrapped));
+            println!("out: {}", out.display());
             Ok(())
         }
     }
