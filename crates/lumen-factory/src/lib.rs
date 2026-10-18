@@ -21,6 +21,7 @@ pub mod base;
 pub mod blend;
 pub mod gltf;
 pub mod identity;
+pub mod params;
 pub mod project;
 pub mod vrm;
 

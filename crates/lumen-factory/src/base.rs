@@ -665,6 +665,27 @@ pub const HEAD_RADII: [f32; 3] = [0.086, 0.106, 0.096];
 /// Default jaw-taper threshold height (meters).
 pub const HEAD_JAW_Y: f32 = 1.62;
 
+/// Hair-length parameter's neutral point (Phase 3): at this length
+/// the hair shell is exactly the Phase 1/2 shell, so the Séraphine
+/// regression anchor reproduces byte-for-byte.
+pub const HAIR_LENGTH_DEFAULT: f32 = 0.65;
+/// Canonical hair back-panel bottom Y at length 1.0 (long).
+pub const HAIR_BOTTOM_LONG_Y: f32 = 1.28;
+/// Canonical hair back-panel bottom Y at length 0.0 (short).
+pub const HAIR_BOTTOM_SHORT_Y: f32 = 1.50;
+
+/// Canonical hair back-panel bottom Y for a hair `length` in
+/// `0.0..=1.0`: a plain lerp between [`HAIR_BOTTOM_SHORT_Y`] and
+/// [`HAIR_BOTTOM_LONG_Y`]. The shell implements this as a shift
+/// relative to the neutral point [`HAIR_LENGTH_DEFAULT`] (see
+/// `build_head`): the bottom vertex moves by
+/// `(hair_bottom_y(HAIR_LENGTH_DEFAULT) - hair_bottom_y(length))`
+/// scaled by the head's Y scale, so the neutral length changes no
+/// vertex at all.
+pub fn hair_bottom_y(length: f32) -> f32 {
+    HAIR_BOTTOM_SHORT_Y + (HAIR_BOTTOM_LONG_Y - HAIR_BOTTOM_SHORT_Y) * length
+}
+
 /// Ellipsoid head (also the basis for the hair shell when `hair` is set).
 fn build_head(
     name: &str,
@@ -673,6 +694,7 @@ fn build_head(
     center: [f32; 3],
     radii: [f32; 3],
     jaw_y: f32,
+    hair_length: f32,
 ) -> (MeshPart, Vec<HeadRegionWeights>) {
     let lat_steps = 14usize;
     let lon_steps = 18usize;
@@ -698,6 +720,19 @@ fn build_head(
                 let backness = (-dir[2]).clamp(0.0, 1.0);
                 if dir[1] < 0.0 {
                     pos[1] -= 0.24 * backness * (-dir[1]);
+                }
+                // Hair length (Phase 3): shift the back panel toward
+                // the length's canonical bottom Y (see hair_bottom_y),
+                // weighted by backness * downwardness so the panel's
+                // lowest vertex moves by the full shift and the face
+                // side never moves. The shift is exactly 0.0 at the
+                // neutral length, leaving Phase 1/2 shells untouched.
+                let head_y_scale = radii[1] / HEAD_RADII[1];
+                let shift = (hair_bottom_y(HAIR_LENGTH_DEFAULT) - hair_bottom_y(hair_length))
+                    * head_y_scale;
+                if shift != 0.0 {
+                    let weight = (backness * (-dir[1]).max(0.0) * 2.0).clamp(0.0, 1.0);
+                    pos[1] -= shift * weight;
                 }
                 // Hair covers back and sides; skip the face opening.
                 let face_opening = dir[2] > 0.35 && dir[1] > -0.55;
@@ -911,6 +946,10 @@ pub struct ScaledBuild {
     pub head_center: [f32; 3],
     /// Head ellipsoid radii.
     pub head_radii: [f32; 3],
+    /// Hair length in `0.0..=1.0` (see [`hair_bottom_y`]); the
+    /// neutral [`HAIR_LENGTH_DEFAULT`] reproduces the Phase 1/2
+    /// hair shell exactly.
+    pub hair_length: f32,
     /// Jaw-taper threshold height.
     pub jaw_y: f32,
     /// Joint table to build against (possibly Y-scaled).
@@ -929,6 +968,7 @@ impl Default for ScaledBuild {
             body_y: (0.92, 1.50),
             head_center: HEAD_CENTER,
             head_radii: HEAD_RADII,
+            hair_length: HAIR_LENGTH_DEFAULT,
             jaw_y: HEAD_JAW_Y,
             joints: joint_table(),
             outfit_y: (0.97, 1.47),
@@ -1037,6 +1077,12 @@ pub fn build_base_mesh_parametric(params: &ScaledBuild) -> Result<BaseMesh, Fact
             "head parameters must be finite with positive radii".to_string(),
         ));
     }
+    if !params.hair_length.is_finite() || !(0.0..=1.0).contains(&params.hair_length) {
+        return Err(FactoryError::BadParam(format!(
+            "hair length {} outside [0.0, 1.0]",
+            params.hair_length
+        )));
+    }
     let profile: &[(f32, f32, f32)] = &params.profile;
     validate_profile(profile)?;
     let joints = params.joints.clone();
@@ -1090,6 +1136,7 @@ pub fn build_base_mesh_parametric(params: &ScaledBuild) -> Result<BaseMesh, Fact
         params.head_center,
         params.head_radii,
         params.jaw_y,
+        params.hair_length,
     );
     parts.push(finish_part(hair_part)?);
     let (head_part, head_masks) = build_head(
@@ -1099,6 +1146,7 @@ pub fn build_base_mesh_parametric(params: &ScaledBuild) -> Result<BaseMesh, Fact
         params.head_center,
         params.head_radii,
         params.jaw_y,
+        params.hair_length,
     );
     let head_part = finish_part(head_part)?;
 
