@@ -314,36 +314,112 @@ fn face_paint_lands_on_uv_expected_pixels() {
         "pupil at eye center"
     );
     // Brow stroke carries the hair color.
-    let (bx, by) = face_point_px(-0.36, 0.30);
+    let (bx, by) = face_point_px(-0.36, lumen_factory::project::BROW_NY);
     assert_eq!(
         atlas.get_pixel(bx, by).0[0..3],
         record.palette.hair.rgb,
         "brow at brow UV"
     );
-    // Lips at the mouth point.
+    // Lips just below the mouth line (the line itself is darker).
     let lip_rgb = record.palette.lips.expect("lips").rgb;
-    let (mx, my) = face_point_px(0.0, -0.46);
+    let (mx, my) = face_point_px(0.0, -0.49);
     assert_eq!(atlas.get_pixel(mx, my).0[0..3], lip_rgb, "lips at mouth UV");
-    // Zone centers carry their zone colors.
+    // Zone centers carry their zone colors, at glTF UV rows (v * size:
+    // top-left origin).
     assert_eq!(
-        atlas.get_pixel(640, 896).0[0..3],
+        atlas.get_pixel(640, 128).0[0..3],
         record.palette.hair.rgb,
         "hair zone"
     );
     assert_eq!(
-        atlas.get_pixel(640, 640).0[0..3],
+        atlas.get_pixel(640, 384).0[0..3],
         record.palette.outfit[0].rgb,
         "outfit torso zone"
     );
     assert_eq!(
-        atlas.get_pixel(128, 384).0[0..3],
+        atlas.get_pixel(128, 640).0[0..3],
         record.palette.outfit[1].rgb,
         "outfit legs zone"
     );
     assert_eq!(
-        atlas.get_pixel(384, 768).0[0..3],
+        atlas.get_pixel(384, 256).0[0..3],
         record.palette.skin.rgb,
         "body zone is skin"
+    );
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// The most common atlas color sampled at a part's vertex UVs, read
+/// with the glTF convention (pixel = (u * size, v * size)).
+fn sampled_zone_color(atlas: &image::RgbaImage, part: &lumen_factory::base::MeshPart) -> [u8; 3] {
+    let mut counts: std::collections::BTreeMap<[u8; 3], usize> = std::collections::BTreeMap::new();
+    let size = atlas.width() as f32;
+    for vertex in &part.vertices {
+        let x = ((vertex.uv[0] * size) as u32).min(atlas.width() - 1);
+        let y = ((vertex.uv[1] * size) as u32).min(atlas.height() - 1);
+        let px = atlas.get_pixel(x, y);
+        *counts.entry([px[0], px[1], px[2]]).or_default() += 1;
+    }
+    counts
+        .into_iter()
+        .max_by_key(|(_, n)| *n)
+        .expect("part has vertices")
+        .0
+}
+
+#[test]
+fn every_part_samples_its_zone_color_under_gltf_uvs() {
+    // The registration gate v1 lacked: v1 painted with a bottom-left
+    // UV origin, so hair sampled skin and arms sampled the outfit.
+    let dir = temp_art_dir("registration", false);
+    let record = ingest(&dir, "testina").expect("ingest");
+    let atlas = paint_atlas(&record, false);
+    let mesh = build_base_mesh().expect("base mesh");
+    let skin = record.palette.skin.rgb;
+    for part in &mesh.parts {
+        let expected = match part.name.as_str() {
+            "hair" => record.palette.hair.rgb,
+            "outfit_torso" => record.palette.outfit[0].rgb,
+            "outfit_legs" => record.palette.outfit[1].rgb,
+            _ => skin,
+        };
+        assert_eq!(
+            sampled_zone_color(&atlas, part),
+            expected,
+            "part {} samples the wrong atlas zone",
+            part.name
+        );
+    }
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn eyes_span_a_fifth_of_the_face_width() {
+    let dir = temp_art_dir("eyewidth", false);
+    let record = ingest(&dir, "testina").expect("ingest");
+    let atlas = paint_atlas(&record, false);
+    let skin = record.palette.skin.rgb;
+    // Walk the eye row in normalized X; the painted eye is the run of
+    // non-skin samples around the eye center.
+    let painted = |nx: f32| {
+        let (x, y) = face_point_px(nx, lumen_factory::project::EYE_NY);
+        atlas.get_pixel(x, y).0[0..3] != skin
+    };
+    let step = 0.005f32;
+    let center = lumen_factory::project::EYE_NX;
+    // Bounded scan: at most 0.6 normalized X each way.
+    let reach = |direction: f32| {
+        (1..=120)
+            .take_while(|k| painted(center + direction * step * *k as f32))
+            .count() as f32
+            * step
+    };
+    let width = reach(-1.0) + reach(1.0);
+    // 1/5 of the 2.0 face width, to atlas-pixel quantization
+    // (~0.025 normalized X per atlas pixel at the eye).
+    assert!(
+        (width - 0.40).abs() < 0.05,
+        "eye width {width} (face width 2.0)"
     );
     let _ = std::fs::remove_dir_all(&dir);
 }

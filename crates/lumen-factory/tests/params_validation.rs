@@ -85,10 +85,11 @@ fn anchor_seraphine_build_with_derived_params_is_byte_identical() {
     // Deliberate re-anchors (projection v2, docs/factory/FACTORY-PLAN.md
     // §9): Phase 2/3 cd7abaca... -> fix 1 (color-segmented head)
     // d41e41ac... -> fix 2 (uniform head scale) 5f93fd6e... -> fix 3
-    // (shell offsets + hair tail).
+    // (shell offsets + hair tail) 5bcaa972... -> fix 4 (glTF UV
+    // registration + face-scale features + hairline).
     assert_eq!(
         sha256_hex(&expected),
-        "5bcaa972879b17a9f7a84b1ef2f00896329f53624d806ddca0c2dde6ab059552",
+        "ce45290a91875c0fcb201f54d152c31b035f88936bbbd785ec047641e9e1b68c",
         "anchor asset is the projection v2 Séraphine build"
     );
     let via_params = build_character_with_params(

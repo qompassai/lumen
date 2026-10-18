@@ -22,11 +22,22 @@
 //!   unchanged, and the adversarial gate exercises scales beyond 2.0.
 //! - Texture painting fills a 1024x1024 atlas by the zone layout
 //!   documented in `base.rs` (face, limbs, outfit legs, body, hair,
-//!   outfit torso). The face rect is painted to match the head UV
-//!   mapping in `base.rs::build_head` (longitude -> U across the
-//!   face zone, latitude -> V): eyes, brows, and lips are placed by
-//!   projecting normalized head coordinates through that mapping, so
-//!   they land on the face when rendered.
+//!   outfit torso), in the glTF texture-coordinate convention: UV
+//!   (0, 0) is the image's top-left corner and V grows downward
+//!   (pixel row = V * size). Projection v1 painted with a bottom-left
+//!   origin, so every zone landed on the island mirrored about V 0.5
+//!   — the hair shell sampled skin, the arms sampled the outfit-legs
+//!   color, and the painted face sat on an island no mesh samples.
+//! - Face features (projection v2) are rasterized over the head UV
+//!   island the renderer samples: each island pixel is mapped back
+//!   through the `base.rs::build_head` mapping (longitude -> U,
+//!   latitude -> V) to normalized head coordinates (`nx`, `ny`, front
+//!   `nz > 0`), and features are shapes in that space — so their size
+//!   on the face is fixed by face geometry, not by atlas pixels. Each
+//!   eye spans 1/5 of the face width ([`EYE_HALF_WIDTH`]), centered
+//!   on the blend masks' eye point, with an upper lash line, iris,
+//!   pupil, and catchlight; a brow above; lips with a mouth line at
+//!   the mask mouth point.
 //! - The optional toon grade implements the `demo_toon` preset math
 //!   from `~/workspace/lightshow-video-study-20261018/TECHNIQUES.md`
 //!   verbatim (assumption A1 of the factory plan: if the landed
@@ -95,10 +106,31 @@ pub const TOON_POSTERIZE_LEVELS: f64 = 6.0;
 pub const EYE_NX: f32 = 0.36;
 /// Eye-center normalized Y.
 pub const EYE_NY: f32 = 0.12;
-/// Brow normalized Y (mask brow band center).
-pub const BROW_NY: f32 = 0.30;
+/// Brow normalized Y: the mask brow band is centered at 0.30; the
+/// painted brow sits above the eye's lash line inside that band.
+pub const BROW_NY: f32 = 0.36;
 /// Mouth normalized Y (mask mouth center is ny -0.48; lips -0.44).
 pub const MOUTH_NY: f32 = -0.46;
+/// Eye (sclera) half-width in normalized head X: each eye spans
+/// 0.40 of the face's 2.0 width — 1/5, the anime proportion.
+pub const EYE_HALF_WIDTH: f32 = 0.20;
+/// Eye (sclera) half-height in normalized head Y; spans the upper-
+/// and lower-lid mask bands (ny 0.22 / 0.02) so lid morphs move it.
+pub const EYE_HALF_HEIGHT: f32 = 0.13;
+
+/// Normalized half-extents `(x, y)` of the eye layers and features.
+const LASH_HALF: (f32, f32) = (0.22, 0.155);
+const IRIS_HALF: (f32, f32) = (0.11, 0.12);
+const PUPIL_HALF: (f32, f32) = (0.05, 0.06);
+const CATCHLIGHT_OFFSET: (f32, f32) = (0.035, 0.05);
+const CATCHLIGHT_HALF: (f32, f32) = (0.03, 0.03);
+const BROW_HALF: (f32, f32) = (0.18, 0.03);
+const LIPS_HALF: (f32, f32) = (0.15, 0.05);
+const MOUTH_LINE_HALF: (f32, f32) = (0.13, 0.012);
+const SCLERA_RGB: [u8; 3] = [248, 246, 244];
+const PUPIL_RGB: [u8; 3] = [10, 8, 10];
+const LASH_RGB: [u8; 3] = [24, 18, 28];
+const CATCHLIGHT_RGB: [u8; 3] = [255, 255, 255];
 
 /// Options for [`build_character`].
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -139,12 +171,14 @@ pub fn face_point_px(nx: f32, ny: f32) -> (u32, u32) {
     uv_to_px(u, v)
 }
 
-/// Convert glTF UV (bottom-left origin) to atlas pixel coordinates
-/// (top-left origin).
+/// Convert glTF UV to atlas pixel coordinates. glTF puts UV (0, 0)
+/// at the image's top-left corner with V growing downward, so the
+/// pixel row is `v * size` (v1 used `(1 - v) * size`, a bottom-left
+/// origin, which mirrored every zone; see the module docs).
 pub fn uv_to_px(u: f32, v: f32) -> (u32, u32) {
     let size = ATLAS_SIZE as f32;
     let x = (u * size).round().clamp(0.0, size - 1.0) as u32;
-    let y = ((1.0 - v) * size).round().clamp(0.0, size - 1.0) as u32;
+    let y = (v * size).round().clamp(0.0, size - 1.0) as u32;
     (x, y)
 }
 
@@ -156,31 +190,99 @@ fn fill_rect(img: &mut RgbaImage, x0: u32, y0: u32, x1: u32, y1: u32, color: Rgb
     }
 }
 
-/// Fill the atlas zone for UV rect `(u0, v0)..(u1, v1)`.
+/// Fill the atlas zone for UV rect `(u0, v0)..(u1, v1)` (glTF UV:
+/// pixel rows `v0 * size .. v1 * size`).
 fn fill_zone(img: &mut RgbaImage, zone: (f32, f32, f32, f32), color: Rgba<u8>) {
     let (u0, v0, u1, v1) = zone;
     let size = ATLAS_SIZE as f32;
     let x0 = (u0 * size) as u32;
     let x1 = (u1 * size) as u32;
-    let y0 = ((1.0 - v1) * size) as u32;
-    let y1 = ((1.0 - v0) * size) as u32;
+    let y0 = (v0 * size) as u32;
+    let y1 = (v1 * size) as u32;
     fill_rect(img, x0, y0, x1, y1, color);
 }
 
-fn fill_ellipse(img: &mut RgbaImage, cx: i32, cy: i32, rx: i32, ry: i32, color: Rgba<u8>) {
-    if rx <= 0 || ry <= 0 {
-        return;
+fn inside_ellipse(dx: f32, dy: f32, half: (f32, f32)) -> bool {
+    (dx / half.0).powi(2) + (dy / half.1).powi(2) <= 1.0
+}
+
+/// Resolved colors of the painted face features.
+struct FaceColors {
+    brow: Rgba<u8>,
+    iris: Rgba<u8>,
+    lips: Rgba<u8>,
+    mouth_line: Rgba<u8>,
+}
+
+/// The feature color at normalized head coordinates (`nx`, `ny`) on
+/// the front of the face, or `None` for bare skin. Eye layers scale
+/// by `eye_scale`; precedence is mouth, brows, then the eye layers
+/// from the catchlight outward to the lash line.
+fn face_feature(nx: f32, ny: f32, colors: &FaceColors, eye_scale: f32) -> Option<Rgba<u8>> {
+    let mouth_dy = ny - MOUTH_NY;
+    if inside_ellipse(nx, mouth_dy, MOUTH_LINE_HALF) {
+        return Some(colors.mouth_line);
     }
-    for dy in -ry..=ry {
-        for dx in -rx..=rx {
-            let inside = (dx as f64 / rx as f64).powi(2) + (dy as f64 / ry as f64).powi(2) <= 1.0;
-            if !inside {
+    if inside_ellipse(nx, mouth_dy, LIPS_HALF) {
+        return Some(colors.lips);
+    }
+    let scaled = |half: (f32, f32)| (half.0 * eye_scale, half.1 * eye_scale);
+    for sign in [-1.0f32, 1.0] {
+        let dx = nx - sign * EYE_NX;
+        if dx.abs() <= BROW_HALF.0 && (ny - BROW_NY).abs() <= BROW_HALF.1 {
+            return Some(colors.brow);
+        }
+        let dy = ny - EYE_NY;
+        let (cx, cy) = scaled(CATCHLIGHT_OFFSET);
+        let layers = [
+            (
+                dx - cx,
+                dy - cy,
+                scaled(CATCHLIGHT_HALF),
+                rgba(CATCHLIGHT_RGB),
+            ),
+            (dx, dy, scaled(PUPIL_HALF), rgba(PUPIL_RGB)),
+            (dx, dy, scaled(IRIS_HALF), colors.iris),
+            (
+                dx,
+                dy,
+                scaled((EYE_HALF_WIDTH, EYE_HALF_HEIGHT)),
+                rgba(SCLERA_RGB),
+            ),
+        ];
+        for (lx, ly, half, color) in layers {
+            if inside_ellipse(lx, ly, half) {
+                return Some(color);
+            }
+        }
+        // Upper lash line: the band just outside the sclera's top half.
+        if dy > 0.0 && inside_ellipse(dx, dy, scaled(LASH_HALF)) {
+            return Some(rgba(LASH_RGB));
+        }
+    }
+    None
+}
+
+/// Rasterize the face features over the head UV island (UV
+/// `0..0.25` on both axes, the whole head sphere): each pixel center
+/// is mapped back through the `build_head` UV mapping to normalized
+/// head coordinates, and front-facing pixels take [`face_feature`].
+fn paint_face(img: &mut RgbaImage, colors: &FaceColors, eye_scale: f32) {
+    let island_px = ATLAS_SIZE / 4;
+    let size = ATLAS_SIZE as f32;
+    for py in 0..island_px {
+        for px in 0..island_px {
+            let u = (px as f32 + 0.5) / size;
+            let v = (py as f32 + 0.5) / size;
+            let theta = (u / 0.25) * std::f32::consts::TAU;
+            let phi = (v / 0.25) * std::f32::consts::PI;
+            let nz = phi.sin() * theta.sin();
+            if nz <= 0.0 {
                 continue;
             }
-            let x = cx + dx;
-            let y = cy + dy;
-            if x >= 0 && y >= 0 && (x as u32) < img.width() && (y as u32) < img.height() {
-                img.put_pixel(x as u32, y as u32, color);
+            let (nx, ny) = (phi.sin() * theta.cos(), phi.cos());
+            if let Some(color) = face_feature(nx, ny, colors, eye_scale) {
+                img.put_pixel(px, py, color);
             }
         }
     }
@@ -286,15 +388,9 @@ pub fn paint_atlas_with_params(
     ))
 }
 
-/// Scale an eye-feature radius by the eye scale (round to nearest,
-/// never below 1). At scale 1.0 every radius is the Phase 2 value.
-fn scaled_radius(base: i32, eye_scale: f32) -> i32 {
-    ((base as f32 * eye_scale).round() as i32).max(1)
-}
-
-/// The atlas painter over resolved colors. `eye_scale` scales the
-/// sclera / iris / pupil radii; 1.0 reproduces the Phase 2 atlas
-/// pixel-for-pixel.
+/// The atlas painter over resolved colors. `eye_scale` scales every
+/// eye layer (sclera, lash line, iris, pupil, catchlight) about the
+/// fixed eye centers.
 #[allow(clippy::too_many_arguments)]
 fn paint_atlas_impl(
     skin_rgb: [u8; 3],
@@ -320,43 +416,13 @@ fn paint_atlas_impl(
     fill_zone(&mut img, (0.50, 0.00, 0.75, 0.25), hair); // hair
     fill_zone(&mut img, (0.50, 0.25, 0.75, 0.50), outfit_primary); // outfit torso
 
-    // Face features, placed through the head UV mapping.
-    for sign in [-1.0f32, 1.0] {
-        let (ex, ey) = face_point_px(sign * EYE_NX, EYE_NY);
-        let (ex, ey) = (ex as i32, ey as i32);
-        fill_ellipse(
-            &mut img,
-            ex,
-            ey,
-            scaled_radius(8, eye_scale),
-            scaled_radius(5, eye_scale),
-            Rgba([248, 246, 244, 255]),
-        ); // sclera
-        fill_ellipse(
-            &mut img,
-            ex,
-            ey,
-            scaled_radius(4, eye_scale),
-            scaled_radius(4, eye_scale),
-            rgba(eye_rgb),
-        ); // iris
-        fill_ellipse(
-            &mut img,
-            ex,
-            ey,
-            scaled_radius(2, eye_scale),
-            scaled_radius(2, eye_scale),
-            Rgba([10, 8, 10, 255]),
-        ); // pupil
-        // Brow: a short thick stroke above the eye.
-        let (bx, by) = face_point_px(sign * EYE_NX, BROW_NY);
-        let (bx, by) = (bx as i32, by as i32);
-        for dx in -9..=9 {
-            fill_ellipse(&mut img, bx + dx, by, 2, 2, hair);
-        }
-    }
-    let (mx, my) = face_point_px(0.0, MOUTH_NY);
-    fill_ellipse(&mut img, mx as i32, my as i32, 8, 3, rgba(lip_rgb));
+    let colors = FaceColors {
+        brow: hair,
+        iris: rgba(eye_rgb),
+        lips: rgba(lip_rgb),
+        mouth_line: rgba(lip_rgb.map(|channel| (u16::from(channel) * 11 / 20) as u8)),
+    };
+    paint_face(&mut img, &colors, eye_scale);
 
     if toon {
         apply_toon_grade(&mut img);
@@ -451,13 +517,14 @@ fn grade_pixel(px: Rgba<u8>, posterize: bool) -> Rgba<u8> {
 }
 
 fn apply_toon_grade(img: &mut RgbaImage) {
-    // Face rect in image space: UV (0, 0)..(0.25, 0.25).
+    // Face rect in image space: UV (0, 0)..(0.25, 0.25), the top-left
+    // island under the glTF convention.
     let size = ATLAS_SIZE as f64;
     let face_x1 = (0.25 * size) as u32;
-    let face_y0 = ((1.0 - 0.25) * size) as u32;
+    let face_y1 = (0.25 * size) as u32;
     for y in 0..img.height() {
         for x in 0..img.width() {
-            let in_face = x < face_x1 && y >= face_y0;
+            let in_face = x < face_x1 && y < face_y1;
             let px = *img.get_pixel(x, y);
             img.put_pixel(x, y, grade_pixel(px, !in_face));
         }

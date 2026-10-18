@@ -671,6 +671,12 @@ pub const HAIR_LENGTH_DEFAULT: f32 = 0.65;
 /// of hair volume at the default head; v1's 1.07 sat ~6 mm off the
 /// head and read as a rim).
 pub const HAIR_SHELL_SCALE: f32 = 1.15;
+/// Hairline height on the hair cap (normalized head Y): the cap
+/// covers the front of the head only above it.
+pub const HAIR_HAIRLINE_NY: f32 = 0.55;
+/// The hair cap has no geometry below this normalized head Y (its
+/// underside, which would sit under the chin).
+pub const HAIR_CAP_BOTTOM_NY: f32 = -0.9;
 /// Outfit torso shell scale over the body profile (v1: 1.035).
 pub const OUTFIT_TORSO_SCALE: f32 = 1.06;
 /// Outfit leg shell scale over the leg tube radii (v1: 1.05).
@@ -716,8 +722,13 @@ fn build_head(
                 if dir[1] < 0.0 {
                     pos[1] -= 0.24 * backness * (-dir[1]);
                 }
-                // Hair covers back and sides; skip the face opening.
-                let face_opening = dir[2] > 0.35 && dir[1] > -0.55;
+                // Hair covers the back, the sides, and the top-front
+                // above the hairline; the face is open all the way
+                // down, and the cap's underside is dropped. (v1 closed
+                // the front below ny -0.55, a band across the chin
+                // that read as a hood once the shell was visible.)
+                let face_opening =
+                    (dir[2] > 0.35 && dir[1] < HAIR_HAIRLINE_NY) || dir[1] < HAIR_CAP_BOTTOM_NY;
                 if face_opening {
                     row.push(None);
                     continue;
