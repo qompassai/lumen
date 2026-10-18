@@ -15,7 +15,10 @@ fn asset_bytes(name: &str) -> Vec<u8> {
     std::fs::read(&path).unwrap_or_else(|e| panic!("read {}: {e}", path.display()))
 }
 
-fn check<'a>(report: &'a lumen_factory::validate::ValidationReport, name: &str) -> &'a lumen_factory::validate::ValidationCheck {
+fn check<'a>(
+    report: &'a lumen_factory::validate::ValidationReport,
+    name: &str,
+) -> &'a lumen_factory::validate::ValidationCheck {
     report
         .checks
         .iter()
@@ -38,7 +41,12 @@ fn built_base_glb_passes_validation() {
 
 #[test]
 fn committed_assets_all_pass() {
-    for name in ["base.glb", "base_blended.glb", "seraphine.glb", "seraphine.vrm"] {
+    for name in [
+        "base.glb",
+        "base_blended.glb",
+        "seraphine.glb",
+        "seraphine.vrm",
+    ] {
         let bytes = asset_bytes(name);
         let report = validate_bytes(&bytes, name);
         assert_eq!(report.size, bytes.len());
@@ -60,7 +68,11 @@ fn seraphine_counts_and_targets() {
     assert_eq!(report.counts.images, 1);
     assert!(report.vrm.is_none());
     assert!(check(&report, "texture_png_mime_and_dims").pass);
-    assert!(check(&report, "texture_png_mime_and_dims").detail.contains("1024x1024"));
+    assert!(
+        check(&report, "texture_png_mime_and_dims")
+            .detail
+            .contains("1024x1024")
+    );
 }
 
 #[test]

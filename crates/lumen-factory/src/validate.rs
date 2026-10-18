@@ -181,7 +181,8 @@ fn accessor_data(root: &Value, bin: &[u8], index: usize) -> Result<AccessorData,
     let count = get_u64(accessor, "count")
         .ok_or_else(|| format!("accessor {index} missing count"))? as usize;
     let view_index = get_u64(accessor, "bufferView")
-        .ok_or_else(|| format!("accessor {index} missing bufferView"))? as usize;
+        .ok_or_else(|| format!("accessor {index} missing bufferView"))?
+        as usize;
     let views = get_array(root, "bufferViews");
     let view = views
         .get(view_index)
@@ -323,10 +324,7 @@ pub fn validate_bytes(bytes: &[u8], file: &str) -> ValidationReport {
         builder.push(
             "container_chunk_layout",
             false,
-            format!(
-                "file size {} exceeds bound {MAX_GLB_BYTES}",
-                bytes.len()
-            ),
+            format!("file size {} exceeds bound {MAX_GLB_BYTES}", bytes.len()),
         );
     }
     let magic_ok = bytes.get(0..4) == Some(GLB_MAGIC.as_slice());
@@ -364,7 +362,10 @@ pub fn validate_bytes(bytes: &[u8], file: &str) -> ValidationReport {
         } else if let Some(json_len) = json_len {
             if json_len % 4 != 0 {
                 layout_detail = Err(format!("JSON chunk length {json_len} not 4-aligned"));
-            } else if 20usize.checked_add(json_len).is_none_or(|end| end > bytes.len()) {
+            } else if 20usize
+                .checked_add(json_len)
+                .is_none_or(|end| end > bytes.len())
+            {
                 layout_detail = Err("JSON chunk overruns file".to_string());
             } else {
                 let json_end = 20 + json_len;
@@ -496,7 +497,10 @@ pub fn validate_bytes(bytes: &[u8], file: &str) -> ValidationReport {
     });
 
     builder.push_result("buffer_views_in_bounds", {
-        let mut result = Ok(format!("{} bufferViews within BIN bounds", buffer_views.len()));
+        let mut result = Ok(format!(
+            "{} bufferViews within BIN bounds",
+            buffer_views.len()
+        ));
         for (index, view) in buffer_views.iter().enumerate() {
             let buffer_index = get_u64(view, "buffer").unwrap_or(0) as usize;
             let offset = get_u64(view, "byteOffset").unwrap_or(0) as usize;
@@ -893,9 +897,7 @@ pub fn validate_bytes(bytes: &[u8], file: &str) -> ValidationReport {
             }
         }
         if result.is_ok() {
-            result = Ok(format!(
-                "{values_checked} float values, none NaN/Inf"
-            ));
+            result = Ok(format!("{values_checked} float values, none NaN/Inf"));
         }
         result
     });
