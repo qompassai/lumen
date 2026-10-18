@@ -82,6 +82,10 @@ enum Commands {
         /// Apply the demo_toon grade to the atlas.
         #[arg(long)]
         toon: bool,
+        /// Write the ramp/toon material configuration into the GLB
+        /// mesh extras (`lumen_toon`).
+        #[arg(long)]
+        ramp: bool,
     },
     /// Derive a parameter record from an identity record.
     Params {
@@ -200,6 +204,7 @@ fn run() -> Result<(), FactoryError> {
             out,
             params,
             toon,
+            ramp,
         } => {
             let record = load_record(&identity)?;
             let templates = load_templates(&emotions)?;
@@ -211,12 +216,12 @@ fn run() -> Result<(), FactoryError> {
                         &record,
                         &templates,
                         &parameter_record,
-                        BuildOptions { toon },
+                        BuildOptions { ramp, toon },
                     )?;
                     (bytes, Some(hash))
                 }
                 None => (
-                    build_character(&record, &templates, BuildOptions { toon })?,
+                    build_character(&record, &templates, BuildOptions { ramp, toon })?,
                     None,
                 ),
             };
@@ -227,6 +232,7 @@ fn run() -> Result<(), FactoryError> {
                 println!("params_hash: {hash}");
             }
             println!("toon: {toon}");
+            println!("ramp: {ramp}");
             println!("glb_bytes: {}", bytes.len());
             println!("sha256: {}", sha256_hex(&bytes));
             println!("out: {}", out.display());

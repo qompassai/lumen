@@ -39,6 +39,9 @@
 //!   `build_character_with_params` with
 //!   `ParameterRecord::from_identity(record)`, so the derived
 //!   record reproduces the Phase 2 build byte-for-byte.
+//! - Phase 5: [`BuildOptions::ramp`] additionally writes the default
+//!   [`ToonConfig`] into the GLB mesh extras (`lumen_toon`); without
+//!   it the build is byte-identical to the Phase 3 output.
 
 #![forbid(unsafe_code)]
 
@@ -51,9 +54,10 @@ use crate::base::{
     default_body_profile, joint_table, remap_band_y, scaled_joint_table,
 };
 use crate::blend::{Templates, compose_targets};
-use crate::gltf::{MorphTarget, write_glb_with_texture};
+use crate::gltf::{MorphTarget, write_glb_with_toon};
 use crate::identity::IdentityRecord;
 use crate::params::{ParameterRecord, hex_to_rgb};
+use crate::toon::ToonConfig;
 use crate::{FactoryError, MAX_GLB_BYTES};
 
 /// Maximum accepted band scale (see [`SCALE_MIN`]).
@@ -93,6 +97,11 @@ pub const MOUTH_NY: f32 = -0.46;
 /// Options for [`build_character`].
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct BuildOptions {
+    /// Write the default ramp/toon material configuration
+    /// ([`ToonConfig::default`]) into the GLB mesh extras under the
+    /// `lumen_toon` key, for the Blender ramp-material proof. When
+    /// unset the output is byte-identical to the pre-Phase-5 build.
+    pub ramp: bool,
     /// Apply the `demo_toon` grade to the painted atlas.
     pub toon: bool,
 }
@@ -557,7 +566,12 @@ pub fn build_character_with_params(
         .map(|(name, deltas)| MorphTarget { deltas, name })
         .collect();
 
-    let bytes = write_glb_with_texture(&mesh, &morph_targets, Some(&png))?;
+    let toon_config = if options.ramp {
+        Some(ToonConfig::default())
+    } else {
+        None
+    };
+    let bytes = write_glb_with_toon(&mesh, &morph_targets, Some(&png), toon_config.as_ref())?;
     if bytes.len() > MAX_GLB_BYTES {
         return Err(FactoryError::BadParam(
             "built GLB exceeds size bound".to_string(),

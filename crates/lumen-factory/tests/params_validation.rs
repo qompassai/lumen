@@ -81,15 +81,29 @@ fn anchor_seraphine_build_with_derived_params_is_byte_identical() {
         "cd7abaca01077934ab0eef422f9252b047ec577300251c54f89d6e0e8faa7c64",
         "anchor asset is the Phase 2 Séraphine build"
     );
-    let via_params =
-        build_character_with_params(&record, &templates, &params, BuildOptions { toon: true })
-            .expect("build via params");
+    let via_params = build_character_with_params(
+        &record,
+        &templates,
+        &params,
+        BuildOptions {
+            ramp: false,
+            toon: true,
+        },
+    )
+    .expect("build via params");
     assert_eq!(
         via_params, expected,
         "from_identity params build must reproduce the anchor byte-for-byte"
     );
-    let via_identity = build_character(&record, &templates, BuildOptions { toon: true })
-        .expect("build via identity");
+    let via_identity = build_character(
+        &record,
+        &templates,
+        BuildOptions {
+            ramp: false,
+            toon: true,
+        },
+    )
+    .expect("build via identity");
     assert_eq!(via_identity, expected, "identity build is the same build");
 }
 
@@ -166,9 +180,16 @@ fn overrides_change_the_build() {
     let record = seraphine_record();
     let templates = load_templates(&fixture_templates()).expect("fixture templates");
     let base = ParameterRecord::from_identity(&record).expect("derive");
-    let base_bytes =
-        build_character_with_params(&record, &templates, &base, BuildOptions { toon: false })
-            .expect("base build");
+    let base_bytes = build_character_with_params(
+        &record,
+        &templates,
+        &base,
+        BuildOptions {
+            ramp: false,
+            toon: false,
+        },
+    )
+    .expect("base build");
 
     let mut recolored = base.clone();
     recolored.appearance.hair = Some("#2244cc".to_string());
@@ -177,7 +198,10 @@ fn overrides_change_the_build() {
         &record,
         &templates,
         &recolored,
-        BuildOptions { toon: false },
+        BuildOptions {
+            ramp: false,
+            toon: false,
+        },
     )
     .expect("recolored build");
     assert_ne!(
@@ -192,7 +216,10 @@ fn overrides_change_the_build() {
         &record,
         &templates,
         &longer_hair,
-        BuildOptions { toon: false },
+        BuildOptions {
+            ramp: false,
+            toon: false,
+        },
     )
     .expect("long hair build");
     assert_ne!(longer_bytes, base_bytes, "hair length changes the GLB");
@@ -204,7 +231,10 @@ fn overrides_change_the_build() {
         &record,
         &templates,
         &bigger_eyes,
-        BuildOptions { toon: false },
+        BuildOptions {
+            ramp: false,
+            toon: false,
+        },
     )
     .expect("big eyes build");
     assert_ne!(bigger_bytes, base_bytes, "eye scale changes the GLB");
@@ -215,10 +245,26 @@ fn builds_with_params_are_deterministic() {
     let record = seraphine_record();
     let templates = load_templates(&fixture_templates()).expect("fixture templates");
     let params = ParameterRecord::from_identity(&record).expect("derive");
-    let a = build_character_with_params(&record, &templates, &params, BuildOptions { toon: true })
-        .expect("build a");
-    let b = build_character_with_params(&record, &templates, &params, BuildOptions { toon: true })
-        .expect("build b");
+    let a = build_character_with_params(
+        &record,
+        &templates,
+        &params,
+        BuildOptions {
+            ramp: false,
+            toon: true,
+        },
+    )
+    .expect("build a");
+    let b = build_character_with_params(
+        &record,
+        &templates,
+        &params,
+        BuildOptions {
+            ramp: false,
+            toon: true,
+        },
+    )
+    .expect("build b");
     assert_eq!(a, b, "same params + templates must be byte-identical");
 }
 
@@ -263,9 +309,16 @@ fn extreme_values_build_is_structurally_clean() {
     params.record_hash = params.compute_hash().expect("re-hash");
     params.validate().expect("bounds values validate");
 
-    let bytes =
-        build_character_with_params(&record, &templates, &params, BuildOptions { toon: false })
-            .expect("extreme build succeeds");
+    let bytes = build_character_with_params(
+        &record,
+        &templates,
+        &params,
+        BuildOptions {
+            ramp: false,
+            toon: false,
+        },
+    )
+    .expect("extreme build succeeds");
     let summary = parse_glb(&bytes).expect("extreme build parses back");
     assert_eq!(summary.joint_count, 65);
     assert!(

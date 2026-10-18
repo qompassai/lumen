@@ -436,7 +436,7 @@ fn min_max_3(values: &[[f32; 3]]) -> (Vec<f32>, Vec<f32>) {
 /// Serialize the base mesh (plus optional morph targets for the head
 /// primitive) into a deterministic GLB byte vector.
 pub fn write_glb(mesh: &BaseMesh, morph_targets: &[MorphTarget]) -> Result<Vec<u8>, FactoryError> {
-    write_glb_impl(mesh, morph_targets, None)
+    write_glb_impl(mesh, morph_targets, None, None)
 }
 
 /// Serialize like [`write_glb`], additionally embedding a PNG texture
@@ -449,14 +449,32 @@ pub fn write_glb_with_texture(
     morph_targets: &[MorphTarget],
     texture_png: Option<&[u8]>,
 ) -> Result<Vec<u8>, FactoryError> {
-    write_glb_impl(mesh, morph_targets, texture_png)
+    write_glb_impl(mesh, morph_targets, texture_png, None)
+}
+
+/// Serialize like [`write_glb_with_texture`], additionally writing a
+/// ramp/toon configuration into the mesh `extras` under the key
+/// [`crate::toon::TOON_EXTRAS_KEY`] when `toon` is `Some`. The config
+/// is validated before anything is written. With `None` this is
+/// exactly [`write_glb_with_texture`], byte-for-byte.
+pub fn write_glb_with_toon(
+    mesh: &BaseMesh,
+    morph_targets: &[MorphTarget],
+    texture_png: Option<&[u8]>,
+    toon: Option<&crate::toon::ToonConfig>,
+) -> Result<Vec<u8>, FactoryError> {
+    write_glb_impl(mesh, morph_targets, texture_png, toon)
 }
 
 fn write_glb_impl(
     mesh: &BaseMesh,
     morph_targets: &[MorphTarget],
     texture_png: Option<&[u8]>,
+    toon: Option<&crate::toon::ToonConfig>,
 ) -> Result<Vec<u8>, FactoryError> {
+    if let Some(config) = toon {
+        config.validate()?;
+    }
     if morph_targets.len() > MAX_MORPH_TARGETS {
         return Err(FactoryError::BadParam(format!(
             "morph target count {} exceeds bound",
@@ -770,15 +788,25 @@ fn write_glb_impl(
     });
 
     let target_names: Vec<String> = morph_targets.iter().map(|t| t.name.clone()).collect();
-    let extras = if target_names.is_empty() {
-        None
-    } else {
+    // Mesh extras: morph target names (when any) and the ramp/toon
+    // configuration (when a ramp build was requested). With neither,
+    // extras stays absent — the pre-Phase-5 byte layout.
+    let extras = {
         let mut map = Map::new();
-        map.insert(
-            "targetNames".to_string(),
-            Value::Array(target_names.iter().cloned().map(Value::from).collect()),
-        );
-        Some(Value::Object(map))
+        if !target_names.is_empty() {
+            map.insert(
+                "targetNames".to_string(),
+                Value::Array(target_names.iter().cloned().map(Value::from).collect()),
+            );
+        }
+        if let Some(config) = toon {
+            map.insert(crate::toon::TOON_EXTRAS_KEY.to_string(), config.to_json());
+        }
+        if map.is_empty() {
+            None
+        } else {
+            Some(Value::Object(map))
+        }
     };
     let mesh_weights = if target_names.is_empty() {
         None
