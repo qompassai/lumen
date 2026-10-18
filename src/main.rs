@@ -13,6 +13,7 @@ use std::sync::Arc;
 use clap::{Parser, Subcommand};
 use lumen::cli::{self, CLI_DEFAULT_HEIGHT, CLI_DEFAULT_WIDTH};
 use lumen::policy::{self, DEFAULT_POLICY_TOML, Enforcer, Policy, PolicyError};
+use lumen::style::{StyleApplyReq, StyleListReq, style_apply, style_list};
 use lumen::{bevy_discover, project_root, sprite_info, validate_atlas};
 use rmcp::{
     ErrorData, RoleServer, ServerHandler, ServiceExt,
@@ -207,6 +208,37 @@ impl Lumen {
             Err(e) => err_json(e),
         }
     }
+
+    // Style ops are exposed on BOTH surfaces by decision (Matt, 2026-10-18):
+    // this stdio MCP registry and the A2A registry wrap the same library
+    // functions (lumen::style), so the two registrations cannot drift.
+    #[tool(
+        description = "Apply a named style grade preset to every layer of a project .lumen.json document."
+    )]
+    async fn style_apply(&self, Parameters(req): Parameters<StyleApplyReq>) -> String {
+        let root = match project_root() {
+            Ok(root) => root,
+            Err(e) => return err_json(e),
+        };
+        match style_apply(&root, req).await {
+            Ok(saved) => ok_json(&saved),
+            Err(e) => err_json(e),
+        }
+    }
+
+    #[tool(
+        description = "List the style grade presets (name + description) that style_apply accepts."
+    )]
+    async fn style_list(&self, Parameters(_req): Parameters<StyleListReq>) -> String {
+        let root = match project_root() {
+            Ok(root) => root,
+            Err(e) => return err_json(e),
+        };
+        match style_list(&root, StyleListReq {}).await {
+            Ok(list) => ok_json(&list),
+            Err(e) => err_json(e),
+        }
+    }
 }
 
 #[tool_handler]
@@ -231,7 +263,7 @@ impl ServerHandler for Lumen {
 
     fn get_info(&self) -> ServerConfig {
         ServerConfig::new(ServerCapabilities::builder().enable_tools().build())
-            .with_instructions("lumen — Lux in motu. Sprite artistry tools: inspect PNGs, validate Light Show atlases, discover Bevy Remote Protocol endpoints.")
+            .with_instructions("lumen — Lux in motu. Sprite artistry tools: inspect PNGs, validate Light Show atlases, discover Bevy Remote Protocol endpoints, list and apply style grade presets.")
     }
 }
 

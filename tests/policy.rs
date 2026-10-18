@@ -17,7 +17,13 @@ use lumen::policy::{
 };
 use serde_json::{Map, Value, json};
 
-const REGISTERED: &[&str] = &["sprite_info", "validate_atlas", "bevy_discover"];
+const REGISTERED: &[&str] = &[
+    "bevy_discover",
+    "sprite_info",
+    "style_apply",
+    "style_list",
+    "validate_atlas",
+];
 const STDIO_REPLY_TIMEOUT: Duration = Duration::from_secs(20);
 
 fn default_policy() -> Policy {
@@ -149,10 +155,15 @@ fn reply_text(reply: &Value) -> String {
 fn ok_default_policy_passes_check_for_registered_and_library_tools() {
     let report = policy::check(&default_policy(), REGISTERED);
     assert!(report.problems.is_empty(), "{:?}", report.problems);
-    assert_eq!(
-        report.required_tools,
-        REGISTERED.len() + LIBRARY_TOOLS.len()
-    );
+    // check() unions the two lists (style ops sit in both since D2:
+    // registered on stdio AND library tools), so the expectation is the
+    // union size, not the sum.
+    let expected: std::collections::BTreeSet<&str> = REGISTERED
+        .iter()
+        .chain(LIBRARY_TOOLS.iter())
+        .copied()
+        .collect();
+    assert_eq!(report.required_tools, expected.len());
     assert_eq!(report.labeled_tools, report.required_tools);
     assert_eq!((report.deny_rules, report.allow_rules), (3, 4));
 }
@@ -318,7 +329,7 @@ fn ok_binary_policy_check_passes() {
     let (code, out) = run_cli("check", None);
     assert_eq!(code, 0, "{out}");
     assert!(out.contains("PASS every required tool is labeled"));
-    assert!(out.contains("registered tools: 3"));
+    assert!(out.contains("registered tools: 5"));
 }
 
 #[test]
