@@ -29,6 +29,12 @@
 //!   Building Séraphine from her derived record reproduces
 //!   `assets/seraphine.glb` byte-for-byte (the Phase 3 regression
 //!   anchor, asserted in tests and in the real gate).
+//! - [`ParameterRecord::from_identity_with_vrm_proportions`] is the
+//!   same derivation with the proportion source swapped: the scales
+//!   come from a VRM humanoid skeleton (the VRoid input path, see
+//!   `vrm.rs`) through the same [`scales_for_ratios`] law, while
+//!   appearance still comes from the identity record — a VRM carries
+//!   no palette authority.
 
 #![forbid(unsafe_code)]
 
@@ -36,7 +42,7 @@ use std::path::Path;
 
 use serde::{Deserialize, Serialize};
 
-use crate::identity::{IdentityRecord, SCALE_MAX, SCALE_MIN};
+use crate::identity::{IdentityRecord, SCALE_MAX, SCALE_MIN, scales_for_ratios};
 use crate::{FactoryError, sha256_hex};
 
 /// Schema identifier emitted in every record.
@@ -220,7 +226,35 @@ impl ParameterRecord {
     /// its palette anchors, hair length and eye scale at their
     /// defaults. The derived record carries a fresh `record_hash`.
     pub fn from_identity(record: &IdentityRecord) -> Result<Self, FactoryError> {
-        let (head, torso, leg) = record.applied_scales()?;
+        Self::derive(record, record.applied_scales()?)
+    }
+
+    /// Derive a parameter record like [`Self::from_identity`], but
+    /// take the body proportions from a VRM humanoid skeleton
+    /// ([`crate::vrm::VrmProportions`], measured by
+    /// [`crate::vrm::inspect_vrm`] — the VRoid input path) instead of
+    /// the identity record's sprite measurements. Appearance, hair,
+    /// and face parameters still come from the identity record, and
+    /// the scales are computed by the same law as the identity path
+    /// ([`scales_for_ratios`]), so both proportion sources produce
+    /// records in one scale space. Fails closed on degenerate VRM
+    /// ratios, exactly like the identity path.
+    pub fn from_identity_with_vrm_proportions(
+        record: &IdentityRecord,
+        proportions: &crate::vrm::VrmProportions,
+    ) -> Result<Self, FactoryError> {
+        let scales = scales_for_ratios(
+            f64::from(proportions.head_ratio),
+            f64::from(proportions.torso_ratio),
+            f64::from(proportions.leg_ratio),
+        )?;
+        Self::derive(record, scales)
+    }
+
+    fn derive(
+        record: &IdentityRecord,
+        (head, torso, leg): (f32, f32, f32),
+    ) -> Result<Self, FactoryError> {
         let outfit = &record.palette.outfit;
         let mut derived = Self {
             appearance: AppearanceParams {

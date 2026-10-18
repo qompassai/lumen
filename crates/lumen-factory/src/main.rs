@@ -95,6 +95,10 @@ enum Commands {
         /// Output parameter record path (.json or .toml).
         #[arg(long)]
         out: PathBuf,
+        /// Optional VRM file: derive body proportions from its
+        /// humanoid skeleton instead of the identity record.
+        #[arg(long)]
+        vrm: Option<PathBuf>,
     },
     /// Ingest canonical companion art into an identity record.
     Ingest {
@@ -238,9 +242,23 @@ fn run() -> Result<(), FactoryError> {
             println!("out: {}", out.display());
             Ok(())
         }
-        Commands::Params { identity, out } => {
+        Commands::Params { identity, out, vrm } => {
             let record = load_record(&identity)?;
-            let params = ParameterRecord::from_identity(&record)?;
+            let params = match &vrm {
+                Some(path) => {
+                    let bytes = std::fs::read(path)?;
+                    let summary = inspect_vrm(&bytes)?;
+                    let proportions = summary.proportions.ok_or_else(|| {
+                        FactoryError::BadParam(format!(
+                            "VRM {} maps no hips/head bones; proportions unavailable",
+                            path.display()
+                        ))
+                    })?;
+                    println!("proportions_source: vrm {}", path.display());
+                    ParameterRecord::from_identity_with_vrm_proportions(&record, &proportions)?
+                }
+                None => ParameterRecord::from_identity(&record)?,
+            };
             if out.extension().and_then(|e| e.to_str()) == Some("toml") {
                 std::fs::write(&out, params.to_toml()?)?;
             } else {

@@ -27,6 +27,24 @@
 //!   or morph target missing at wrap time) is a typed
 //!   [`FactoryError`], never a panic and never a partial output.
 //!
+//! Division of labor with lumen's `src/vrm.rs` (landed in 39cf296;
+//! reconciled in the integration-update pass): that module owns the
+//! texture layer of an existing VRM — its `vrm_inspect` reports
+//! flavor / meta / texture inventory and `vrm_grade` re-encodes the
+//! embedded textures with a style preset, geometry and extensions
+//! untouched. This module owns the structure layer those ops do not
+//! expose: the humanoid bone map, the expression binds, and derived
+//! proportions (the factory's build inputs), plus the estate's only
+//! GLB -> VRM wrap (lumen never wraps a bare GLB). The two readers
+//! are independent implementations of the GLB / VRM contract by
+//! design — this crate is standalone (see the factory plan) — and
+//! are verified interoperable against each other: lumen's
+//! `vrm_grade` output for `assets/seraphine.vrm` (preset
+//! `demo_toon_portrait`) is committed as
+//! `assets/seraphine_graded.vrm`, and `inspect_vrm` extracts from it
+//! a summary identical to the ungraded file's (asserted in
+//! `tests/vrm_interop.rs`).
+//!
 //! Derived proportions (definitions): node world translations are
 //! composed through the node hierarchy (TRS / matrix, full 4x4
 //! composition). Let `top` be the maximum world Y over all nodes,

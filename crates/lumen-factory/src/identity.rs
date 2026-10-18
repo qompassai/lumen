@@ -322,36 +322,53 @@ impl IdentityRecord {
     /// silently clamped).
     pub fn applied_scales(&self) -> Result<(f32, f32, f32), FactoryError> {
         let p = &self.proportions;
-        let ratios = [p.head_ratio, p.torso_ratio, p.leg_ratio];
-        if ratios
-            .iter()
-            .any(|r| !r.is_finite() || *r <= 0.0 || *r >= 1.0)
-        {
-            return Err(FactoryError::BadParam(format!(
-                "identity ratios degenerate: {ratios:?}"
-            )));
-        }
-        let sum: f64 = ratios.iter().sum();
-        if (sum - 1.0).abs() > 0.05 {
-            return Err(FactoryError::BadParam(format!(
-                "identity ratios sum to {sum}, expected ~1"
-            )));
-        }
-        let (base_head, base_torso, base_leg) = base_proportions();
-        let scales = (
-            (p.head_ratio as f32 / base_head),
-            (p.torso_ratio as f32 / base_torso),
-            (p.leg_ratio as f32 / base_leg),
-        );
-        for (name, scale) in [("head", scales.0), ("torso", scales.1), ("leg", scales.2)] {
-            if !scale.is_finite() || !(SCALE_MIN..=SCALE_MAX).contains(&scale) {
-                return Err(FactoryError::BadParam(format!(
-                    "{name} scale {scale} outside [{SCALE_MIN}, {SCALE_MAX}] (fail closed, not clamped)"
-                )));
-            }
-        }
-        Ok(scales)
+        scales_for_ratios(p.head_ratio, p.torso_ratio, p.leg_ratio)
     }
+}
+
+/// The applied-scales law for any measured `(head, torso, leg)` ratio
+/// triple: each ratio divided by the canonical base ratio from
+/// [`crate::base::base_proportions`]. Fails closed when a ratio is
+/// non-finite/degenerate, when the triple does not sum to ~1, or when
+/// any scale falls outside [`SCALE_MIN`]..=[`SCALE_MAX`] (never
+/// silently clamped). [`IdentityRecord::applied_scales`] delegates
+/// here, and the VRM proportions bridge in `params.rs` uses the same
+/// law, so a ratio triple means the same scales wherever it was
+/// measured — sprite alpha bands or a VRM humanoid skeleton.
+pub fn scales_for_ratios(
+    head_ratio: f64,
+    torso_ratio: f64,
+    leg_ratio: f64,
+) -> Result<(f32, f32, f32), FactoryError> {
+    let ratios = [head_ratio, torso_ratio, leg_ratio];
+    if ratios
+        .iter()
+        .any(|r| !r.is_finite() || *r <= 0.0 || *r >= 1.0)
+    {
+        return Err(FactoryError::BadParam(format!(
+            "proportion ratios degenerate: {ratios:?}"
+        )));
+    }
+    let sum: f64 = ratios.iter().sum();
+    if (sum - 1.0).abs() > 0.05 {
+        return Err(FactoryError::BadParam(format!(
+            "proportion ratios sum to {sum}, expected ~1"
+        )));
+    }
+    let (base_head, base_torso, base_leg) = base_proportions();
+    let scales = (
+        (head_ratio as f32 / base_head),
+        (torso_ratio as f32 / base_torso),
+        (leg_ratio as f32 / base_leg),
+    );
+    for (name, scale) in [("head", scales.0), ("torso", scales.1), ("leg", scales.2)] {
+        if !scale.is_finite() || !(SCALE_MIN..=SCALE_MAX).contains(&scale) {
+            return Err(FactoryError::BadParam(format!(
+                "{name} scale {scale} outside [{SCALE_MIN}, {SCALE_MAX}] (fail closed, not clamped)"
+            )));
+        }
+    }
+    Ok(scales)
 }
 
 // --- color helpers ---
