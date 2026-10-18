@@ -201,8 +201,24 @@ fn build_is_deterministic_and_textured() {
     let dir = temp_art_dir("build", false);
     let record = ingest(&dir, "testina").expect("ingest");
     let templates = load_templates(&fixture_templates()).expect("templates");
-    let a = build_character(&record, &templates, BuildOptions { toon: true }).expect("build a");
-    let b = build_character(&record, &templates, BuildOptions { toon: true }).expect("build b");
+    let a = build_character(
+        &record,
+        &templates,
+        BuildOptions {
+            ramp: false,
+            toon: true,
+        },
+    )
+    .expect("build a");
+    let b = build_character(
+        &record,
+        &templates,
+        BuildOptions {
+            ramp: false,
+            toon: true,
+        },
+    )
+    .expect("build b");
     assert_eq!(a, b, "same record + templates must be byte-identical");
     let summary = parse_glb(&a).expect("built glb parses");
     assert_eq!(summary.joint_count, 65);

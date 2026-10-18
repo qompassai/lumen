@@ -12,6 +12,8 @@
 //! - Phase 4 scope: structural export validation (`validate`) — a
 //!   named-rule, fail-closed validator over GLB/VRM bytes producing a
 //!   JSON report (schema `lumen.factory-validation` v1).
+//! - Phase 5 scope: ramp/toon material configuration (`toon`) as
+//!   data in GLB extras, plus the Blender render proof.
 //! - Every public function fails closed: invalid input produces a typed
 //!   [`FactoryError`], never a panic and never a partial side effect.
 //! - All generation math is in-crate and ordered: the same inputs always
@@ -26,6 +28,7 @@ pub mod gltf;
 pub mod identity;
 pub mod params;
 pub mod project;
+pub mod toon;
 pub mod validate;
 pub mod vrm;
 
