@@ -1,0 +1,22 @@
+[package]
+name = "lumen-factory"
+version = "0.1.0"
+edition = "2024"
+description = "Procedural 2D-sprite-to-3D character factory for lumen (Phase 1a: skeleton, base mesh, GLB writer)"
+license = "Apache-2.0"
+
+[workspace]
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }
+image = { version = "0.25", default-features = false, features = ["png"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+thiserror = "2"
+
+[profile.release]
+overflow-checks = true
+
+[lints.rust]
+unsafe_code = "forbid"
