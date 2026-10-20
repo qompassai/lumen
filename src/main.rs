@@ -20,8 +20,8 @@ use rmcp::{
     ErrorData, RoleServer, ServerHandler, ServiceExt,
     handler::server::{router::tool::ToolRouter, tool::ToolCallContext, wrapper::Parameters},
     model::{
-        CallToolRequestParams, CallToolResponse, CallToolResult, IntoContents, ServerCapabilities,
-        ServerConfig,
+        CallToolRequestParams, CallToolResponse, CallToolResult, Implementation, IntoContents,
+        ServerCapabilities, ServerConfig,
     },
     schemars,
     service::RequestContext,
@@ -294,7 +294,10 @@ impl ServerHandler for Lumen {
 
     fn get_info(&self) -> ServerConfig {
         ServerConfig::new(ServerCapabilities::builder().enable_tools().build())
-            .with_instructions("lumen — Lux in motu. Sprite artistry tools: inspect PNGs, validate Light Show atlases, discover Bevy Remote Protocol endpoints, list and apply style grade presets, inspect and grade VRM avatars.")
+            .with_server_info(
+                Implementation::new("lumen", env!("CARGO_PKG_VERSION")).with_title("Lumen"),
+            )
+            .with_instructions("lumen — Lux in motu. Cross-media conversion engine: deterministic, code-first bridging between 2D art, 3D models and engine formats. Tools: inspect PNGs and validate atlases, list and apply style grade presets, inspect and grade VRM avatars, discover Bevy Remote Protocol endpoints, and drive the character factory (records in, 2D and 3D out).")
     }
 }
 
