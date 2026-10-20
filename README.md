@@ -1,13 +1,19 @@
 # lumen
 
-**Lux in motu** — light in motion. An MCP server for Aseprite sprite
-artistry with Bevy live-world interop, written in Rust (edition 2024,
-`rmcp` 3.3). Built for the light-show art pipeline: one operation core
-behind three surfaces —
+**Lux in motu** — light in motion. A cross-platform, cross-media
+conversion engine, written in Rust (edition 2024, `rmcp` 3.3): one
+operation core that bridges media formats — 2D art and sprite formats,
+3D models, and game-engine packages — converting between them
+deterministically from code-first records, so the same input record
+yields the same output on any platform. Aseprite sprites and Bevy
+were its first endpoints, not its purpose; the center is the factory
+(one identity record, emitted as 2D or 3D) and the named, verified
+converter chain between formats — one operation core behind three
+surfaces —
 <a href="./LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt="License: Apache 2.0"></a>
 <a href="https://doi.org/10.5281/zenodo.23503518"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.23503518.svg" alt="DOI"></a>
 
-- **MCP tools** for interactive sprite work: sprite operations,
+- **MCP tools** for interactive media work: sprite operations,
   inspection, palettes, text, style presets, dream-animation
   automation, QA gates, and export backends (PNG sheets, WASM-4,
   TIC-80, VoidSprite file interop). All paths are project-root

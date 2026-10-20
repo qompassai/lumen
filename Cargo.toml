@@ -2,7 +2,7 @@
 name = "lumen"
 version = "0.1.0"
 edition = "2024"
-description = "Lux in motu - MCP server for Aseprite sprite artistry with Bevy live-world interop"
+description = "Lux in motu - cross-platform, cross-media deterministic conversion engine: 2D art, 3D models and engine formats from code-first records"
 
 [dependencies]
 rmcp = { version = "3.3", features = ["server", "macros", "schemars", "transport-io"] }

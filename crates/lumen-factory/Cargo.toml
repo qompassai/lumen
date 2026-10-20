@@ -2,7 +2,7 @@
 name = "lumen-factory"
 version = "0.1.0"
 edition = "2024"
-description = "Procedural 2D-sprite-to-3D character factory for lumen (Phase 1a: skeleton, base mesh, GLB writer)"
+description = "Code-first character factory for lumen: one identity record emitted deterministically as 2D and 3D across media formats (Phase 1a: skeleton, base mesh, GLB writer)"
 license = "Apache-2.0"
 
 [workspace]
