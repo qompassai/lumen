@@ -5,6 +5,7 @@ artistry with Bevy live-world interop, written in Rust (edition 2024,
 `rmcp` 3.3). Built for the light-show art pipeline: one operation core
 behind three surfaces —
 <a href="./LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt="License: Apache 2.0"></a>
+<a href="https://doi.org/10.5281/zenodo.23503518"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.23503518.svg" alt="DOI"></a>
 
 - **MCP tools** for interactive sprite work: sprite operations,
   inspection, palettes, text, style presets, dream-animation
