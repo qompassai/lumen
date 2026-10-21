@@ -5,7 +5,7 @@
 **Decision**: Build a parametric character factory (canonical rigged base
 + identity projection) instead of neural single-view reconstruction.
 
-**Context**: Matt directed lumen to convert 2D sprites to high-quality
+**Context**: Owner directed lumen to convert 2D sprites to high-quality
 editable 3D characters. Neural methods don't give editable body parts
 or character-specific expression sets.
 

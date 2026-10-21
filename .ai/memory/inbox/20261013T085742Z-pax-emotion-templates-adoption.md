@@ -1,9 +1,9 @@
 # Emotion templates adopted as canonical in-repo
 
-Date: 2026-10-13 (Matt ruling: adopt the sandbox-only copy as canonical).
+Date: 2026-10-13 (Owner ruling: adopt the sandbox-only copy as canonical).
 
 The ratified emotion templates (schema `lumen.emotion-templates` v1,
-ratified by Matt 2026-10-06) previously existed ONLY in a sandbox staging
+ratified by Owner 2026-10-06) previously existed ONLY in a sandbox staging
 directory (`~/workspace/lumen-2d3d/emotion-templates/` on the Pax VM);
 the skill claimed `templates/emotions.json` lived in this repo but no
 templates file existed here or anywhere on primo. The full sandbox set

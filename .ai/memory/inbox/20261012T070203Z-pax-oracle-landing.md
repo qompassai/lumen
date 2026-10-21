@@ -26,7 +26,7 @@
   Every file added by the landing (oracle.rs, tests/oracle.rs,
   examples/oracle_intake.rs, pack.rs) is fmt-clean. A tree-wide cargo fmt
   commit was deliberately NOT folded into this landing; it is a separate
-  decision for Matt.
+  decision for Owner.
 
 ## SCIP
 

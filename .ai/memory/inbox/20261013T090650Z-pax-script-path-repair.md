@@ -1,6 +1,6 @@
 # Script path repair — retired sprite-mcp paths removed
 
-Date: 2026-10-13 (Matt order: "please repair and when possible use
+Date: 2026-10-13 (Owner order: "please repair and when possible use
 rootless xdg conventions instead of hard coding"). Closes the flag left
 in `20261013T085742Z-pax-emotion-templates-adoption.md`.
 

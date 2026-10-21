@@ -1,6 +1,6 @@
 # Overnight audit 2026-10-12 (Pax) — gates green, current.md pending list reconciled
 
-Commission: Matt overnight blanket authorization (2026-10-12 20:03 PDT) —
+Commission: Owner overnight blanket authorization (2026-10-12 20:03 PDT) —
 audit lumen, close clearly-defined leftovers, commit/push as needed.
 
 ## Repo state verified on primo (~/.GH/Qompass/lumen)
@@ -10,7 +10,7 @@ audit lumen, close clearly-defined leftovers, commit/push as needed.
 - The old ~/sprite-mcp path no longer exists; this mirror is the repo.
   Skill file path corrected in the sandbox skill (not a repo change).
 - Local branch pax/oracle-intake-20261011 remains, pointing at the landed
-  commit e934962 (harmless; removable at Matt convenience).
+  commit e934962 (harmless; removable at Owner convenience).
 
 ## Gates run 2026-10-12 (this tree, primo)
 
@@ -56,7 +56,7 @@ audit lumen, close clearly-defined leftovers, commit/push as needed.
 5. Protobuf conflict repair — NO EVIDENCE in tree: zero protobuf/prost
    references in Cargo.toml or src/. Nothing to repair in this repo.
 
-## Templates discrepancy (needs Matt call)
+## Templates discrepancy (needs Owner call)
 
 The lumen skill states the ratified emotion templates live in this repo
 at templates/emotions.json / templates/emotions.md. This repo has no
@@ -64,16 +64,16 @@ templates/ directory, and no emotions.json exists anywhere on primo.
 The only lumen-side copy found is the sandbox research workspace
 ~/workspace/lumen-2d3d/emotion-templates/ (with the sculpt-delta Python
 tooling). Which copy is canonical, and whether it should be imported
-into this repo, is Matt decision — not closed by this audit.
+into this repo, is Owner decision — not closed by this audit.
 
 ## Sandbox lumen-2d3d TODO.md evaluation queue
 
 Pixal3D item is DONE (trial passed 2026-10-07; promoted to primary oracle
-arm by Matt decision; intake landed as src/oracle.rs). The remaining
+arm by Owner decision; intake landed as src/oracle.rs). The remaining
 unchecked items (TRELLIS.2 GGUF verification, TRELLIS.2 reference,
 Hunyuan3D-2mv, Hunyuan3D-Omni, TripoSG/TripoSR baselines) are open-ended
 research evaluations in a queue whose purpose the Pixal3D result already
-fulfilled; they are Matt research backlog, not defined code leftovers.
+fulfilled; they are Owner research backlog, not defined code leftovers.
 No GPU hours were spent on them in this audit.
 
 ## Sandbox copies

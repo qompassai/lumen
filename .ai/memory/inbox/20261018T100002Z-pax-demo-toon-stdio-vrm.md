@@ -1,6 +1,6 @@
 # demo_toon landing, stdio style ops, VRoid/VRM wiring (2026-10-18)
 
-Three of Matt's rulings from the light-show video study landed as three
+Three of Owner's rulings from the light-show video study landed as three
 local commits (no push):
 
 - `dc4f52a` — `demo_toon` + `demo_toon_portrait` style presets (table now

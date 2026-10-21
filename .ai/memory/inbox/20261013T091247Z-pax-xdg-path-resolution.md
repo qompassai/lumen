@@ -1,6 +1,6 @@
 # XDG path resolution — bevy_mcp references made rootless
 
-Date: 2026-10-13 (Matt order: "please go Ahead with updating for xdg
+Date: 2026-10-13 (Owner order: "please go Ahead with updating for xdg
 paths"). Closes the last open flag in
 `20261013T090650Z-pax-script-path-repair.md`.
 

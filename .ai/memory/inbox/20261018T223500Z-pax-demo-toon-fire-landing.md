@@ -1,7 +1,7 @@
-# demo_toon_fire landed — posterize Some(4) (Matt's ruling, 2026-10-18)
+# demo_toon_fire landed — posterize Some(4) (Owner's ruling, 2026-10-18)
 
 The study spec left demo_toon_fire's posterize value open; it failed
-closed as an unknown style everywhere. Matt ruled Some(4) (cel-fire)
+closed as an unknown style everywhere. Owner ruled Some(4) (cel-fire)
 on 2026-10-18 after a None/4/6 comparison visual.
 
 - `src/style.rs`: preset added as the third demo_toon peer (hue +4.0,

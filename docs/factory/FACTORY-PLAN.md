@@ -1,6 +1,6 @@
 # Lumen Factory — Build Plan (Phase 0: Reconciliation)
 
-Commissioned: Matt, 2026-10-18 (D4 ruling). Coordinator: Pax.
+Commissioned: Owner, 2026-10-18 (D4 ruling). Coordinator: Pax.
 Worktree: primo `~/scratch/lumen-factory-wt`, branch `factory/build-20261018`,
 base commit `51ef294` (lumen main at program start). **No merge, no push.**
 
@@ -46,7 +46,7 @@ Another worker is concurrently landing, in the lumen **main checkout**:
 `style_apply` exposed on the stdio MCP surface; (VRoid) VRM import /
 texture-grade / VRM export ops on MCP + A2A surfaces. This factory branch
 designs against these assumptions, each to be reconciled in the final
-integration-update phase (Matt's amendment, 2026-10-18):
+integration-update phase (Owner's amendment, 2026-10-18):
 
 - **A1.** `demo_toon` exists as a named style preset with the TECHNIQUES.md
   parameters (sprite variant posterize Some(6); portrait variant None;
@@ -214,8 +214,8 @@ truncated GLB, NaN weights, oversized inputs rejected pre-decode).
 | Asset | Source | License |
 |---|---|---|
 | Base mesh, skeleton, blend fields | Generated in-crate by code (this program) | Apache-2.0 (repo license) |
-| Emotion recipes | lumen `templates/emotions.json`, ratified by Matt 2026-10-06 (in-repo) | Repo |
-| Séraphine canonical art | LightShow repo `assets/art/seraphine/` (Matt's own art) | Repo |
+| Emotion recipes | lumen `templates/emotions.json`, ratified by Owner 2026-10-06 (in-repo) | Repo |
+| Séraphine canonical art | LightShow repo `assets/art/seraphine/` (Owner's own art) | Repo |
 | Textures | Painted procedurally from identity palette (in-crate) | Apache-2.0 |
 | External downloads | **None planned.** Any addition requires a provenance row here before use | — |
 
@@ -232,10 +232,10 @@ truncated GLB, NaN weights, oversized inputs rejected pre-decode).
   non-deterministic, the gate is downgraded to structure-identical with
   the cause documented (never silently).
 
-## 9. Projection v2 (2026-10-18, Matt's commission) — DONE, branch-only
+## 9. Projection v2 (2026-10-18, Owner's commission) — DONE, branch-only
 
 Branch `factory/projection-v2-20261018` off merged main 3944a06.
-No merge to main, no push — integration stays Matt's word.
+No merge to main, no push — integration stays Owner's word.
 The dispatched worker exhausted its 150 turns after fixes 1–3;
 Pax takeover completed fix 4 and all gates (record:
 `~/workspace/lumen-factory-20261018/proof-v2/IDENTITY-READ-V2.md`).

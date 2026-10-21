@@ -73,7 +73,7 @@ params --vrm -> build -> validate -> vrm-wrap, all green.
 Gates after the pass: root 406/0 (fmt + clippy clean), factory
 121/0 (fmt + clippy clean), Blender proof re-run green both modes.
 
-Remainder for the eventual merge to main (Matt's word): the factory
+Remainder for the eventual merge to main (Owner's word): the factory
 crate is still standalone (not a workspace member, no path-dep on
 lumen) — merging the branch brings the crate in as-is; unifying the
 two VRM readers into one implementation, if ever wanted, is a
