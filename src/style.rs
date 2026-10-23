@@ -28,7 +28,7 @@
 use std::path::Path;
 
 use image::{Rgba, RgbaImage};
-use schemars::JsonSchema;
+use schemars::{JsonSchema, Schema, SchemaGenerator};
 use serde::{Deserialize, Serialize};
 
 use crate::LumenError;
@@ -51,8 +51,25 @@ pub struct FidelitySetReq {
 }
 
 /// Request for `style_list` (takes no parameters).
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize)]
 pub struct StyleListReq {}
+
+impl JsonSchema for StyleListReq {
+    fn schema_name() -> std::borrow::Cow<'static, str> {
+        "StyleListReq".into()
+    }
+
+    fn json_schema(_gen: &mut SchemaGenerator) -> Schema {
+        // D1 (2026-10-21): rose's parser hard-fails a tool whose schema
+        // lacks `properties`. The derived schema for an empty struct is
+        // {"type":"object"} with no `properties` key; spell it out.
+        serde_json::from_value(serde_json::json!({
+            "type": "object",
+            "properties": {},
+        }))
+        .expect("static StyleListReq schema")
+    }
+}
 
 /// Request for `style_apply`.
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -601,4 +618,22 @@ fn hsl_to_rgb(h: f32, s: f32, l: f32) -> (f32, f32, f32) {
     };
     let m = l - c / 2.0;
     (r1 + m, g1 + m, b1 + m)
+}
+
+#[cfg(test)]
+mod style_list_schema_tests {
+    use super::*;
+
+    // D1 regression (2026-10-21): rose's parser hard-fails any tool whose
+    // schema lacks `properties`. StyleListReq is an empty struct; this
+    // locks in the explicit `properties: {}` so a refactor cannot regress it.
+    #[test]
+    fn style_list_schema_carries_properties() {
+        let schema = schemars::schema_for!(StyleListReq);
+        let v = serde_json::to_value(&schema).expect("schema serializes");
+        assert!(
+            v.get("properties").is_some(),
+            "style_list schema must carry `properties` (D1)"
+        );
+    }
 }
