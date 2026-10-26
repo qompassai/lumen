@@ -1,0 +1,93 @@
+{
+ "deformers": [],
+ "format": "lumen-rig-model",
+ "format_version": 1,
+ "id": "base",
+ "meshes": [
+  {
+   "id": "tri",
+   "indices": [
+    0,
+    1,
+    2
+   ],
+   "part": "root",
+   "texture": "tex0",
+   "uvs": [
+    [
+     0.0,
+     0.0
+    ],
+    [
+     1.0,
+     0.0
+    ],
+    [
+     0.0,
+     1.0
+    ]
+   ],
+   "vertices": [
+    [
+     0.0,
+     0.0
+    ],
+    [
+     1.0,
+     0.0
+    ],
+    [
+     0.0,
+     1.0
+    ]
+   ]
+  }
+ ],
+ "parameters": [
+  {
+   "default": 0.0,
+   "id": "angle_x",
+   "kind": "scalar",
+   "max": 30.0,
+   "min": -30.0
+  },
+  {
+   "id": "ca",
+   "kind": "combined",
+   "max": 10.0,
+   "min": -10.0,
+   "offset": 0.0,
+   "terms": [
+    {
+     "parameter": "cb",
+     "weight": 1.0
+    }
+   ]
+  },
+  {
+   "id": "cb",
+   "kind": "combined",
+   "max": 10.0,
+   "min": -10.0,
+   "offset": 0.0,
+   "terms": [
+    {
+     "parameter": "ca",
+     "weight": 1.0
+    }
+   ]
+  }
+ ],
+ "parts": [
+  {
+   "id": "root"
+  }
+ ],
+ "physics": [],
+ "textures": [
+  {
+   "id": "tex0",
+   "source": "textures/tex0.png"
+  }
+ ]
+}

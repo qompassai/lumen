@@ -1,0 +1,18 @@
+[package]
+name = "lumen-rig-core"
+version = "0.1.0"
+edition = "2024"
+description = "Validating parser for the lumen rig format (model asset, format v1)."
+license = "Apache-2.0"
+
+[workspace]
+
+[dependencies]
+# serde: the data model. The raw layer derives Deserialize (strict,
+# unknown fields denied); the validated layer derives Serialize for
+# canonical emission (SPEC.md sections 1.1 and 1.2).
+serde = { version = "1.0", features = ["derive"] }
+# serde_json: the format's JSON parser and emitter. Its
+# shortest-round-trip float formatting is part of the format's
+# canonical form (SPEC.md section 1.2), not an implementation detail.
+serde_json = "1.0"

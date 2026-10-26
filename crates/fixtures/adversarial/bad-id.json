@@ -1,0 +1,67 @@
+{
+ "deformers": [],
+ "format": "lumen-rig-model",
+ "format_version": 1,
+ "id": "base",
+ "meshes": [
+  {
+   "id": "tri",
+   "indices": [
+    0,
+    1,
+    2
+   ],
+   "part": "root",
+   "texture": "tex0",
+   "uvs": [
+    [
+     0.0,
+     0.0
+    ],
+    [
+     1.0,
+     0.0
+    ],
+    [
+     0.0,
+     1.0
+    ]
+   ],
+   "vertices": [
+    [
+     0.0,
+     0.0
+    ],
+    [
+     1.0,
+     0.0
+    ],
+    [
+     0.0,
+     1.0
+    ]
+   ]
+  }
+ ],
+ "parameters": [
+  {
+   "default": 0.0,
+   "id": "bad id!",
+   "kind": "scalar",
+   "max": 30.0,
+   "min": -30.0
+  }
+ ],
+ "parts": [
+  {
+   "id": "root"
+  }
+ ],
+ "physics": [],
+ "textures": [
+  {
+   "id": "tex0",
+   "source": "textures/tex0.png"
+  }
+ ]
+}
