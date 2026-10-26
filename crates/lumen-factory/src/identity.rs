@@ -11,8 +11,8 @@
 //! - Palette extraction is a deterministic in-crate median-cut
 //!   quantizer (bounded iterations, pixels sorted before every split,
 //!   output sorted by population then RGB). Signature anchors are
-//!   derived from documented image regions with named threshold
-//!   constants; every derivation is deterministic.
+//!   derived from documented regions and predicates with named
+//!   threshold constants; every derivation is deterministic.
 //! - Proportions come from frame 0 of the mature sprite when one is
 //!   present (the mature set is the default target, factory plan §1),
 //!   else from the base sprite; `proportions_source` records which.
@@ -26,23 +26,44 @@
 //!   field itself empty. Re-ingesting the same art yields the same
 //!   hash (the Phase 2 determinism gate).
 //!
-//! Region definitions (portrait, fractions of width/height):
+//! Portrait anchor derivations (no alpha is assumed: the canonical
+//! portraits are opaque busts on gradient backdrops):
 //! - Background estimate: median of the four 16x16 corner patches.
-//! - Hair: median-cut palette of the portrait's upper third
-//!   (`y < 1/3`), excluding boxes whose center matches the background
-//!   estimate; the winner is the most saturated remaining box whose
-//!   population share clears [`HAIR_MIN_SHARE`].
-//! - Face region: `x in [0.34, 0.66]`, `y in [0.24, 0.46]` (the central
-//!   face box for the canonical front-facing portrait framing).
-//!   Skin is the median of skin-like pixels inside it (low saturation,
-//!   high value, warm channel order), falling back to the region
-//!   median when too few pixels qualify.
-//! - Eye band: `x in [0.36, 0.64]`, `y in [0.33, 0.40]` (inside the
-//!   face region, at eye height). The eye color is the median of the
-//!   dominant saturated cluster that matches neither skin nor hair;
-//!   best-effort (`None` when no cluster qualifies).
-//! - Mouth band: `x in [0.44, 0.56]`, `y in [0.42, 0.47]`. Lips are
-//!   the median of reddish saturated pixels there; best-effort.
+//!   On a gradient it matches no actual pixel; it is used only as an
+//!   exclusion anchor for the eye/lips/hair candidate populations.
+//! - Skin: the per-channel median of skin-like pixels over the whole
+//!   portrait. "Skin-like" adds a warmth floor (`8 <= R-B < 80`) to
+//!   the saturation/value/channel-order predicate: the backdrops are
+//!   neutral to cool (`R-B <= 0`), and flat white otherwise satisfies
+//!   the predicate and pollutes the median. There is no fallback; a
+//!   portrait with too few skin-like pixels fails closed.
+//! - Hair: median-cut palette of the portrait's upper area over a
+//!   population pre-filtered to saturated, non-background pixels (a
+//!   saturation-first ranking lets near-black line art, saturation
+//!   0.44, beat the hair mass, 0.40); the winner is the most populous
+//!   remaining entry whose share clears [`HAIR_MIN_SHARE`].
+//! - Face segmentation: a seeded skin component. The densest window
+//!   of strict skin matches in the portrait's upper half seeds a
+//!   flood over a loose skin predicate (shadowed skin sits ~96 RGB
+//!   units from the anchor, beyond [`COLOR_MATCH_DIST`], so the
+//!   strict predicate alone cannot span a lit face). The component's
+//!   row-span profile gives the box: top row, widest span, and the
+//!   chin — the onset of the terminal narrowing, the first
+//!   post-plateau row under [`FACE_CHIN_FRACTION`] of the widest span
+//!   from which the span never recovers (mid-face dips from
+//!   three-quarter hair occlusion recover and never read as chin).
+//! - Eye band: face-relative rows/cols inside the segmented face box
+//!   ([`FACE_EYE_ROWS`], [`FACE_EYE_COLS`]); the legacy fixed
+//!   [`EYE_BAND`]/[`MOUTH_BAND`] fractions remain as the documented
+//!   outer envelopes. Eye candidates are saturated, mid-bright
+//!   (value > 0.25: lash/liner sits ~0.15 and the iris's shadow rim
+//!   below 0.25 otherwise wins the cut), and match neither skin,
+//!   hair, nor background; the winner is the dominant median-cut
+//!   entry. Best-effort (`None` when nothing qualifies).
+//! - Mouth band: face-relative ([`FACE_MOUTH_ROWS`],
+//!   [`FACE_MOUTH_COLS`]). Lips are the dominant median-cut entry of
+//!   reddish saturated pixels matching neither skin, hair, nor
+//!   background; best-effort.
 //! - Outfit primaries: the two most populous sprite colors (median-cut)
 //!   that match neither skin nor hair.
 //!
