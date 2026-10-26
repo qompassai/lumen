@@ -11,8 +11,8 @@
 //! - Palette extraction is a deterministic in-crate median-cut
 //!   quantizer (bounded iterations, pixels sorted before every split,
 //!   output sorted by population then RGB). Signature anchors are
-//!   derived from documented image regions with named threshold
-//!   constants; every derivation is deterministic.
+//!   derived from documented regions and predicates with named
+//!   threshold constants; every derivation is deterministic.
 //! - Proportions come from frame 0 of the mature sprite when one is
 //!   present (the mature set is the default target, factory plan §1),
 //!   else from the base sprite; `proportions_source` records which.
@@ -26,23 +26,44 @@
 //!   field itself empty. Re-ingesting the same art yields the same
 //!   hash (the Phase 2 determinism gate).
 //!
-//! Region definitions (portrait, fractions of width/height):
+//! Portrait anchor derivations (no alpha is assumed: the canonical
+//! portraits are opaque busts on gradient backdrops):
 //! - Background estimate: median of the four 16x16 corner patches.
-//! - Hair: median-cut palette of the portrait's upper third
-//!   (`y < 1/3`), excluding boxes whose center matches the background
-//!   estimate; the winner is the most saturated remaining box whose
-//!   population share clears [`HAIR_MIN_SHARE`].
-//! - Face region: `x in [0.34, 0.66]`, `y in [0.24, 0.46]` (the central
-//!   face box for the canonical front-facing portrait framing).
-//!   Skin is the median of skin-like pixels inside it (low saturation,
-//!   high value, warm channel order), falling back to the region
-//!   median when too few pixels qualify.
-//! - Eye band: `x in [0.36, 0.64]`, `y in [0.33, 0.40]` (inside the
-//!   face region, at eye height). The eye color is the median of the
-//!   dominant saturated cluster that matches neither skin nor hair;
-//!   best-effort (`None` when no cluster qualifies).
-//! - Mouth band: `x in [0.44, 0.56]`, `y in [0.42, 0.47]`. Lips are
-//!   the median of reddish saturated pixels there; best-effort.
+//!   On a gradient it matches no actual pixel; it is used only as an
+//!   exclusion anchor for the eye/lips/hair candidate populations.
+//! - Skin: the per-channel median of skin-like pixels over the whole
+//!   portrait. "Skin-like" adds a warmth floor (`8 <= R-B < 80`) to
+//!   the saturation/value/channel-order predicate: the backdrops are
+//!   neutral to cool (`R-B <= 0`), and flat white otherwise satisfies
+//!   the predicate and pollutes the median. There is no fallback; a
+//!   portrait with too few skin-like pixels fails closed.
+//! - Hair: median-cut palette of the portrait's upper area over a
+//!   population pre-filtered to saturated, non-background pixels (a
+//!   saturation-first ranking lets near-black line art, saturation
+//!   0.44, beat the hair mass, 0.40); the winner is the most populous
+//!   remaining entry whose share clears [`HAIR_MIN_SHARE`].
+//! - Face segmentation: a seeded skin component. The densest window
+//!   of strict skin matches in the portrait's upper half seeds a
+//!   flood over a loose skin predicate (shadowed skin sits ~96 RGB
+//!   units from the anchor, beyond [`COLOR_MATCH_DIST`], so the
+//!   strict predicate alone cannot span a lit face). The component's
+//!   row-span profile gives the box: top row, widest span, and the
+//!   chin — the onset of the terminal narrowing, the first
+//!   post-plateau row under [`FACE_CHIN_FRACTION`] of the widest span
+//!   from which the span never recovers (mid-face dips from
+//!   three-quarter hair occlusion recover and never read as chin).
+//! - Eye band: face-relative rows/cols inside the segmented face box
+//!   ([`FACE_EYE_ROWS`], [`FACE_EYE_COLS`]); the legacy fixed
+//!   [`EYE_BAND`]/[`MOUTH_BAND`] fractions remain as the documented
+//!   outer envelopes. Eye candidates are saturated, mid-bright
+//!   (value > 0.25: lash/liner sits ~0.15 and the iris's shadow rim
+//!   below 0.25 otherwise wins the cut), and match neither skin,
+//!   hair, nor background; the winner is the dominant median-cut
+//!   entry. Best-effort (`None` when nothing qualifies).
+//! - Mouth band: face-relative ([`FACE_MOUTH_ROWS`],
+//!   [`FACE_MOUTH_COLS`]). Lips are the dominant median-cut entry of
+//!   reddish saturated pixels matching neither skin, hair, nor
+//!   background; best-effort.
 //! - Outfit primaries: the two most populous sprite colors (median-cut)
 //!   that match neither skin nor hair.
 //!
@@ -142,13 +163,57 @@ pub const JAW_NARROW_FRACTION: f64 = 0.6;
 /// Hair-free rows tolerated inside the hair mass when tracing it down
 /// from the scalp (pixel-art strands break up near the tips).
 pub const HAIR_MAX_GAP_ROWS: u32 = 3;
+/// Face-seed window edge (pixels): the densest window of this size
+/// in the portrait's upper half seeds the skin component (see
+/// [`face_seed`]).
+pub const FACE_SEED_WINDOW: u32 = 64;
+/// Step between candidate face-seed windows.
+pub const FACE_SEED_STRIDE: u32 = 16;
+/// A skin-component row span at this fraction of the widest span
+/// counts as the face plateau (the cheeks) for chin detection.
+pub const FACE_PLATEAU_FRACTION: f64 = 0.9;
+/// A skin-component row span under this fraction of the widest span
+/// counts as narrowed (jaw/neck) for chin detection.
+pub const FACE_CHIN_FRACTION: f64 = 0.75;
 
-/// Face region: `(x0, x1, y0, y1)` fractions of the portrait.
-pub const FACE_REGION: (f64, f64, f64, f64) = (0.34, 0.66, 0.24, 0.46);
-/// Eye band: `(x0, x1, y0, y1)` fractions of the portrait.
+/// Eye band: `(x0, x1, y0, y1)` fractions of the portrait. Legacy
+/// fixed window, retained as the documented fallback envelope only:
+/// eye sampling is derived from the segmented face box (see
+/// [`FACE_EYE_ROWS`] / [`FACE_EYE_COLS`]) whenever segmentation
+/// succeeds, because a fixed frame window misses any face that is
+/// not centered exactly where the window assumes.
 pub const EYE_BAND: (f64, f64, f64, f64) = (0.36, 0.64, 0.33, 0.40);
-/// Mouth band: `(x0, x1, y0, y1)` fractions of the portrait.
+/// Mouth band: `(x0, x1, y0, y1)` fractions of the portrait. Legacy
+/// fixed window; see [`EYE_BAND`] for why sampling is face-derived.
 pub const MOUTH_BAND: (f64, f64, f64, f64) = (0.44, 0.56, 0.42, 0.47);
+/// Eye sampling rows as fractions of the segmented face box
+/// (`scalp..chin`): `(top, bottom)`. Generous by design — the eye
+/// filter (saturation + hair/skin exclusion) does the precise work;
+/// the band only has to contain both irises and exclude the mouth.
+/// Measured against the Vivienne BEGIN portrait (1024x1920): irises
+/// span 0.13..0.35 of the skin bounding box. The bottom is 0.60, not
+/// 0.50, because the synthetic validation portrait's irises sit at
+/// 0.41..0.56 of its face-only skin box (the toy has almost no
+/// forehead); the band covers both calibrations.
+pub const FACE_EYE_ROWS: (f64, f64) = (0.05, 0.60);
+/// Eye sampling columns as fractions of the segmented face width,
+/// centered on the face column: `(left, right)` extents. Measured
+/// against the Vivienne BEGIN portrait: irises span 0.16..0.86 of
+/// the skin bounding box width.
+pub const FACE_EYE_COLS: (f64, f64) = (0.70, 0.70);
+/// Mouth sampling rows as fractions of the segmented face box:
+/// `(top, bottom)`. Measured against the Vivienne BEGIN portrait:
+/// lips span 0.67..0.74 of the skin bounding box. The band starts at
+/// 0.60 and runs to 0.98 because the synthetic validation portrait's
+/// lips sit at 0.82..0.92 of its face-only skin box.
+pub const FACE_MOUTH_ROWS: (f64, f64) = (0.60, 0.98);
+/// Mouth sampling columns as fractions of the segmented face width,
+/// centered on the face column: `(left, right)` extents. Measured
+/// against the Vivienne BEGIN portrait: lips span 0.19..0.34 of the
+/// skin bounding box width (left of center); the extents below are
+/// deliberately asymmetric-safe: centered and wide enough to hold a
+/// centered mouth while the red-dominance filter rejects the rest.
+pub const FACE_MOUTH_COLS: (f64, f64) = (0.45, 0.45);
 
 /// One RGB color with its hex rendering.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -665,6 +730,12 @@ fn load_gif_frame0(path: &Path) -> Result<RgbaImage, FactoryError> {
 
 // --- region sampling ---
 
+/// Pixels inside `region` (frame fractions), strided, as RGB triples.
+/// Transparent pixels never count: region sampling is figure sampling,
+/// and the RGB stored under a transparent pixel is encoder residue, not
+/// color evidence. On alpha art (the sprites) that makes region
+/// sampling figure-only; on opaque portraits every pixel counts,
+/// which is why the palette derivations filter by color instead.
 fn region_pixels(img: &RgbaImage, region: (f64, f64, f64, f64), stride: u32) -> Vec<[u8; 3]> {
     let (w, h) = (img.width(), img.height());
     let x0 = (region.0 * w as f64) as u32;
@@ -677,7 +748,9 @@ fn region_pixels(img: &RgbaImage, region: (f64, f64, f64, f64), stride: u32) -> 
         let mut x = x0;
         while x < x1 {
             let px = img.get_pixel(x, y);
-            out.push([px[0], px[1], px[2]]);
+            if px[3] >= ALPHA_OPAQUE {
+                out.push([px[0], px[1], px[2]]);
+            }
             x += stride.max(1);
         }
         y += stride.max(1);
@@ -706,8 +779,30 @@ fn background_estimate(img: &RgbaImage) -> [u8; 3] {
 }
 
 fn derive_hair(portrait: &RgbaImage, background: [u8; 3]) -> Result<[u8; 3], FactoryError> {
-    let upper = region_pixels(portrait, (0.0, 1.0, 0.0, 1.0 / 3.0), 3);
+    // The quantizer sees saturated, non-background pixels only.
+    // Feeding it the raw upper third let the dominant background eat
+    // most of the boxes and fragment the figure's colors across the
+    // rest — on the Vivienne BEGIN portrait the top qualifying box
+    // came out near-black. Both exclusions therefore happen BEFORE
+    // the cut: saturation (these portraits' backdrops are unsaturated
+    // — white, gray, mauve-gray all sit below HAIR_MIN_SATURATION)
+    // and background distance (a saturated backdrop, like the
+    // synthetic fixtures' blue, is removed by the estimate instead).
+    let upper: Vec<[u8; 3]> = region_pixels(portrait, (0.0, 1.0, 0.0, 1.0 / 3.0), 3)
+        .into_iter()
+        .filter(|px| {
+            rgb_to_hsv(*px).1 >= HAIR_MIN_SATURATION
+                && color_dist(*px, background) >= COLOR_MATCH_DIST
+        })
+        .collect();
     let entries = median_cut(&upper, ANCHOR_BOXES);
+    // Rank by population share first, saturation second. The previous
+    // saturation-first ranking picked lineart over hair: outline black
+    // (13, 9, 16) has HSV saturation 0.44, above hair (79, 57, 95) at
+    // 0.40, so the largest saturated mass in the upper third lost to
+    // a thin outline. Hair is the DOMINANT saturated mass; the
+    // saturation and share floors below are the qualifiers, share is
+    // the ranking.
     let mut best: Option<(f64, f64, [u8; 3])> = None;
     for entry in &entries {
         if color_dist(entry.color.rgb, background) < COLOR_MATCH_DIST {
@@ -718,9 +813,9 @@ fn derive_hair(portrait: &RgbaImage, background: [u8; 3]) -> Result<[u8; 3], Fac
             continue;
         }
         let dominated =
-            best.is_none_or(|(bs, bsh, _)| sat > bs || (sat == bs && entry.share > bsh));
+            best.is_none_or(|(bsh, bs, _)| entry.share > bsh || (entry.share == bsh && sat > bs));
         if dominated {
-            best = Some((sat, entry.share, entry.color.rgb));
+            best = Some((entry.share, sat, entry.color.rgb));
         }
     }
     best.map(|(_, _, rgb)| rgb).ok_or_else(|| {
@@ -728,38 +823,90 @@ fn derive_hair(portrait: &RgbaImage, background: [u8; 3]) -> Result<[u8; 3], Fac
     })
 }
 
+/// Skin anchor: the median of the portrait's skin-like pixels over
+/// the WHOLE portrait, not a frame window. The previous version
+/// sampled FACE_REGION (a fixed x 0.34..0.66, y 0.24..0.46 window)
+/// and fell back to the unfiltered region median when too few
+/// skin-like pixels appeared there — so an off-center face yielded
+/// the background color as its "skin" (the window held no face at
+/// all), and a skinless portrait ingested successfully with an
+/// invented anchor. Both are closed here, and the predicate carries
+/// a warmth floor (R − B >= 8): the first whole-portrait version
+/// admitted the portrait's own cool background (white has R − B = 0,
+/// the BEGIN backdrop's mauve-gray has R − B = −8, and both passed
+/// every other clause), landing the "skin" on the backdrop. Human
+/// skin is warm by a wide margin (the BEGIN ground truth sits at
+/// R − B = 32); with the floor, the whole-portrait median reproduces
+/// the measured skin anchor exactly. Fewer than SKIN_MIN_PIXELS
+/// skin-like pixels is an error, not a fallback. The median stays
+/// robust when a warm outfit contributes a minority of skin-like
+/// pixels; a portrait whose skin-like mass IS the outfit would
+/// still mis-anchor, which the acceptance run on real art guards
+/// against.
 fn derive_skin(portrait: &RgbaImage) -> Result<[u8; 3], FactoryError> {
-    let region = region_pixels(portrait, FACE_REGION, 2);
+    let region = region_pixels(portrait, (0.0, 1.0, 0.0, 1.0), 2);
     if region.is_empty() {
-        return Err(FactoryError::BadParam("face region is empty".to_string()));
+        return Err(FactoryError::BadParam(
+            "portrait has no opaque pixels".to_string(),
+        ));
     }
     let skin_like: Vec<[u8; 3]> = region
         .iter()
         .copied()
         .filter(|px| {
             let (_, sat, val) = rgb_to_hsv(*px);
-            sat < 0.38 && val > 0.55 && px[0] >= px[1] && (px[0] as i32 - px[2] as i32) < 80
+            sat < 0.38
+                && val > 0.55
+                && px[0] >= px[1]
+                && (8..80).contains(&(px[0] as i32 - px[2] as i32))
         })
         .collect();
     if skin_like.len() >= SKIN_MIN_PIXELS {
         median_color(&skin_like).ok_or_else(|| FactoryError::BadParam("skin median".into()))
     } else {
-        median_color(&region).ok_or_else(|| FactoryError::BadParam("skin median".into()))
+        Err(FactoryError::BadParam(format!(
+            "portrait has {} skin-like pixels (< {SKIN_MIN_PIXELS}); cannot derive a skin anchor",
+            skin_like.len()
+        )))
     }
 }
 
-fn derive_eye(portrait: &RgbaImage, hair: [u8; 3], skin: [u8; 3]) -> Option<[u8; 3]> {
-    let region = region_pixels(portrait, EYE_BAND, 1);
+fn derive_eye(
+    portrait: &RgbaImage,
+    background: [u8; 3],
+    hair: [u8; 3],
+    skin: [u8; 3],
+    face: Option<&FaceBox>,
+) -> Option<[u8; 3]> {
+    let face = face?;
+    let region = region_pixels(
+        portrait,
+        face_region(portrait, face, FACE_EYE_ROWS, FACE_EYE_COLS),
+        1,
+    );
+    // Candidates exclude hair, skin, AND the background estimate by
+    // anchor distance: the sampling rectangle always extends past
+    // the head silhouette, and a saturated backdrop (the fixtures'
+    // blue) passes the saturation/value predicate outright — without
+    // the background exclusion its pixels outnumber the irises and
+    // the median-cut lands on backdrop, not eye. The value floor
+    // (0.25) separates iris from lash, liner, and the iris's own
+    // shadow rim: on the BEGIN portrait the lash cluster sits at
+    // value ~0.15 and the rim/shadow mass below 0.25 outvotes the
+    // lit iris core, while both measured irises sit above 0.65 — a
+    // floor at 0.10 let the lashes win the cut, and at 0.20 the rim
+    // still did.
     let candidates: Vec<[u8; 3]> = region
         .iter()
         .copied()
         .filter(|px| {
             let (_, sat, val) = rgb_to_hsv(*px);
             sat > 0.30
-                && val > 0.10
+                && val > 0.25
                 && val < 0.90
                 && color_dist(*px, hair) >= COLOR_MATCH_DIST
                 && color_dist(*px, skin) >= COLOR_MATCH_DIST
+                && color_dist(*px, background) >= COLOR_MATCH_DIST
         })
         .collect();
     if candidates.len() < 8 {
@@ -769,14 +916,282 @@ fn derive_eye(portrait: &RgbaImage, hair: [u8; 3], skin: [u8; 3]) -> Option<[u8;
     entries.first().map(|e| e.color.rgb)
 }
 
-fn derive_lips(portrait: &RgbaImage) -> Option<[u8; 3]> {
-    let region = region_pixels(portrait, MOUTH_BAND, 1);
+/// The segmented face box on a portrait: the geometry eye and mouth
+/// sampling is derived from, instead of a fixed frame window (see
+/// [`EYE_BAND`]).
+struct FaceBox {
+    /// Face column x (median skin-component x over `top..=chin`).
+    center_x: u32,
+    /// Chin row: onset of the face component's terminal narrowing
+    /// (the neck), or its last row when it never narrows.
+    chin: u32,
+    /// Widest skin-component row span across the face.
+    width: u32,
+    /// First row of the skin component (the sampling box top).
+    top: u32,
+}
+
+/// Strict skin predicate for face seeding: the pixel must match the
+/// derived skin anchor AND carry skin's warmth signature (the
+/// [`derive_skin`] predicate). Anchor distance alone admits the
+/// white backdrop (40.0 < [`COLOR_MATCH_DIST`] from the BEGIN skin
+/// anchor); warmth alone admits any warm tone in the frame.
+/// Together they name lit skin and very little else.
+fn strict_skin(px: [u8; 3], skin: [u8; 3]) -> bool {
+    let (_, sat, val) = rgb_to_hsv(px);
+    color_dist(px, skin) < COLOR_MATCH_DIST
+        && sat < 0.38
+        && val > 0.55
+        && px[0] >= px[1]
+        && (8..80).contains(&(i32::from(px[0]) - i32::from(px[2])))
+}
+
+/// Loose skin predicate for the face-component flood. Shadowed skin
+/// falls outside the anchor's [`COLOR_MATCH_DIST`] (the BEGIN
+/// portrait's shadow cheek measures ~96 away), so the flood admits
+/// the wider warmth family, fenced by saturation/value bounds, a
+/// hair exclusion, and a generous anchor-distance cap. Flooding
+/// from a strict seed is what keeps the backdrop out: its warm
+/// tones pass this predicate too, but they are not connected to the
+/// face through skin — hair and lineart break the path. Background
+/// keying was measured and rejected on the real art three ways
+/// (estimate keying matches nothing on a gradient; fixed-distance
+/// keying eats the skin; flood fills leak through JPEG-softened
+/// edges into 93% of the hair), which is why segmentation is a
+/// seeded component and not a keyed mask.
+fn loose_skin(px: [u8; 3], skin: [u8; 3], hair: [u8; 3]) -> bool {
+    let (_, sat, val) = rgb_to_hsv(px);
+    sat < 0.42
+        && val > 0.42
+        && i32::from(px[0]) + 10 >= i32::from(px[1])
+        && (6..110).contains(&(i32::from(px[0]) - i32::from(px[2])))
+        && color_dist(px, hair) >= 40.0
+        && color_dist(px, skin) < 130.0
+}
+
+/// Seed pixel for the face component: the first strict-skin pixel
+/// of the densest [`FACE_SEED_WINDOW`]-sized window in the
+/// portrait's upper half (windows stepped by [`FACE_SEED_STRIDE`],
+/// density sampled at stride 2). The face is the densest skin mass
+/// in the upper half of any portrait this crate ingests; a backdrop
+/// can match individual pixels, but not at skin's density in a
+/// window that size.
+fn face_seed(img: &RgbaImage, skin: [u8; 3]) -> Option<(u32, u32)> {
+    let (w, h) = (img.width(), img.height());
+    let win = FACE_SEED_WINDOW.min(w).min(h);
+    if win == 0 {
+        return None;
+    }
+    let strict_at = |x: u32, y: u32| {
+        let px = img.get_pixel(x, y);
+        px[3] >= ALPHA_OPAQUE && strict_skin([px[0], px[1], px[2]], skin)
+    };
+    let mut best: Option<(usize, u32, u32)> = None;
+    let mut y0 = 0;
+    loop {
+        let mut x0 = 0;
+        loop {
+            let mut count = 0usize;
+            let mut sy = y0;
+            while sy < y0 + win {
+                let mut sx = x0;
+                while sx < x0 + win {
+                    if strict_at(sx, sy) {
+                        count += 1;
+                    }
+                    sx += 2;
+                }
+                sy += 2;
+            }
+            if count > 0 && best.is_none_or(|(b, _, _)| count > b) {
+                // First strict pixel of the window, in scan order.
+                'scan: for sy in y0..y0 + win {
+                    for sx in x0..x0 + win {
+                        if strict_at(sx, sy) {
+                            best = Some((count, sx, sy));
+                            break 'scan;
+                        }
+                    }
+                }
+            }
+            if x0 + win >= w {
+                break;
+            }
+            x0 += FACE_SEED_STRIDE.min(w - win - x0);
+        }
+        if y0 + win >= h || y0 >= h / 2 {
+            break;
+        }
+        y0 += FACE_SEED_STRIDE.min(h / 2 - y0);
+    }
+    best.map(|(_, x, y)| (x, y))
+}
+
+/// The face skin component: every loose-skin pixel connected
+/// (4-neighborhood) to the seed, as per-row sorted x lists.
+fn skin_component(
+    img: &RgbaImage,
+    skin: [u8; 3],
+    hair: [u8; 3],
+    seed: (u32, u32),
+) -> std::collections::BTreeMap<u32, Vec<u32>> {
+    let (w, h) = (img.width(), img.height());
+    let mut visited = vec![false; (w * h) as usize];
+    let mut rows: std::collections::BTreeMap<u32, Vec<u32>> = std::collections::BTreeMap::new();
+    let mut queue = std::collections::VecDeque::from([seed]);
+    visited[(seed.1 * w + seed.0) as usize] = true;
+    while let Some((x, y)) = queue.pop_front() {
+        rows.entry(y).or_default().push(x);
+        for (nx, ny) in [
+            (x.wrapping_sub(1), y),
+            (x + 1, y),
+            (x, y.wrapping_sub(1)),
+            (x, y + 1),
+        ] {
+            if nx >= w || ny >= h || visited[(ny * w + nx) as usize] {
+                continue;
+            }
+            visited[(ny * w + nx) as usize] = true;
+            let px = img.get_pixel(nx, ny);
+            if px[3] >= ALPHA_OPAQUE && loose_skin([px[0], px[1], px[2]], skin, hair) {
+                queue.push_back((nx, ny));
+            }
+        }
+    }
+    for xs in rows.values_mut() {
+        xs.sort_unstable();
+    }
+    rows
+}
+
+/// A row's robust span: the 1st-to-99th percentile width of its
+/// component pixels, so a stray connected pixel cannot stretch the
+/// row. Rows under 10 pixels report 0 (no reliable span).
+fn row_span(xs: &[u32]) -> u32 {
+    if xs.len() < 10 {
+        return 0;
+    }
+    xs[(0.99 * xs.len() as f64) as usize] - xs[(0.01 * xs.len() as f64) as usize]
+}
+
+/// Segment the face on a portrait: flood the skin component from
+/// its densest strict seed (see [`face_seed`] / [`skin_component`]),
+/// then read the box off the component's row-span profile. The
+/// span grows as the face emerges from the hairline, plateaus
+/// across the cheeks, and falls for good at the jaw — the chin is
+/// the onset of that terminal narrowing: the first post-plateau row
+/// under [`FACE_CHIN_FRACTION`] of the widest span from which the
+/// span never recovers. A component that never narrows (a face
+/// cropped at the jaw — the synthetic fixtures) ends at its last
+/// row instead. Mid-face span dips (a three-quarter hair occlusion
+/// narrows the VISIBLE skin for tens of rows) never read as the
+/// chin, because the span recovers to the plateau behind them.
+/// Returns `None` when no face component exists; callers then leave
+/// eye/lips anchors absent rather than inventing them from a fixed
+/// frame window, which is what poisoned the old anchors on any face
+/// that was not centered exactly where the window assumed.
+fn segment_face(img: &RgbaImage, skin: [u8; 3], hair: [u8; 3]) -> Option<FaceBox> {
+    if img.width() == 0 || img.height() == 0 {
+        return None;
+    }
+    let seed = face_seed(img, skin)?;
+    let rows = skin_component(img, skin, hair, seed);
+    let total: usize = rows.values().map(Vec::len).sum();
+    if total < SPRITE_FACE_MIN_SKIN_PIXELS {
+        return None;
+    }
+    let top = *rows.keys().next()?;
+    let last = *rows.keys().next_back()?;
+    let spans: Vec<(u32, u32)> = rows.iter().map(|(y, xs)| (*y, row_span(xs))).collect();
+    let width = spans.iter().map(|(_, s)| *s).max()?;
+    if width == 0 {
+        return None;
+    }
+    let plateau = spans
+        .iter()
+        .find(|(_, s)| f64::from(*s) >= FACE_PLATEAU_FRACTION * f64::from(width))
+        .map(|(y, _)| *y)?;
+    // Terminal narrowing: the first post-plateau row under the chin
+    // fraction whose every successor is also under it.
+    let mut chin = last;
+    let mut suffix_all_narrow = true;
+    for (y, s) in spans.iter().rev() {
+        if *y < plateau {
+            break;
+        }
+        if f64::from(*s) >= FACE_CHIN_FRACTION * f64::from(width) {
+            suffix_all_narrow = false;
+        } else if suffix_all_narrow {
+            chin = *y;
+        }
+    }
+    if chin <= top {
+        return None;
+    }
+    let mut xs: Vec<u32> = Vec::new();
+    for (y, row) in &rows {
+        if *y >= top && *y <= chin {
+            xs.extend(row.iter().copied());
+        }
+    }
+    xs.sort_unstable();
+    let center_x = xs[xs.len() / 2];
+    Some(FaceBox {
+        center_x,
+        chin,
+        width,
+        top,
+    })
+}
+
+/// A sampling region (frame fractions) from a face box: `rows` are
+/// fractions of `top..chin`, `cols` are left/right extents from the
+/// face column as multiples of the face width, clamped to the frame.
+fn face_region(
+    img: &RgbaImage,
+    face: &FaceBox,
+    rows: (f64, f64),
+    cols: (f64, f64),
+) -> (f64, f64, f64, f64) {
+    let (w, h) = (img.width() as f64, img.height() as f64);
+    let height = (face.chin - face.top) as f64;
+    let y0 = (face.top as f64 + rows.0 * height) / h;
+    let y1 = (face.top as f64 + rows.1 * height) / h;
+    let x0 = (face.center_x as f64 - cols.0 * face.width as f64) / w;
+    let x1 = (face.center_x as f64 + cols.1 * face.width as f64) / w;
+    (x0.max(0.0), x1.min(1.0), y0.max(0.0), y1.min(1.0))
+}
+
+fn derive_lips(
+    portrait: &RgbaImage,
+    background: [u8; 3],
+    hair: [u8; 3],
+    skin: [u8; 3],
+    face: Option<&FaceBox>,
+) -> Option<[u8; 3]> {
+    let face = face?;
+    let region = region_pixels(
+        portrait,
+        face_region(portrait, face, FACE_MOUTH_ROWS, FACE_MOUTH_COLS),
+        1,
+    );
+    // Hair, skin, and background are excluded by anchor distance, as
+    // in derive_eye: the saturation/red-dominance predicate alone
+    // also admits saturated hair (magenta hair passes both tests),
+    // and the mouth band always contains the hair sides framing the
+    // face — without the exclusion the median lands on hair whenever
+    // the sides outnumber the lips, which the off-center fixture
+    // proved.
     let candidates: Vec<[u8; 3]> = region
         .iter()
         .copied()
         .filter(|px| {
             let (_, sat, _) = rgb_to_hsv(*px);
-            sat > 0.22 && px[0] as i32 - px[2] as i32 > 12
+            sat > 0.22
+                && px[0] as i32 - px[2] as i32 > 12
+                && color_dist(*px, hair) >= COLOR_MATCH_DIST
+                && color_dist(*px, skin) >= COLOR_MATCH_DIST
+                && color_dist(*px, background) >= COLOR_MATCH_DIST
         })
         .collect();
     if candidates.len() < 4 {
@@ -1106,7 +1521,10 @@ pub fn ingest(art_dir: &Path, companion: &str) -> Result<IdentityRecord, Factory
     }
     sources.sort_by(|a, b| a.role.cmp(&b.role).then(a.path.cmp(&b.path)));
 
-    // Decode the two images that carry identity data.
+    // Decode the two images that carry identity data. No background
+    // keying anywhere: it was measured and rejected on the real art
+    // (see loose_skin). Anchors come from color statistics over
+    // the portrait as decoded; segmentation runs on the anchor mask.
     let portrait = load_portrait(&portrait_path)?;
     let sprite = load_gif_frame0(&sprite_path)?;
 
@@ -1114,8 +1532,9 @@ pub fn ingest(art_dir: &Path, companion: &str) -> Result<IdentityRecord, Factory
     let background = background_estimate(&portrait);
     let hair = derive_hair(&portrait, background)?;
     let skin = derive_skin(&portrait)?;
-    let eye = derive_eye(&portrait, hair, skin);
-    let lips = derive_lips(&portrait);
+    let face = segment_face(&portrait, skin, hair);
+    let eye = derive_eye(&portrait, background, hair, skin, face.as_ref());
+    let lips = derive_lips(&portrait, background, hair, skin, face.as_ref());
     let outfit = derive_outfit(&sprite, hair, skin);
     if outfit.is_empty() {
         return Err(FactoryError::BadParam(

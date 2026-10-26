@@ -544,3 +544,116 @@ fn seraphine_shells_have_real_offsets_and_the_tail_reaches_its_length() {
         hair_lo[1]
     );
 }
+
+/// Opaque-ingest fixtures (vivienne-proof/ingest): the portrait is an
+/// opaque JPEG with no alpha, so every anchor below is derived from
+/// the portrait as decoded and the segmented face box — never
+/// from a fixed frame window.
+fn temp_art_dir_portrait(tag: &str, portrait: RgbaImage) -> PathBuf {
+    let dir = std::env::temp_dir().join(format!("lumen-factory-val-{tag}-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    let companions = dir.join("companions");
+    std::fs::create_dir_all(&companions).expect("mkdir companions");
+    DynamicImage::ImageRgba8(portrait)
+        .save(companions.join("testina_portrait.jpg"))
+        .expect("write portrait jpg");
+    DynamicImage::ImageRgba8(synthetic_sprite())
+        .save(companions.join("testina_animated_base.gif"))
+        .expect("write sprite gif");
+    dir
+}
+
+/// Off-center face: the whole head sits right of center, so any fixed
+/// frame window samples background or hair where it expects eyes.
+fn offcenter_portrait() -> RgbaImage {
+    let mut img = RgbaImage::from_pixel(128, 192, px(BG));
+    fill(&mut img, 60, 0, 128, 64, px(HAIR));
+    fill(&mut img, 60, 64, 76, 110, px(HAIR));
+    fill(&mut img, 112, 64, 128, 110, px(HAIR));
+    fill(&mut img, 84, 50, 116, 88, px(SKIN));
+    fill(&mut img, 90, 66, 96, 72, px(EYE));
+    fill(&mut img, 104, 66, 110, 72, px(EYE));
+    fill(&mut img, 94, 82, 106, 86, px(LIPS));
+    img
+}
+
+#[test]
+fn opaque_ingest_finds_offcenter_face() {
+    let dir = temp_art_dir_portrait("offcenter", offcenter_portrait());
+    let record = ingest(&dir, "testina").expect("ingest succeeds");
+    // Tolerance, not exact equality: the eye/lip blocks are small, and
+    // JPEG smears their edges, so the derived anchor is a blend near
+    // the true color (here (112, 34, 142) for EYE) — near the family
+    // and far from every other anchor is the real contract.
+    let eye = record.palette.eye.expect("eye").rgb;
+    assert!(
+        color_dist(eye, EYE) < 48.0,
+        "eye {eye:?} must be near {EYE:?}"
+    );
+    assert!(
+        color_dist(eye, HAIR) > 48.0,
+        "eye {eye:?} must not be near hair {HAIR:?}"
+    );
+    let lips = record.palette.lips.expect("lips").rgb;
+    assert!(
+        color_dist(lips, LIPS) < 48.0,
+        "lips {lips:?} must be near {LIPS:?}"
+    );
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// Hair-as-eye adversarial: the eye sockets carry the hair color and
+/// a true-eye patch sits between them. The eye anchor must be in the
+/// eye family, never the hair family — the old fixed window returned
+/// the hair-body color here (the F3 failure mode). The assertion is a
+/// COLOR_MATCH_DIST tolerance, not exact equality: a JPEG smears a
+/// small patch's edges, so the derived anchor is a blend near EYE,
+/// and what matters is that it is nowhere near HAIR.
+fn hair_as_eye_portrait() -> RgbaImage {
+    let mut img = RgbaImage::from_pixel(128, 192, px(BG));
+    fill(&mut img, 24, 0, 104, 64, px(HAIR));
+    fill(&mut img, 24, 64, 40, 110, px(HAIR));
+    fill(&mut img, 88, 64, 104, 110, px(HAIR));
+    fill(&mut img, 48, 50, 80, 88, px(SKIN));
+    fill(&mut img, 52, 66, 58, 72, px(HAIR));
+    fill(&mut img, 70, 66, 76, 72, px(HAIR));
+    fill(&mut img, 60, 66, 68, 72, px(EYE));
+    fill(&mut img, 58, 82, 70, 86, px(LIPS));
+    img
+}
+
+fn color_dist(a: [u8; 3], b: [u8; 3]) -> f64 {
+    let dr = a[0] as f64 - b[0] as f64;
+    let dg = a[1] as f64 - b[1] as f64;
+    let db = a[2] as f64 - b[2] as f64;
+    (dr * dr + dg * dg + db * db).sqrt()
+}
+
+#[test]
+fn opaque_ingest_rejects_hair_as_eye() {
+    let dir = temp_art_dir_portrait("hair-eye", hair_as_eye_portrait());
+    let record = ingest(&dir, "testina").expect("ingest succeeds");
+    let eye = record.palette.eye.expect("eye").rgb;
+    assert!(
+        color_dist(eye, EYE) < 48.0,
+        "eye {eye:?} must be near the true eye color {EYE:?}"
+    );
+    assert!(
+        color_dist(eye, HAIR) > 48.0,
+        "eye {eye:?} must not be near the hair color {HAIR:?}"
+    );
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// Still-unsegmentable portrait: hair and background only, no skin
+/// anywhere. Ingest must fail closed — no record with invented
+/// anchors — exactly as the pre-fix pipeline failed on the opaque
+/// BEGIN portrait, now for the right reason (no face to segment).
+#[test]
+fn opaque_ingest_fails_closed_without_skin() {
+    let mut img = RgbaImage::from_pixel(128, 192, px(BG));
+    fill(&mut img, 24, 0, 104, 110, px(HAIR));
+    let dir = temp_art_dir_portrait("noskin", img);
+    assert!(ingest(&dir, "testina").is_err(), "no skin must fail closed");
+    let _ = std::fs::remove_dir_all(&dir);
+}
