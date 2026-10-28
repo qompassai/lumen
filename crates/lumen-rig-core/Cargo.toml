@@ -1,8 +1,8 @@
 [package]
 name = "lumen-rig-core"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
-description = "Validating parser for the lumen rig format (model asset, format v1)."
+description = "Validating parser and deterministic motion evaluator for the lumen rig format (model and motion assets, format v1)."
 license = "Apache-2.0"
 
 [workspace]

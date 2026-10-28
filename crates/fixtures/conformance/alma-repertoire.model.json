@@ -1,0 +1,5753 @@
+{
+  "deformers": [
+    {
+      "base_angle_degrees": -0.0,
+      "id": "rot_BodyRoot_1010",
+      "keyforms": {
+        "axes": [
+          "ParamBodyAngleZ_2006_x",
+          "ParamBreath_2007_x"
+        ],
+        "forms": [
+          {
+            "angle_degrees": 9.740283012390137,
+            "at": [
+              0,
+              0
+            ],
+            "scale": [
+              1.0,
+              1.0
+            ]
+          },
+          {
+            "angle_degrees": 9.740283012390137,
+            "at": [
+              0,
+              1
+            ],
+            "scale": [
+              1.0,
+              1.0299999713897705
+            ]
+          },
+          {
+            "angle_degrees": -0.0,
+            "at": [
+              1,
+              0
+            ],
+            "scale": [
+              1.0,
+              1.0
+            ]
+          },
+          {
+            "angle_degrees": -0.0,
+            "at": [
+              1,
+              1
+            ],
+            "scale": [
+              1.0,
+              1.0299999713897705
+            ]
+          },
+          {
+            "angle_degrees": -9.740283012390137,
+            "at": [
+              2,
+              0
+            ],
+            "scale": [
+              1.0,
+              1.0
+            ]
+          },
+          {
+            "angle_degrees": -9.740283012390137,
+            "at": [
+              2,
+              1
+            ],
+            "scale": [
+              1.0,
+              1.0299999713897705
+            ]
+          }
+        ],
+        "keys": [
+          [
+            -30.0,
+            0.0,
+            30.0
+          ],
+          [
+            0.0,
+            1.0
+          ]
+        ]
+      },
+      "kind": "rotation",
+      "origin": [
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "base_angle_degrees": -0.0,
+      "id": "rot_breast-xRot1_9024",
+      "keyforms": {
+        "axes": [
+          "ParamBreastL_9028_x"
+        ],
+        "forms": [
+          {
+            "angle_degrees": 34.377471923828125,
+            "at": [
+              0
+            ],
+            "scale": [
+              1.0,
+              1.0
+            ]
+          },
+          {
+            "angle_degrees": -0.0,
+            "at": [
+              1
+            ],
+            "scale": [
+              1.0,
+              1.0
+            ]
+          },
+          {
+            "angle_degrees": -34.377471923828125,
+            "at": [
+              2
+            ],
+            "scale": [
+              1.0,
+              1.0
+            ]
+          }
+        ],
+        "keys": [
+          [
+            -1.0,
+            0.0,
+            1.0
+          ]
+        ]
+      },
+      "kind": "rotation",
+      "origin": [
+        0.0,
+        55.0
+      ],
+      "parent": "rot_BodyRoot_1010"
+    },
+    {
+      "base_angle_degrees": -0.0,
+      "id": "rot_breast-xSeg2_9026",
+      "keyforms": {
+        "axes": [
+          "ParamBreastR_9029_x"
+        ],
+        "forms": [
+          {
+            "angle_degrees": 34.377471923828125,
+            "at": [
+              0
+            ],
+            "scale": [
+              1.0,
+              1.0
+            ]
+          },
+          {
+            "angle_degrees": -0.0,
+            "at": [
+              1
+            ],
+            "scale": [
+              1.0,
+              1.0
+            ]
+          },
+          {
+            "angle_degrees": -34.377471923828125,
+            "at": [
+              2
+            ],
+            "scale": [
+              1.0,
+              1.0
+            ]
+          }
+        ],
+        "keys": [
+          [
+            -1.0,
+            0.0,
+            1.0
+          ]
+        ]
+      },
+      "kind": "rotation",
+      "origin": [
+        0.0,
+        17.5
+      ],
+      "parent": "rot_breast-xRot1_9024"
+    },
+    {
+      "base_angle_degrees": -0.0,
+      "id": "rot_breast-yRot1_9032",
+      "keyforms": {
+        "axes": [
+          "ParamBreastY_9036_x"
+        ],
+        "forms": [
+          {
+            "angle_degrees": 34.377471923828125,
+            "at": [
+              0
+            ],
+            "scale": [
+              1.0,
+              1.0
+            ]
+          },
+          {
+            "angle_degrees": -0.0,
+            "at": [
+              1
+            ],
+            "scale": [
+              1.0,
+              1.0
+            ]
+          },
+          {
+            "angle_degrees": -34.377471923828125,
+            "at": [
+              2
+            ],
+            "scale": [
+              1.0,
+              1.0
+            ]
+          }
+        ],
+        "keys": [
+          [
+            -1.0,
+            0.0,
+            1.0
+          ]
+        ]
+      },
+      "kind": "rotation",
+      "origin": [
+        0.0,
+        55.0
+      ],
+      "parent": "rot_BodyRoot_1010"
+    },
+    {
+      "base_angle_degrees": -0.0,
+      "id": "rot_breast-ySeg2_9034",
+      "keyforms": {
+        "axes": [
+          "ParamBreastApart_9037_x"
+        ],
+        "forms": [
+          {
+            "angle_degrees": 34.377471923828125,
+            "at": [
+              0
+            ],
+            "scale": [
+              1.0,
+              1.0
+            ]
+          },
+          {
+            "angle_degrees": -0.0,
+            "at": [
+              1
+            ],
+            "scale": [
+              1.0,
+              1.0
+            ]
+          },
+          {
+            "angle_degrees": -34.377471923828125,
+            "at": [
+              2
+            ],
+            "scale": [
+              1.0,
+              1.0
+            ]
+          }
+        ],
+        "keys": [
+          [
+            -1.0,
+            0.0,
+            1.0
+          ]
+        ]
+      },
+      "kind": "rotation",
+      "origin": [
+        0.0,
+        17.5
+      ],
+      "parent": "rot_breast-yRot1_9032"
+    },
+    {
+      "base_angle_degrees": -0.0,
+      "id": "rot_BreastL_3101",
+      "keyforms": {
+        "axes": [
+          "ParamFullness_3201_x"
+        ],
+        "forms": [
+          {
+            "angle_degrees": -0.0,
+            "at": [
+              0
+            ],
+            "scale": [
+              0.9100000262260437,
+              0.9100000262260437
+            ]
+          },
+          {
+            "angle_degrees": -0.0,
+            "at": [
+              1
+            ],
+            "scale": [
+              1.0,
+              1.0
+            ]
+          },
+          {
+            "angle_degrees": -0.0,
+            "at": [
+              2
+            ],
+            "scale": [
+              1.090000033378601,
+              1.090000033378601
+            ]
+          }
+        ],
+        "keys": [
+          [
+            0.0,
+            0.5,
+            1.0
+          ]
+        ]
+      },
+      "kind": "rotation",
+      "origin": [
+        -27.0,
+        39.0
+      ],
+      "parent": "rot_BodyRoot_1010"
+    },
+    {
+      "base_angle_degrees": -0.0,
+      "id": "rot_BreastR_3102",
+      "keyforms": {
+        "axes": [
+          "ParamFullness_3201_x"
+        ],
+        "forms": [
+          {
+            "angle_degrees": -0.0,
+            "at": [
+              0
+            ],
+            "scale": [
+              0.9100000262260437,
+              0.9100000262260437
+            ]
+          },
+          {
+            "angle_degrees": -0.0,
+            "at": [
+              1
+            ],
+            "scale": [
+              1.0,
+              1.0
+            ]
+          },
+          {
+            "angle_degrees": -0.0,
+            "at": [
+              2
+            ],
+            "scale": [
+              1.090000033378601,
+              1.090000033378601
+            ]
+          }
+        ],
+        "keys": [
+          [
+            0.0,
+            0.5,
+            1.0
+          ]
+        ]
+      },
+      "kind": "rotation",
+      "origin": [
+        27.0,
+        39.0
+      ],
+      "parent": "rot_BodyRoot_1010"
+    },
+    {
+      "base_angle_degrees": -0.0,
+      "id": "rot_MilkStreamL_3106",
+      "keyforms": {
+        "axes": [
+          "ParamMilkEmission_3203_x"
+        ],
+        "forms": [
+          {
+            "angle_degrees": -0.0,
+            "at": [
+              0
+            ],
+            "scale": [
+              0.5,
+              1e-06
+            ]
+          },
+          {
+            "angle_degrees": -0.0,
+            "at": [
+              1
+            ],
+            "scale": [
+              1.0,
+              1.0
+            ]
+          }
+        ],
+        "keys": [
+          [
+            0.0,
+            1.0
+          ]
+        ]
+      },
+      "kind": "rotation",
+      "origin": [
+        -27.0,
+        6.0
+      ],
+      "parent": "rot_BodyRoot_1010"
+    },
+    {
+      "base_angle_degrees": -0.0,
+      "id": "rot_MilkStreamR_3108",
+      "keyforms": {
+        "axes": [
+          "ParamMilkEmission_3203_x"
+        ],
+        "forms": [
+          {
+            "angle_degrees": -0.0,
+            "at": [
+              0
+            ],
+            "scale": [
+              0.5,
+              1e-06
+            ]
+          },
+          {
+            "angle_degrees": -0.0,
+            "at": [
+              1
+            ],
+            "scale": [
+              1.0,
+              1.0
+            ]
+          }
+        ],
+        "keys": [
+          [
+            0.0,
+            1.0
+          ]
+        ]
+      },
+      "kind": "rotation",
+      "origin": [
+        27.0,
+        6.0
+      ],
+      "parent": "rot_BodyRoot_1010"
+    },
+    {
+      "base_angle_degrees": -0.0,
+      "id": "rot_HeadAnchor_1020",
+      "keyforms": {
+        "axes": [
+          "ParamAngleZ_2003_x"
+        ],
+        "forms": [
+          {
+            "angle_degrees": 17.188735961914062,
+            "at": [
+              0
+            ],
+            "scale": [
+              1.0,
+              1.0
+            ]
+          },
+          {
+            "angle_degrees": -0.0,
+            "at": [
+              1
+            ],
+            "scale": [
+              1.0,
+              1.0
+            ]
+          },
+          {
+            "angle_degrees": -17.188735961914062,
+            "at": [
+              2
+            ],
+            "scale": [
+              1.0,
+              1.0
+            ]
+          }
+        ],
+        "keys": [
+          [
+            -30.0,
+            0.0,
+            30.0
+          ]
+        ]
+      },
+      "kind": "rotation",
+      "origin": [
+        0.0,
+        135.0
+      ],
+      "parent": "rot_BodyRoot_1010"
+    },
+    {
+      "base_angle_degrees": -0.0,
+      "id": "rot_Mouth_1026",
+      "keyforms": {
+        "axes": [
+          "ParamMouthX_2016_x"
+        ],
+        "forms": [
+          {
+            "angle_degrees": -0.0,
+            "at": [
+              0
+            ],
+            "scale": [
+              0.75,
+              1.0
+            ]
+          },
+          {
+            "angle_degrees": -0.0,
+            "at": [
+              1
+            ],
+            "scale": [
+              1.0,
+              1.0
+            ]
+          },
+          {
+            "angle_degrees": -0.0,
+            "at": [
+              2
+            ],
+            "scale": [
+              1.2999999523162842,
+              1.0
+            ]
+          }
+        ],
+        "keys": [
+          [
+            0.0,
+            0.5,
+            1.0
+          ]
+        ]
+      },
+      "kind": "rotation",
+      "origin": [
+        0.0,
+        117.0
+      ],
+      "parent": "rot_HeadAnchor_1020"
+    },
+    {
+      "base_angle_degrees": -0.0,
+      "id": "rot_hair-sway-3stepRot1_9003",
+      "keyforms": {
+        "axes": [
+          "ParamHairSway1_9011_x"
+        ],
+        "forms": [
+          {
+            "angle_degrees": 34.377471923828125,
+            "at": [
+              0
+            ],
+            "scale": [
+              1.0,
+              1.0
+            ]
+          },
+          {
+            "angle_degrees": -0.0,
+            "at": [
+              1
+            ],
+            "scale": [
+              1.0,
+              1.0
+            ]
+          },
+          {
+            "angle_degrees": -34.377471923828125,
+            "at": [
+              2
+            ],
+            "scale": [
+              1.0,
+              1.0
+            ]
+          }
+        ],
+        "keys": [
+          [
+            -1.0,
+            0.0,
+            1.0
+          ]
+        ]
+      },
+      "kind": "rotation",
+      "origin": [
+        0.0,
+        169.0
+      ],
+      "parent": "rot_HeadAnchor_1020"
+    },
+    {
+      "base_angle_degrees": -0.0,
+      "id": "rot_hair-sway-3stepRot2_9007",
+      "keyforms": {
+        "axes": [
+          "ParamHairSway2_9012_x"
+        ],
+        "forms": [
+          {
+            "angle_degrees": 34.377471923828125,
+            "at": [
+              0
+            ],
+            "scale": [
+              1.0,
+              1.0
+            ]
+          },
+          {
+            "angle_degrees": -0.0,
+            "at": [
+              1
+            ],
+            "scale": [
+              1.0,
+              1.0
+            ]
+          },
+          {
+            "angle_degrees": -34.377471923828125,
+            "at": [
+              2
+            ],
+            "scale": [
+              1.0,
+              1.0
+            ]
+          }
+        ],
+        "keys": [
+          [
+            -1.0,
+            0.0,
+            1.0
+          ]
+        ]
+      },
+      "kind": "rotation",
+      "origin": [
+        0.0,
+        134.0
+      ],
+      "parent": "rot_hair-sway-3stepRot1_9003"
+    },
+    {
+      "base_angle_degrees": -0.0,
+      "id": "rot_hair-sway-3stepSeg3_9009",
+      "keyforms": {
+        "axes": [
+          "ParamHairSway3_9013_x"
+        ],
+        "forms": [
+          {
+            "angle_degrees": 34.377471923828125,
+            "at": [
+              0
+            ],
+            "scale": [
+              1.0,
+              1.0
+            ]
+          },
+          {
+            "angle_degrees": -0.0,
+            "at": [
+              1
+            ],
+            "scale": [
+              1.0,
+              1.0
+            ]
+          },
+          {
+            "angle_degrees": -34.377471923828125,
+            "at": [
+              2
+            ],
+            "scale": [
+              1.0,
+              1.0
+            ]
+          }
+        ],
+        "keys": [
+          [
+            -1.0,
+            0.0,
+            1.0
+          ]
+        ]
+      },
+      "kind": "rotation",
+      "origin": [
+        0.0,
+        81.5
+      ],
+      "parent": "rot_hair-sway-3stepRot2_9007"
+    },
+    {
+      "base_angle_degrees": -0.0,
+      "id": "rot_hair-bounceRot1_9016",
+      "keyforms": {
+        "axes": [
+          "ParamHairBounceY_9020_x"
+        ],
+        "forms": [
+          {
+            "angle_degrees": 34.377471923828125,
+            "at": [
+              0
+            ],
+            "scale": [
+              1.0,
+              1.0
+            ]
+          },
+          {
+            "angle_degrees": -0.0,
+            "at": [
+              1
+            ],
+            "scale": [
+              1.0,
+              1.0
+            ]
+          },
+          {
+            "angle_degrees": -34.377471923828125,
+            "at": [
+              2
+            ],
+            "scale": [
+              1.0,
+              1.0
+            ]
+          }
+        ],
+        "keys": [
+          [
+            -1.0,
+            0.0,
+            1.0
+          ]
+        ]
+      },
+      "kind": "rotation",
+      "origin": [
+        0.0,
+        169.0
+      ],
+      "parent": "rot_HeadAnchor_1020"
+    },
+    {
+      "base_angle_degrees": -0.0,
+      "id": "rot_hair-bounceSeg2_9018",
+      "keyforms": {
+        "axes": [
+          "ParamHairFan_9021_x"
+        ],
+        "forms": [
+          {
+            "angle_degrees": 34.377471923828125,
+            "at": [
+              0
+            ],
+            "scale": [
+              1.0,
+              1.0
+            ]
+          },
+          {
+            "angle_degrees": -0.0,
+            "at": [
+              1
+            ],
+            "scale": [
+              1.0,
+              1.0
+            ]
+          },
+          {
+            "angle_degrees": -34.377471923828125,
+            "at": [
+              2
+            ],
+            "scale": [
+              1.0,
+              1.0
+            ]
+          }
+        ],
+        "keys": [
+          [
+            -1.0,
+            0.0,
+            1.0
+          ]
+        ]
+      },
+      "kind": "rotation",
+      "origin": [
+        0.0,
+        124.0
+      ],
+      "parent": "rot_hair-bounceRot1_9016"
+    },
+    {
+      "base_angle_degrees": -0.0,
+      "id": "rot_CowEarL_3109",
+      "keyforms": {
+        "axes": [
+          "ParamHucowSet_3204_x"
+        ],
+        "forms": [
+          {
+            "angle_degrees": -0.0,
+            "at": [
+              0
+            ],
+            "scale": [
+              1e-06,
+              1e-06
+            ]
+          },
+          {
+            "angle_degrees": -0.0,
+            "at": [
+              1
+            ],
+            "scale": [
+              1.0,
+              1.0
+            ]
+          }
+        ],
+        "keys": [
+          [
+            0.0,
+            1.0
+          ]
+        ]
+      },
+      "kind": "rotation",
+      "origin": [
+        -50.0,
+        173.0
+      ],
+      "parent": "rot_HeadAnchor_1020"
+    },
+    {
+      "base_angle_degrees": -0.0,
+      "id": "rot_CowEarR_3110",
+      "keyforms": {
+        "axes": [
+          "ParamHucowSet_3204_x"
+        ],
+        "forms": [
+          {
+            "angle_degrees": -0.0,
+            "at": [
+              0
+            ],
+            "scale": [
+              1e-06,
+              1e-06
+            ]
+          },
+          {
+            "angle_degrees": -0.0,
+            "at": [
+              1
+            ],
+            "scale": [
+              1.0,
+              1.0
+            ]
+          }
+        ],
+        "keys": [
+          [
+            0.0,
+            1.0
+          ]
+        ]
+      },
+      "kind": "rotation",
+      "origin": [
+        50.0,
+        173.0
+      ],
+      "parent": "rot_HeadAnchor_1020"
+    },
+    {
+      "base_angle_degrees": -0.0,
+      "id": "rot_HornL_3111",
+      "keyforms": {
+        "axes": [
+          "ParamHucowSet_3204_x"
+        ],
+        "forms": [
+          {
+            "angle_degrees": -0.0,
+            "at": [
+              0
+            ],
+            "scale": [
+              1e-06,
+              1e-06
+            ]
+          },
+          {
+            "angle_degrees": -0.0,
+            "at": [
+              1
+            ],
+            "scale": [
+              1.0,
+              1.0
+            ]
+          }
+        ],
+        "keys": [
+          [
+            0.0,
+            1.0
+          ]
+        ]
+      },
+      "kind": "rotation",
+      "origin": [
+        -33.0,
+        182.0
+      ],
+      "parent": "rot_HeadAnchor_1020"
+    },
+    {
+      "base_angle_degrees": -0.0,
+      "id": "rot_HornR_3112",
+      "keyforms": {
+        "axes": [
+          "ParamHucowSet_3204_x"
+        ],
+        "forms": [
+          {
+            "angle_degrees": -0.0,
+            "at": [
+              0
+            ],
+            "scale": [
+              1e-06,
+              1e-06
+            ]
+          },
+          {
+            "angle_degrees": -0.0,
+            "at": [
+              1
+            ],
+            "scale": [
+              1.0,
+              1.0
+            ]
+          }
+        ],
+        "keys": [
+          [
+            0.0,
+            1.0
+          ]
+        ]
+      },
+      "kind": "rotation",
+      "origin": [
+        33.0,
+        182.0
+      ],
+      "parent": "rot_HeadAnchor_1020"
+    },
+    {
+      "base_angle_degrees": -0.0,
+      "id": "rot_MaidHeaddress_3117",
+      "keyforms": {
+        "axes": [
+          "ParamHucowSet_3204_x"
+        ],
+        "forms": [
+          {
+            "angle_degrees": -0.0,
+            "at": [
+              0
+            ],
+            "scale": [
+              1e-06,
+              1e-06
+            ]
+          },
+          {
+            "angle_degrees": -0.0,
+            "at": [
+              1
+            ],
+            "scale": [
+              1.0,
+              1.0
+            ]
+          }
+        ],
+        "keys": [
+          [
+            0.0,
+            1.0
+          ]
+        ]
+      },
+      "kind": "rotation",
+      "origin": [
+        0.0,
+        179.0
+      ],
+      "parent": "rot_HeadAnchor_1020"
+    },
+    {
+      "base_angle_degrees": -0.0,
+      "id": "rot_BellCollar_3113",
+      "keyforms": {
+        "axes": [
+          "ParamHucowSet_3204_x"
+        ],
+        "forms": [
+          {
+            "angle_degrees": -0.0,
+            "at": [
+              0
+            ],
+            "scale": [
+              1e-06,
+              1e-06
+            ]
+          },
+          {
+            "angle_degrees": -0.0,
+            "at": [
+              1
+            ],
+            "scale": [
+              1.0,
+              1.0
+            ]
+          }
+        ],
+        "keys": [
+          [
+            0.0,
+            1.0
+          ]
+        ]
+      },
+      "kind": "rotation",
+      "origin": [
+        0.0,
+        88.0
+      ],
+      "parent": "rot_HeadAnchor_1020"
+    }
+  ],
+  "format": "lumen-rig-model",
+  "format_version": 1,
+  "generator": "torogao-cli 0.1.0",
+  "id": "Alma",
+  "meshes": [
+    {
+      "blend_mode": "normal",
+      "deformer": "rot_BodyRoot_1010",
+      "draw_order": 19,
+      "id": "mesh_Body_1011",
+      "indices": [
+        0,
+        1,
+        2,
+        2,
+        1,
+        3
+      ],
+      "opacity": 1.0,
+      "part": "Body_1011",
+      "rendered": true,
+      "texture": "tex_0",
+      "uvs": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0
+        ],
+        [
+          1.0,
+          1.0
+        ]
+      ],
+      "vertices": [
+        [
+          -63.599998474121094,
+          88.23999786376953
+        ],
+        [
+          63.599998474121094,
+          88.23999786376953
+        ],
+        [
+          -63.599998474121094,
+          -88.23999786376953
+        ],
+        [
+          63.599998474121094,
+          -88.23999786376953
+        ]
+      ]
+    },
+    {
+      "blend_mode": "normal",
+      "deformer": "rot_BodyRoot_1010",
+      "draw_order": 20,
+      "id": "mesh_breast-xSeg1_9022",
+      "indices": [
+        0,
+        1,
+        2,
+        2,
+        1,
+        3
+      ],
+      "opacity": 1.0,
+      "part": "breast-xSeg1_9022",
+      "rendered": true,
+      "texture": "tex_0",
+      "uvs": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0
+        ],
+        [
+          1.0,
+          1.0
+        ]
+      ],
+      "vertices": [
+        [
+          -18.0,
+          59.375
+        ],
+        [
+          18.0,
+          59.375
+        ],
+        [
+          -18.0,
+          25.625
+        ],
+        [
+          18.0,
+          25.625
+        ]
+      ]
+    },
+    {
+      "blend_mode": "normal",
+      "deformer": "rot_breast-xSeg2_9026",
+      "draw_order": 21,
+      "id": "mesh_breast-xSeg2_9026",
+      "indices": [
+        0,
+        1,
+        2,
+        2,
+        1,
+        3
+      ],
+      "opacity": 1.0,
+      "part": "breast-xSeg2_9026",
+      "rendered": true,
+      "texture": "tex_0",
+      "uvs": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0
+        ],
+        [
+          1.0,
+          1.0
+        ]
+      ],
+      "vertices": [
+        [
+          -18.0,
+          34.375
+        ],
+        [
+          18.0,
+          34.375
+        ],
+        [
+          -18.0,
+          0.625
+        ],
+        [
+          18.0,
+          0.625
+        ]
+      ]
+    },
+    {
+      "blend_mode": "normal",
+      "deformer": "rot_BodyRoot_1010",
+      "draw_order": 22,
+      "id": "mesh_breast-ySeg1_9030",
+      "indices": [
+        0,
+        1,
+        2,
+        2,
+        1,
+        3
+      ],
+      "opacity": 1.0,
+      "part": "breast-ySeg1_9030",
+      "rendered": true,
+      "texture": "tex_0",
+      "uvs": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0
+        ],
+        [
+          1.0,
+          1.0
+        ]
+      ],
+      "vertices": [
+        [
+          -18.0,
+          59.375
+        ],
+        [
+          18.0,
+          59.375
+        ],
+        [
+          -18.0,
+          25.625
+        ],
+        [
+          18.0,
+          25.625
+        ]
+      ]
+    },
+    {
+      "blend_mode": "normal",
+      "deformer": "rot_breast-ySeg2_9034",
+      "draw_order": 23,
+      "id": "mesh_breast-ySeg2_9034",
+      "indices": [
+        0,
+        1,
+        2,
+        2,
+        1,
+        3
+      ],
+      "opacity": 1.0,
+      "part": "breast-ySeg2_9034",
+      "rendered": true,
+      "texture": "tex_0",
+      "uvs": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0
+        ],
+        [
+          1.0,
+          1.0
+        ]
+      ],
+      "vertices": [
+        [
+          -18.0,
+          34.375
+        ],
+        [
+          18.0,
+          34.375
+        ],
+        [
+          -18.0,
+          0.625
+        ],
+        [
+          18.0,
+          0.625
+        ]
+      ]
+    },
+    {
+      "blend_mode": "normal",
+      "deformer": "rot_BreastL_3101",
+      "draw_order": 5,
+      "id": "mesh_BreastL_3101",
+      "indices": [
+        0,
+        1,
+        2,
+        2,
+        1,
+        3
+      ],
+      "opacity": 1.0,
+      "part": "BreastL_3101",
+      "rendered": true,
+      "texture": "tex_3",
+      "uvs": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0
+        ],
+        [
+          1.0,
+          1.0
+        ]
+      ],
+      "vertices": [
+        [
+          -51.750999450683594,
+          62.375999450683594
+        ],
+        [
+          -2.2490005493164062,
+          62.375999450683594
+        ],
+        [
+          -51.750999450683594,
+          15.624000549316406
+        ],
+        [
+          -2.2490005493164062,
+          15.624000549316406
+        ]
+      ]
+    },
+    {
+      "blend_mode": "normal",
+      "deformer": "rot_BreastR_3102",
+      "draw_order": 6,
+      "id": "mesh_BreastR_3102",
+      "indices": [
+        0,
+        1,
+        2,
+        2,
+        1,
+        3
+      ],
+      "opacity": 1.0,
+      "part": "BreastR_3102",
+      "rendered": true,
+      "texture": "tex_3",
+      "uvs": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0
+        ],
+        [
+          1.0,
+          1.0
+        ]
+      ],
+      "vertices": [
+        [
+          2.2490005493164062,
+          62.375999450683594
+        ],
+        [
+          51.750999450683594,
+          62.375999450683594
+        ],
+        [
+          2.2490005493164062,
+          15.624000549316406
+        ],
+        [
+          51.750999450683594,
+          15.624000549316406
+        ]
+      ]
+    },
+    {
+      "blend_mode": "normal",
+      "deformer": "rot_BodyRoot_1010",
+      "draw_order": 3,
+      "id": "mesh_NippleL_3103",
+      "indices": [
+        0,
+        1,
+        2,
+        2,
+        1,
+        3
+      ],
+      "keyforms": {
+        "axes": [
+          "ParamSuctionCycle_3202_x"
+        ],
+        "forms": [
+          {
+            "at": [
+              0
+            ],
+            "vertices": [
+              [
+                -30.5,
+                28.0
+              ],
+              [
+                -23.5,
+                28.0
+              ],
+              [
+                -30.5,
+                22.0
+              ],
+              [
+                -23.5,
+                22.0
+              ]
+            ]
+          },
+          {
+            "at": [
+              1
+            ],
+            "vertices": [
+              [
+                -30.545000076293945,
+                27.832000732421875
+              ],
+              [
+                -23.545000076293945,
+                27.832000732421875
+              ],
+              [
+                -30.545000076293945,
+                21.832000732421875
+              ],
+              [
+                -23.545000076293945,
+                21.832000732421875
+              ]
+            ]
+          },
+          {
+            "at": [
+              2
+            ],
+            "vertices": [
+              [
+                -30.783000946044922,
+                26.93899917602539
+              ],
+              [
+                -23.783000946044922,
+                26.93899917602539
+              ],
+              [
+                -30.783000946044922,
+                20.93899917602539
+              ],
+              [
+                -23.783000946044922,
+                20.93899917602539
+              ]
+            ]
+          },
+          {
+            "at": [
+              3
+            ],
+            "vertices": [
+              [
+                -31.299999237060547,
+                25.0
+              ],
+              [
+                -24.299999237060547,
+                25.0
+              ],
+              [
+                -31.299999237060547,
+                19.0
+              ],
+              [
+                -24.299999237060547,
+                19.0
+              ]
+            ]
+          },
+          {
+            "at": [
+              4
+            ],
+            "vertices": [
+              [
+                -30.783000946044922,
+                26.93899917602539
+              ],
+              [
+                -23.783000946044922,
+                26.93899917602539
+              ],
+              [
+                -30.783000946044922,
+                20.93899917602539
+              ],
+              [
+                -23.783000946044922,
+                20.93899917602539
+              ]
+            ]
+          },
+          {
+            "at": [
+              5
+            ],
+            "vertices": [
+              [
+                -30.5,
+                28.0
+              ],
+              [
+                -23.5,
+                28.0
+              ],
+              [
+                -30.5,
+                22.0
+              ],
+              [
+                -23.5,
+                22.0
+              ]
+            ]
+          }
+        ],
+        "keys": [
+          [
+            0.0,
+            0.125,
+            0.25,
+            0.5,
+            0.75,
+            1.0
+          ]
+        ]
+      },
+      "opacity": 1.0,
+      "part": "NippleL_3103",
+      "rendered": true,
+      "texture": "tex_4",
+      "uvs": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0
+        ],
+        [
+          1.0,
+          1.0
+        ]
+      ],
+      "vertices": [
+        [
+          -30.5,
+          28.0
+        ],
+        [
+          -23.5,
+          28.0
+        ],
+        [
+          -30.5,
+          22.0
+        ],
+        [
+          -23.5,
+          22.0
+        ]
+      ]
+    },
+    {
+      "blend_mode": "normal",
+      "deformer": "rot_BodyRoot_1010",
+      "draw_order": 4,
+      "id": "mesh_NippleR_3104",
+      "indices": [
+        0,
+        1,
+        2,
+        2,
+        1,
+        3
+      ],
+      "keyforms": {
+        "axes": [
+          "ParamSuctionCycle_3202_x"
+        ],
+        "forms": [
+          {
+            "at": [
+              0
+            ],
+            "vertices": [
+              [
+                23.5,
+                28.0
+              ],
+              [
+                30.5,
+                28.0
+              ],
+              [
+                23.5,
+                22.0
+              ],
+              [
+                30.5,
+                22.0
+              ]
+            ]
+          },
+          {
+            "at": [
+              1
+            ],
+            "vertices": [
+              [
+                23.545000076293945,
+                27.832000732421875
+              ],
+              [
+                30.545000076293945,
+                27.832000732421875
+              ],
+              [
+                23.545000076293945,
+                21.832000732421875
+              ],
+              [
+                30.545000076293945,
+                21.832000732421875
+              ]
+            ]
+          },
+          {
+            "at": [
+              2
+            ],
+            "vertices": [
+              [
+                23.783000946044922,
+                26.93899917602539
+              ],
+              [
+                30.783000946044922,
+                26.93899917602539
+              ],
+              [
+                23.783000946044922,
+                20.93899917602539
+              ],
+              [
+                30.783000946044922,
+                20.93899917602539
+              ]
+            ]
+          },
+          {
+            "at": [
+              3
+            ],
+            "vertices": [
+              [
+                24.299999237060547,
+                25.0
+              ],
+              [
+                31.299999237060547,
+                25.0
+              ],
+              [
+                24.299999237060547,
+                19.0
+              ],
+              [
+                31.299999237060547,
+                19.0
+              ]
+            ]
+          },
+          {
+            "at": [
+              4
+            ],
+            "vertices": [
+              [
+                23.783000946044922,
+                26.93899917602539
+              ],
+              [
+                30.783000946044922,
+                26.93899917602539
+              ],
+              [
+                23.783000946044922,
+                20.93899917602539
+              ],
+              [
+                30.783000946044922,
+                20.93899917602539
+              ]
+            ]
+          },
+          {
+            "at": [
+              5
+            ],
+            "vertices": [
+              [
+                23.5,
+                28.0
+              ],
+              [
+                30.5,
+                28.0
+              ],
+              [
+                23.5,
+                22.0
+              ],
+              [
+                30.5,
+                22.0
+              ]
+            ]
+          }
+        ],
+        "keys": [
+          [
+            0.0,
+            0.125,
+            0.25,
+            0.5,
+            0.75,
+            1.0
+          ]
+        ]
+      },
+      "opacity": 1.0,
+      "part": "NippleR_3104",
+      "rendered": true,
+      "texture": "tex_4",
+      "uvs": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0
+        ],
+        [
+          1.0,
+          1.0
+        ]
+      ],
+      "vertices": [
+        [
+          23.5,
+          28.0
+        ],
+        [
+          30.5,
+          28.0
+        ],
+        [
+          23.5,
+          22.0
+        ],
+        [
+          30.5,
+          22.0
+        ]
+      ]
+    },
+    {
+      "blend_mode": "normal",
+      "deformer": "rot_MilkStreamL_3106",
+      "draw_order": 1,
+      "id": "mesh_MilkStreamL_3106",
+      "indices": [
+        0,
+        1,
+        2,
+        2,
+        1,
+        3
+      ],
+      "keyforms": {
+        "axes": [
+          "ParamSuctionCycle_3202_x"
+        ],
+        "forms": [
+          {
+            "at": [
+              0
+            ],
+            "vertices": [
+              [
+                -28.75,
+                21.0
+              ],
+              [
+                -25.25,
+                21.0
+              ],
+              [
+                -28.75,
+                -10.800000190734863
+              ],
+              [
+                -25.25,
+                -10.800000190734863
+              ]
+            ]
+          },
+          {
+            "at": [
+              1
+            ],
+            "vertices": [
+              [
+                -28.75,
+                21.0
+              ],
+              [
+                -25.25,
+                21.0
+              ],
+              [
+                -28.75,
+                -11.399999618530273
+              ],
+              [
+                -25.25,
+                -11.399999618530273
+              ]
+            ]
+          },
+          {
+            "at": [
+              2
+            ],
+            "vertices": [
+              [
+                -28.75,
+                21.0
+              ],
+              [
+                -25.25,
+                21.0
+              ],
+              [
+                -28.75,
+                -14.399999618530273
+              ],
+              [
+                -25.25,
+                -14.399999618530273
+              ]
+            ]
+          },
+          {
+            "at": [
+              3
+            ],
+            "vertices": [
+              [
+                -28.75,
+                21.0
+              ],
+              [
+                -25.25,
+                21.0
+              ],
+              [
+                -28.75,
+                -21.0
+              ],
+              [
+                -25.25,
+                -21.0
+              ]
+            ]
+          },
+          {
+            "at": [
+              4
+            ],
+            "vertices": [
+              [
+                -28.75,
+                21.0
+              ],
+              [
+                -25.25,
+                21.0
+              ],
+              [
+                -28.75,
+                -14.399999618530273
+              ],
+              [
+                -25.25,
+                -14.399999618530273
+              ]
+            ]
+          },
+          {
+            "at": [
+              5
+            ],
+            "vertices": [
+              [
+                -28.75,
+                21.0
+              ],
+              [
+                -25.25,
+                21.0
+              ],
+              [
+                -28.75,
+                -10.800000190734863
+              ],
+              [
+                -25.25,
+                -10.800000190734863
+              ]
+            ]
+          }
+        ],
+        "keys": [
+          [
+            0.0,
+            0.125,
+            0.25,
+            0.5,
+            0.75,
+            1.0
+          ]
+        ]
+      },
+      "opacity": 1.0,
+      "part": "MilkStreamL_3106",
+      "rendered": true,
+      "texture": "tex_5",
+      "uvs": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0
+        ],
+        [
+          1.0,
+          1.0
+        ]
+      ],
+      "vertices": [
+        [
+          -28.75,
+          21.0
+        ],
+        [
+          -25.25,
+          21.0
+        ],
+        [
+          -28.75,
+          -9.0
+        ],
+        [
+          -25.25,
+          -9.0
+        ]
+      ]
+    },
+    {
+      "blend_mode": "normal",
+      "deformer": "rot_MilkStreamR_3108",
+      "draw_order": 2,
+      "id": "mesh_MilkStreamR_3108",
+      "indices": [
+        0,
+        1,
+        2,
+        2,
+        1,
+        3
+      ],
+      "keyforms": {
+        "axes": [
+          "ParamSuctionCycle_3202_x"
+        ],
+        "forms": [
+          {
+            "at": [
+              0
+            ],
+            "vertices": [
+              [
+                25.25,
+                21.0
+              ],
+              [
+                28.75,
+                21.0
+              ],
+              [
+                25.25,
+                -10.800000190734863
+              ],
+              [
+                28.75,
+                -10.800000190734863
+              ]
+            ]
+          },
+          {
+            "at": [
+              1
+            ],
+            "vertices": [
+              [
+                25.25,
+                21.0
+              ],
+              [
+                28.75,
+                21.0
+              ],
+              [
+                25.25,
+                -11.399999618530273
+              ],
+              [
+                28.75,
+                -11.399999618530273
+              ]
+            ]
+          },
+          {
+            "at": [
+              2
+            ],
+            "vertices": [
+              [
+                25.25,
+                21.0
+              ],
+              [
+                28.75,
+                21.0
+              ],
+              [
+                25.25,
+                -14.399999618530273
+              ],
+              [
+                28.75,
+                -14.399999618530273
+              ]
+            ]
+          },
+          {
+            "at": [
+              3
+            ],
+            "vertices": [
+              [
+                25.25,
+                21.0
+              ],
+              [
+                28.75,
+                21.0
+              ],
+              [
+                25.25,
+                -21.0
+              ],
+              [
+                28.75,
+                -21.0
+              ]
+            ]
+          },
+          {
+            "at": [
+              4
+            ],
+            "vertices": [
+              [
+                25.25,
+                21.0
+              ],
+              [
+                28.75,
+                21.0
+              ],
+              [
+                25.25,
+                -14.399999618530273
+              ],
+              [
+                28.75,
+                -14.399999618530273
+              ]
+            ]
+          },
+          {
+            "at": [
+              5
+            ],
+            "vertices": [
+              [
+                25.25,
+                21.0
+              ],
+              [
+                28.75,
+                21.0
+              ],
+              [
+                25.25,
+                -10.800000190734863
+              ],
+              [
+                28.75,
+                -10.800000190734863
+              ]
+            ]
+          }
+        ],
+        "keys": [
+          [
+            0.0,
+            0.125,
+            0.25,
+            0.5,
+            0.75,
+            1.0
+          ]
+        ]
+      },
+      "opacity": 1.0,
+      "part": "MilkStreamR_3108",
+      "rendered": true,
+      "texture": "tex_5",
+      "uvs": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0
+        ],
+        [
+          1.0,
+          1.0
+        ]
+      ],
+      "vertices": [
+        [
+          25.25,
+          21.0
+        ],
+        [
+          28.75,
+          21.0
+        ],
+        [
+          25.25,
+          -9.0
+        ],
+        [
+          28.75,
+          -9.0
+        ]
+      ]
+    },
+    {
+      "blend_mode": "normal",
+      "deformer": "rot_HeadAnchor_1020",
+      "draw_order": 24,
+      "id": "mesh_Head_1021",
+      "indices": [
+        0,
+        1,
+        2,
+        2,
+        1,
+        3
+      ],
+      "keyforms": {
+        "axes": [
+          "ParamAngleX_2001_x"
+        ],
+        "forms": [
+          {
+            "at": [
+              0
+            ],
+            "vertices": [
+              [
+                -55.5,
+                177.0
+              ],
+              [
+                49.5,
+                177.0
+              ],
+              [
+                -55.5,
+                93.0
+              ],
+              [
+                49.5,
+                93.0
+              ]
+            ]
+          },
+          {
+            "at": [
+              1
+            ],
+            "vertices": [
+              [
+                -52.5,
+                177.0
+              ],
+              [
+                52.5,
+                177.0
+              ],
+              [
+                -52.5,
+                93.0
+              ],
+              [
+                52.5,
+                93.0
+              ]
+            ]
+          },
+          {
+            "at": [
+              2
+            ],
+            "vertices": [
+              [
+                -49.5,
+                177.0
+              ],
+              [
+                55.5,
+                177.0
+              ],
+              [
+                -49.5,
+                93.0
+              ],
+              [
+                55.5,
+                93.0
+              ]
+            ]
+          }
+        ],
+        "keys": [
+          [
+            -30.0,
+            0.0,
+            30.0
+          ]
+        ]
+      },
+      "opacity": 1.0,
+      "part": "Head_1021",
+      "rendered": true,
+      "texture": "tex_0",
+      "uvs": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0
+        ],
+        [
+          1.0,
+          1.0
+        ]
+      ],
+      "vertices": [
+        [
+          -52.5,
+          177.0
+        ],
+        [
+          52.5,
+          177.0
+        ],
+        [
+          -52.5,
+          93.0
+        ],
+        [
+          52.5,
+          93.0
+        ]
+      ]
+    },
+    {
+      "blend_mode": "normal",
+      "deformer": "rot_HeadAnchor_1020",
+      "draw_order": 25,
+      "id": "mesh_EyeL_1022",
+      "indices": [
+        0,
+        1,
+        2,
+        2,
+        1,
+        3
+      ],
+      "keyforms": {
+        "axes": [
+          "ParamEyeLOpen_2008_x",
+          "ParamEyeLSmile_2010_x"
+        ],
+        "forms": [
+          {
+            "at": [
+              0,
+              0
+            ],
+            "vertices": [
+              [
+                -28.0,
+                143.5
+              ],
+              [
+                -12.0,
+                143.5
+              ],
+              [
+                -28.0,
+                142.5
+              ],
+              [
+                -12.0,
+                142.5
+              ]
+            ]
+          },
+          {
+            "at": [
+              0,
+              1
+            ],
+            "vertices": [
+              [
+                -28.0,
+                144.5
+              ],
+              [
+                -12.0,
+                144.5
+              ],
+              [
+                -28.0,
+                146.0
+              ],
+              [
+                -12.0,
+                146.0
+              ]
+            ]
+          },
+          {
+            "at": [
+              1,
+              0
+            ],
+            "vertices": [
+              [
+                -28.0,
+                148.0
+              ],
+              [
+                -12.0,
+                148.0
+              ],
+              [
+                -28.0,
+                138.0
+              ],
+              [
+                -12.0,
+                138.0
+              ]
+            ]
+          },
+          {
+            "at": [
+              1,
+              1
+            ],
+            "vertices": [
+              [
+                -28.0,
+                149.0
+              ],
+              [
+                -12.0,
+                149.0
+              ],
+              [
+                -28.0,
+                141.5
+              ],
+              [
+                -12.0,
+                141.5
+              ]
+            ]
+          }
+        ],
+        "keys": [
+          [
+            0.0,
+            1.0
+          ],
+          [
+            0.0,
+            1.0
+          ]
+        ]
+      },
+      "opacity": 1.0,
+      "part": "EyeL_1022",
+      "rendered": true,
+      "texture": "tex_0",
+      "uvs": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0
+        ],
+        [
+          1.0,
+          1.0
+        ]
+      ],
+      "vertices": [
+        [
+          -28.0,
+          148.0
+        ],
+        [
+          -12.0,
+          148.0
+        ],
+        [
+          -28.0,
+          138.0
+        ],
+        [
+          -12.0,
+          138.0
+        ]
+      ]
+    },
+    {
+      "blend_mode": "normal",
+      "deformer": "rot_HeadAnchor_1020",
+      "draw_order": 26,
+      "id": "mesh_EyeR_1023",
+      "indices": [
+        0,
+        1,
+        2,
+        2,
+        1,
+        3
+      ],
+      "keyforms": {
+        "axes": [
+          "ParamEyeROpen_2009_x",
+          "ParamEyeRSmile_2011_x"
+        ],
+        "forms": [
+          {
+            "at": [
+              0,
+              0
+            ],
+            "vertices": [
+              [
+                12.0,
+                143.5
+              ],
+              [
+                28.0,
+                143.5
+              ],
+              [
+                12.0,
+                142.5
+              ],
+              [
+                28.0,
+                142.5
+              ]
+            ]
+          },
+          {
+            "at": [
+              0,
+              1
+            ],
+            "vertices": [
+              [
+                12.0,
+                144.5
+              ],
+              [
+                28.0,
+                144.5
+              ],
+              [
+                12.0,
+                146.0
+              ],
+              [
+                28.0,
+                146.0
+              ]
+            ]
+          },
+          {
+            "at": [
+              1,
+              0
+            ],
+            "vertices": [
+              [
+                12.0,
+                148.0
+              ],
+              [
+                28.0,
+                148.0
+              ],
+              [
+                12.0,
+                138.0
+              ],
+              [
+                28.0,
+                138.0
+              ]
+            ]
+          },
+          {
+            "at": [
+              1,
+              1
+            ],
+            "vertices": [
+              [
+                12.0,
+                149.0
+              ],
+              [
+                28.0,
+                149.0
+              ],
+              [
+                12.0,
+                141.5
+              ],
+              [
+                28.0,
+                141.5
+              ]
+            ]
+          }
+        ],
+        "keys": [
+          [
+            0.0,
+            1.0
+          ],
+          [
+            0.0,
+            1.0
+          ]
+        ]
+      },
+      "opacity": 1.0,
+      "part": "EyeR_1023",
+      "rendered": true,
+      "texture": "tex_0",
+      "uvs": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0
+        ],
+        [
+          1.0,
+          1.0
+        ]
+      ],
+      "vertices": [
+        [
+          12.0,
+          148.0
+        ],
+        [
+          28.0,
+          148.0
+        ],
+        [
+          12.0,
+          138.0
+        ],
+        [
+          28.0,
+          138.0
+        ]
+      ]
+    },
+    {
+      "blend_mode": "normal",
+      "deformer": "rot_HeadAnchor_1020",
+      "draw_order": 27,
+      "id": "mesh_BrowL_1024",
+      "indices": [
+        0,
+        1,
+        2,
+        2,
+        1,
+        3
+      ],
+      "opacity": 1.0,
+      "part": "BrowL_1024",
+      "rendered": true,
+      "texture": "tex_0",
+      "uvs": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0
+        ],
+        [
+          1.0,
+          1.0
+        ]
+      ],
+      "vertices": [
+        [
+          -29.0,
+          157.0
+        ],
+        [
+          -11.0,
+          157.0
+        ],
+        [
+          -29.0,
+          153.0
+        ],
+        [
+          -11.0,
+          153.0
+        ]
+      ]
+    },
+    {
+      "blend_mode": "normal",
+      "deformer": "rot_HeadAnchor_1020",
+      "draw_order": 28,
+      "id": "mesh_BrowR_1025",
+      "indices": [
+        0,
+        1,
+        2,
+        2,
+        1,
+        3
+      ],
+      "opacity": 1.0,
+      "part": "BrowR_1025",
+      "rendered": true,
+      "texture": "tex_0",
+      "uvs": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0
+        ],
+        [
+          1.0,
+          1.0
+        ]
+      ],
+      "vertices": [
+        [
+          11.0,
+          157.0
+        ],
+        [
+          29.0,
+          157.0
+        ],
+        [
+          11.0,
+          153.0
+        ],
+        [
+          29.0,
+          153.0
+        ]
+      ]
+    },
+    {
+      "blend_mode": "normal",
+      "deformer": "rot_Mouth_1026",
+      "draw_order": 29,
+      "id": "mesh_Mouth_1026",
+      "indices": [
+        0,
+        1,
+        2,
+        2,
+        1,
+        3
+      ],
+      "keyforms": {
+        "axes": [
+          "ParamMouthOpenY_2014_x",
+          "ParamMouthForm_2015_x"
+        ],
+        "forms": [
+          {
+            "at": [
+              0,
+              0
+            ],
+            "vertices": [
+              [
+                -5.0,
+                122.0
+              ],
+              [
+                5.0,
+                122.0
+              ],
+              [
+                -5.0,
+                113.0
+              ],
+              [
+                5.0,
+                113.0
+              ]
+            ]
+          },
+          {
+            "at": [
+              0,
+              1
+            ],
+            "vertices": [
+              [
+                -12.0,
+                122.0
+              ],
+              [
+                12.0,
+                122.0
+              ],
+              [
+                -12.0,
+                112.0
+              ],
+              [
+                12.0,
+                112.0
+              ]
+            ]
+          },
+          {
+            "at": [
+              0,
+              2
+            ],
+            "vertices": [
+              [
+                -16.0,
+                122.0
+              ],
+              [
+                16.0,
+                122.0
+              ],
+              [
+                -16.0,
+                111.0
+              ],
+              [
+                16.0,
+                111.0
+              ]
+            ]
+          },
+          {
+            "at": [
+              1,
+              0
+            ],
+            "vertices": [
+              [
+                -5.0,
+                122.0
+              ],
+              [
+                5.0,
+                122.0
+              ],
+              [
+                -5.0,
+                106.0
+              ],
+              [
+                5.0,
+                106.0
+              ]
+            ]
+          },
+          {
+            "at": [
+              1,
+              1
+            ],
+            "vertices": [
+              [
+                -12.0,
+                122.0
+              ],
+              [
+                12.0,
+                122.0
+              ],
+              [
+                -12.0,
+                105.0
+              ],
+              [
+                12.0,
+                105.0
+              ]
+            ]
+          },
+          {
+            "at": [
+              1,
+              2
+            ],
+            "vertices": [
+              [
+                -16.0,
+                122.0
+              ],
+              [
+                16.0,
+                122.0
+              ],
+              [
+                -16.0,
+                104.0
+              ],
+              [
+                16.0,
+                104.0
+              ]
+            ]
+          }
+        ],
+        "keys": [
+          [
+            0.0,
+            1.0
+          ],
+          [
+            -1.0,
+            0.0,
+            1.0
+          ]
+        ]
+      },
+      "opacity": 1.0,
+      "part": "Mouth_1026",
+      "rendered": true,
+      "texture": "tex_0",
+      "uvs": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0
+        ],
+        [
+          1.0,
+          1.0
+        ]
+      ],
+      "vertices": [
+        [
+          -12.0,
+          122.0
+        ],
+        [
+          12.0,
+          122.0
+        ],
+        [
+          -12.0,
+          112.0
+        ],
+        [
+          12.0,
+          112.0
+        ]
+      ]
+    },
+    {
+      "blend_mode": "normal",
+      "deformer": "rot_HeadAnchor_1020",
+      "draw_order": 30,
+      "id": "mesh_hair-sway-3stepSeg1_9001",
+      "indices": [
+        0,
+        1,
+        2,
+        2,
+        1,
+        3
+      ],
+      "opacity": 1.0,
+      "part": "hair-sway-3stepSeg1_9001",
+      "rendered": true,
+      "texture": "tex_0",
+      "uvs": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0
+        ],
+        [
+          1.0,
+          1.0
+        ]
+      ],
+      "vertices": [
+        [
+          -18.0,
+          175.125
+        ],
+        [
+          18.0,
+          175.125
+        ],
+        [
+          -18.0,
+          127.875
+        ],
+        [
+          18.0,
+          127.875
+        ]
+      ]
+    },
+    {
+      "blend_mode": "normal",
+      "deformer": "rot_hair-sway-3stepRot1_9003",
+      "draw_order": 31,
+      "id": "mesh_hair-sway-3stepSeg2_9005",
+      "indices": [
+        0,
+        1,
+        2,
+        2,
+        1,
+        3
+      ],
+      "opacity": 1.0,
+      "part": "hair-sway-3stepSeg2_9005",
+      "rendered": true,
+      "texture": "tex_0",
+      "uvs": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0
+        ],
+        [
+          1.0,
+          1.0
+        ]
+      ],
+      "vertices": [
+        [
+          -18.0,
+          140.125
+        ],
+        [
+          18.0,
+          140.125
+        ],
+        [
+          -18.0,
+          92.875
+        ],
+        [
+          18.0,
+          92.875
+        ]
+      ]
+    },
+    {
+      "blend_mode": "normal",
+      "deformer": "rot_hair-sway-3stepSeg3_9009",
+      "draw_order": 32,
+      "id": "mesh_hair-sway-3stepSeg3_9009",
+      "indices": [
+        0,
+        1,
+        2,
+        2,
+        1,
+        3
+      ],
+      "opacity": 1.0,
+      "part": "hair-sway-3stepSeg3_9009",
+      "rendered": true,
+      "texture": "tex_0",
+      "uvs": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0
+        ],
+        [
+          1.0,
+          1.0
+        ]
+      ],
+      "vertices": [
+        [
+          -18.0,
+          105.125
+        ],
+        [
+          18.0,
+          105.125
+        ],
+        [
+          -18.0,
+          57.875
+        ],
+        [
+          18.0,
+          57.875
+        ]
+      ]
+    },
+    {
+      "blend_mode": "normal",
+      "deformer": "rot_HeadAnchor_1020",
+      "draw_order": 33,
+      "id": "mesh_hair-bounceSeg1_9014",
+      "indices": [
+        0,
+        1,
+        2,
+        2,
+        1,
+        3
+      ],
+      "opacity": 1.0,
+      "part": "hair-bounceSeg1_9014",
+      "rendered": true,
+      "texture": "tex_0",
+      "uvs": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0
+        ],
+        [
+          1.0,
+          1.0
+        ]
+      ],
+      "vertices": [
+        [
+          -18.0,
+          174.25
+        ],
+        [
+          18.0,
+          174.25
+        ],
+        [
+          -18.0,
+          133.75
+        ],
+        [
+          18.0,
+          133.75
+        ]
+      ]
+    },
+    {
+      "blend_mode": "normal",
+      "deformer": "rot_hair-bounceSeg2_9018",
+      "draw_order": 34,
+      "id": "mesh_hair-bounceSeg2_9018",
+      "indices": [
+        0,
+        1,
+        2,
+        2,
+        1,
+        3
+      ],
+      "opacity": 1.0,
+      "part": "hair-bounceSeg2_9018",
+      "rendered": true,
+      "texture": "tex_0",
+      "uvs": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0
+        ],
+        [
+          1.0,
+          1.0
+        ]
+      ],
+      "vertices": [
+        [
+          -18.0,
+          144.25
+        ],
+        [
+          18.0,
+          144.25
+        ],
+        [
+          -18.0,
+          103.75
+        ],
+        [
+          18.0,
+          103.75
+        ]
+      ]
+    },
+    {
+      "blend_mode": "normal",
+      "deformer": "rot_HeadAnchor_1020",
+      "draw_order": 17,
+      "id": "mesh_IrisL_3001",
+      "indices": [
+        0,
+        1,
+        2,
+        2,
+        1,
+        3
+      ],
+      "keyforms": {
+        "axes": [
+          "ParamEyeRoll_2101_x",
+          "ParamEyeCross_2102_x"
+        ],
+        "forms": [
+          {
+            "at": [
+              0,
+              0
+            ],
+            "vertices": [
+              [
+                -25.5,
+                148.5
+              ],
+              [
+                -14.5,
+                148.5
+              ],
+              [
+                -25.5,
+                137.5
+              ],
+              [
+                -14.5,
+                137.5
+              ]
+            ]
+          },
+          {
+            "at": [
+              0,
+              1
+            ],
+            "vertices": [
+              [
+                -20.0,
+                148.5
+              ],
+              [
+                -9.0,
+                148.5
+              ],
+              [
+                -20.0,
+                137.5
+              ],
+              [
+                -9.0,
+                137.5
+              ]
+            ]
+          },
+          {
+            "at": [
+              1,
+              0
+            ],
+            "vertices": [
+              [
+                -25.5,
+                150.24000549316406
+              ],
+              [
+                -14.5,
+                150.24000549316406
+              ],
+              [
+                -25.5,
+                139.24000549316406
+              ],
+              [
+                -14.5,
+                139.24000549316406
+              ]
+            ]
+          },
+          {
+            "at": [
+              1,
+              1
+            ],
+            "vertices": [
+              [
+                -20.0,
+                150.24000549316406
+              ],
+              [
+                -9.0,
+                150.24000549316406
+              ],
+              [
+                -20.0,
+                139.24000549316406
+              ],
+              [
+                -9.0,
+                139.24000549316406
+              ]
+            ]
+          },
+          {
+            "at": [
+              2,
+              0
+            ],
+            "vertices": [
+              [
+                -25.5,
+                151.39999389648438
+              ],
+              [
+                -14.5,
+                151.39999389648438
+              ],
+              [
+                -25.5,
+                140.39999389648438
+              ],
+              [
+                -14.5,
+                140.39999389648438
+              ]
+            ]
+          },
+          {
+            "at": [
+              2,
+              1
+            ],
+            "vertices": [
+              [
+                -20.0,
+                151.39999389648438
+              ],
+              [
+                -9.0,
+                151.39999389648438
+              ],
+              [
+                -20.0,
+                140.39999389648438
+              ],
+              [
+                -9.0,
+                140.39999389648438
+              ]
+            ]
+          },
+          {
+            "at": [
+              3,
+              0
+            ],
+            "vertices": [
+              [
+                -25.5,
+                153.13999938964844
+              ],
+              [
+                -14.5,
+                153.13999938964844
+              ],
+              [
+                -25.5,
+                142.13999938964844
+              ],
+              [
+                -14.5,
+                142.13999938964844
+              ]
+            ]
+          },
+          {
+            "at": [
+              3,
+              1
+            ],
+            "vertices": [
+              [
+                -20.0,
+                153.13999938964844
+              ],
+              [
+                -9.0,
+                153.13999938964844
+              ],
+              [
+                -20.0,
+                142.13999938964844
+              ],
+              [
+                -9.0,
+                142.13999938964844
+              ]
+            ]
+          },
+          {
+            "at": [
+              4,
+              0
+            ],
+            "vertices": [
+              [
+                -25.5,
+                154.3000030517578
+              ],
+              [
+                -14.5,
+                154.3000030517578
+              ],
+              [
+                -25.5,
+                143.3000030517578
+              ],
+              [
+                -14.5,
+                143.3000030517578
+              ]
+            ]
+          },
+          {
+            "at": [
+              4,
+              1
+            ],
+            "vertices": [
+              [
+                -20.0,
+                154.3000030517578
+              ],
+              [
+                -9.0,
+                154.3000030517578
+              ],
+              [
+                -20.0,
+                143.3000030517578
+              ],
+              [
+                -9.0,
+                143.3000030517578
+              ]
+            ]
+          }
+        ],
+        "keys": [
+          [
+            0.0,
+            0.30000001192092896,
+            0.5,
+            0.800000011920929,
+            1.0
+          ],
+          [
+            0.0,
+            1.0
+          ]
+        ]
+      },
+      "opacity": 1.0,
+      "part": "IrisL_3001",
+      "rendered": true,
+      "texture": "tex_1",
+      "uvs": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0
+        ],
+        [
+          1.0,
+          1.0
+        ]
+      ],
+      "vertices": [
+        [
+          -25.5,
+          148.5
+        ],
+        [
+          -14.5,
+          148.5
+        ],
+        [
+          -25.5,
+          137.5
+        ],
+        [
+          -14.5,
+          137.5
+        ]
+      ]
+    },
+    {
+      "blend_mode": "normal",
+      "deformer": "rot_HeadAnchor_1020",
+      "draw_order": 18,
+      "id": "mesh_IrisR_3002",
+      "indices": [
+        0,
+        1,
+        2,
+        2,
+        1,
+        3
+      ],
+      "keyforms": {
+        "axes": [
+          "ParamEyeRoll_2101_x",
+          "ParamEyeCross_2102_x"
+        ],
+        "forms": [
+          {
+            "at": [
+              0,
+              0
+            ],
+            "vertices": [
+              [
+                14.5,
+                148.5
+              ],
+              [
+                25.5,
+                148.5
+              ],
+              [
+                14.5,
+                137.5
+              ],
+              [
+                25.5,
+                137.5
+              ]
+            ]
+          },
+          {
+            "at": [
+              0,
+              1
+            ],
+            "vertices": [
+              [
+                9.0,
+                148.5
+              ],
+              [
+                20.0,
+                148.5
+              ],
+              [
+                9.0,
+                137.5
+              ],
+              [
+                20.0,
+                137.5
+              ]
+            ]
+          },
+          {
+            "at": [
+              1,
+              0
+            ],
+            "vertices": [
+              [
+                14.5,
+                150.24000549316406
+              ],
+              [
+                25.5,
+                150.24000549316406
+              ],
+              [
+                14.5,
+                139.24000549316406
+              ],
+              [
+                25.5,
+                139.24000549316406
+              ]
+            ]
+          },
+          {
+            "at": [
+              1,
+              1
+            ],
+            "vertices": [
+              [
+                9.0,
+                150.24000549316406
+              ],
+              [
+                20.0,
+                150.24000549316406
+              ],
+              [
+                9.0,
+                139.24000549316406
+              ],
+              [
+                20.0,
+                139.24000549316406
+              ]
+            ]
+          },
+          {
+            "at": [
+              2,
+              0
+            ],
+            "vertices": [
+              [
+                14.5,
+                151.39999389648438
+              ],
+              [
+                25.5,
+                151.39999389648438
+              ],
+              [
+                14.5,
+                140.39999389648438
+              ],
+              [
+                25.5,
+                140.39999389648438
+              ]
+            ]
+          },
+          {
+            "at": [
+              2,
+              1
+            ],
+            "vertices": [
+              [
+                9.0,
+                151.39999389648438
+              ],
+              [
+                20.0,
+                151.39999389648438
+              ],
+              [
+                9.0,
+                140.39999389648438
+              ],
+              [
+                20.0,
+                140.39999389648438
+              ]
+            ]
+          },
+          {
+            "at": [
+              3,
+              0
+            ],
+            "vertices": [
+              [
+                14.5,
+                153.13999938964844
+              ],
+              [
+                25.5,
+                153.13999938964844
+              ],
+              [
+                14.5,
+                142.13999938964844
+              ],
+              [
+                25.5,
+                142.13999938964844
+              ]
+            ]
+          },
+          {
+            "at": [
+              3,
+              1
+            ],
+            "vertices": [
+              [
+                9.0,
+                153.13999938964844
+              ],
+              [
+                20.0,
+                153.13999938964844
+              ],
+              [
+                9.0,
+                142.13999938964844
+              ],
+              [
+                20.0,
+                142.13999938964844
+              ]
+            ]
+          },
+          {
+            "at": [
+              4,
+              0
+            ],
+            "vertices": [
+              [
+                14.5,
+                154.3000030517578
+              ],
+              [
+                25.5,
+                154.3000030517578
+              ],
+              [
+                14.5,
+                143.3000030517578
+              ],
+              [
+                25.5,
+                143.3000030517578
+              ]
+            ]
+          },
+          {
+            "at": [
+              4,
+              1
+            ],
+            "vertices": [
+              [
+                9.0,
+                154.3000030517578
+              ],
+              [
+                20.0,
+                154.3000030517578
+              ],
+              [
+                9.0,
+                143.3000030517578
+              ],
+              [
+                20.0,
+                143.3000030517578
+              ]
+            ]
+          }
+        ],
+        "keys": [
+          [
+            0.0,
+            0.30000001192092896,
+            0.5,
+            0.800000011920929,
+            1.0
+          ],
+          [
+            0.0,
+            1.0
+          ]
+        ]
+      },
+      "opacity": 1.0,
+      "part": "IrisR_3002",
+      "rendered": true,
+      "texture": "tex_1",
+      "uvs": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0
+        ],
+        [
+          1.0,
+          1.0
+        ]
+      ],
+      "vertices": [
+        [
+          14.5,
+          148.5
+        ],
+        [
+          25.5,
+          148.5
+        ],
+        [
+          14.5,
+          137.5
+        ],
+        [
+          25.5,
+          137.5
+        ]
+      ]
+    },
+    {
+      "blend_mode": "normal",
+      "deformer": "rot_HeadAnchor_1020",
+      "draw_order": 10,
+      "id": "mesh_UpperLidL_3003",
+      "indices": [
+        0,
+        1,
+        2,
+        2,
+        1,
+        3
+      ],
+      "keyforms": {
+        "axes": [
+          "ParamEyeRoll_2101_x"
+        ],
+        "forms": [
+          {
+            "at": [
+              0
+            ],
+            "vertices": [
+              [
+                -29.5,
+                149.9499969482422
+              ],
+              [
+                -10.5,
+                149.9499969482422
+              ],
+              [
+                -29.5,
+                144.4499969482422
+              ],
+              [
+                -10.5,
+                144.4499969482422
+              ]
+            ]
+          },
+          {
+            "at": [
+              1
+            ],
+            "vertices": [
+              [
+                -29.5,
+                149.25
+              ],
+              [
+                -10.5,
+                149.25
+              ],
+              [
+                -29.5,
+                143.75
+              ],
+              [
+                -10.5,
+                143.75
+              ]
+            ]
+          },
+          {
+            "at": [
+              2
+            ],
+            "vertices": [
+              [
+                -29.5,
+                148.34999084472656
+              ],
+              [
+                -10.5,
+                148.34999084472656
+              ],
+              [
+                -29.5,
+                142.84999084472656
+              ],
+              [
+                -10.5,
+                142.84999084472656
+              ]
+            ]
+          },
+          {
+            "at": [
+              3
+            ],
+            "vertices": [
+              [
+                -29.5,
+                147.25
+              ],
+              [
+                -10.5,
+                147.25
+              ],
+              [
+                -29.5,
+                141.75
+              ],
+              [
+                -10.5,
+                141.75
+              ]
+            ]
+          },
+          {
+            "at": [
+              4
+            ],
+            "vertices": [
+              [
+                -29.5,
+                146.64999389648438
+              ],
+              [
+                -10.5,
+                146.64999389648438
+              ],
+              [
+                -29.5,
+                141.14999389648438
+              ],
+              [
+                -10.5,
+                141.14999389648438
+              ]
+            ]
+          }
+        ],
+        "keys": [
+          [
+            0.0,
+            0.30000001192092896,
+            0.5,
+            0.800000011920929,
+            1.0
+          ]
+        ]
+      },
+      "opacity": 1.0,
+      "part": "UpperLidL_3003",
+      "rendered": true,
+      "texture": "tex_2",
+      "uvs": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0
+        ],
+        [
+          1.0,
+          1.0
+        ]
+      ],
+      "vertices": [
+        [
+          -29.5,
+          149.9499969482422
+        ],
+        [
+          -10.5,
+          149.9499969482422
+        ],
+        [
+          -29.5,
+          144.4499969482422
+        ],
+        [
+          -10.5,
+          144.4499969482422
+        ]
+      ]
+    },
+    {
+      "blend_mode": "normal",
+      "deformer": "rot_HeadAnchor_1020",
+      "draw_order": 11,
+      "id": "mesh_UpperLidR_3004",
+      "indices": [
+        0,
+        1,
+        2,
+        2,
+        1,
+        3
+      ],
+      "keyforms": {
+        "axes": [
+          "ParamEyeRoll_2101_x"
+        ],
+        "forms": [
+          {
+            "at": [
+              0
+            ],
+            "vertices": [
+              [
+                10.5,
+                149.9499969482422
+              ],
+              [
+                29.5,
+                149.9499969482422
+              ],
+              [
+                10.5,
+                144.4499969482422
+              ],
+              [
+                29.5,
+                144.4499969482422
+              ]
+            ]
+          },
+          {
+            "at": [
+              1
+            ],
+            "vertices": [
+              [
+                10.5,
+                149.25
+              ],
+              [
+                29.5,
+                149.25
+              ],
+              [
+                10.5,
+                143.75
+              ],
+              [
+                29.5,
+                143.75
+              ]
+            ]
+          },
+          {
+            "at": [
+              2
+            ],
+            "vertices": [
+              [
+                10.5,
+                148.34999084472656
+              ],
+              [
+                29.5,
+                148.34999084472656
+              ],
+              [
+                10.5,
+                142.84999084472656
+              ],
+              [
+                29.5,
+                142.84999084472656
+              ]
+            ]
+          },
+          {
+            "at": [
+              3
+            ],
+            "vertices": [
+              [
+                10.5,
+                147.25
+              ],
+              [
+                29.5,
+                147.25
+              ],
+              [
+                10.5,
+                141.75
+              ],
+              [
+                29.5,
+                141.75
+              ]
+            ]
+          },
+          {
+            "at": [
+              4
+            ],
+            "vertices": [
+              [
+                10.5,
+                146.64999389648438
+              ],
+              [
+                29.5,
+                146.64999389648438
+              ],
+              [
+                10.5,
+                141.14999389648438
+              ],
+              [
+                29.5,
+                141.14999389648438
+              ]
+            ]
+          }
+        ],
+        "keys": [
+          [
+            0.0,
+            0.30000001192092896,
+            0.5,
+            0.800000011920929,
+            1.0
+          ]
+        ]
+      },
+      "opacity": 1.0,
+      "part": "UpperLidR_3004",
+      "rendered": true,
+      "texture": "tex_2",
+      "uvs": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0
+        ],
+        [
+          1.0,
+          1.0
+        ]
+      ],
+      "vertices": [
+        [
+          10.5,
+          149.9499969482422
+        ],
+        [
+          29.5,
+          149.9499969482422
+        ],
+        [
+          10.5,
+          144.4499969482422
+        ],
+        [
+          29.5,
+          144.4499969482422
+        ]
+      ]
+    },
+    {
+      "blend_mode": "normal",
+      "deformer": "rot_CowEarL_3109",
+      "draw_order": 13,
+      "id": "mesh_CowEarL_3109",
+      "indices": [
+        0,
+        1,
+        2,
+        2,
+        1,
+        3
+      ],
+      "opacity": 1.0,
+      "part": "CowEarL_3109",
+      "rendered": true,
+      "texture": "tex_9",
+      "uvs": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0
+        ],
+        [
+          1.0,
+          1.0
+        ]
+      ],
+      "vertices": [
+        [
+          -61.0,
+          178.5
+        ],
+        [
+          -39.0,
+          178.5
+        ],
+        [
+          -61.0,
+          167.5
+        ],
+        [
+          -39.0,
+          167.5
+        ]
+      ]
+    },
+    {
+      "blend_mode": "normal",
+      "deformer": "rot_CowEarR_3110",
+      "draw_order": 14,
+      "id": "mesh_CowEarR_3110",
+      "indices": [
+        0,
+        1,
+        2,
+        2,
+        1,
+        3
+      ],
+      "opacity": 1.0,
+      "part": "CowEarR_3110",
+      "rendered": true,
+      "texture": "tex_9",
+      "uvs": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0
+        ],
+        [
+          1.0,
+          1.0
+        ]
+      ],
+      "vertices": [
+        [
+          39.0,
+          178.5
+        ],
+        [
+          61.0,
+          178.5
+        ],
+        [
+          39.0,
+          167.5
+        ],
+        [
+          61.0,
+          167.5
+        ]
+      ]
+    },
+    {
+      "blend_mode": "normal",
+      "deformer": "rot_HornL_3111",
+      "draw_order": 15,
+      "id": "mesh_HornL_3111",
+      "indices": [
+        0,
+        1,
+        2,
+        2,
+        1,
+        3
+      ],
+      "opacity": 1.0,
+      "part": "HornL_3111",
+      "rendered": true,
+      "texture": "tex_10",
+      "uvs": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0
+        ],
+        [
+          1.0,
+          1.0
+        ]
+      ],
+      "vertices": [
+        [
+          -37.0,
+          190.5
+        ],
+        [
+          -29.0,
+          190.5
+        ],
+        [
+          -37.0,
+          173.5
+        ],
+        [
+          -29.0,
+          173.5
+        ]
+      ]
+    },
+    {
+      "blend_mode": "normal",
+      "deformer": "rot_HornR_3112",
+      "draw_order": 16,
+      "id": "mesh_HornR_3112",
+      "indices": [
+        0,
+        1,
+        2,
+        2,
+        1,
+        3
+      ],
+      "opacity": 1.0,
+      "part": "HornR_3112",
+      "rendered": true,
+      "texture": "tex_10",
+      "uvs": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0
+        ],
+        [
+          1.0,
+          1.0
+        ]
+      ],
+      "vertices": [
+        [
+          29.0,
+          190.5
+        ],
+        [
+          37.0,
+          190.5
+        ],
+        [
+          29.0,
+          173.5
+        ],
+        [
+          37.0,
+          173.5
+        ]
+      ]
+    },
+    {
+      "blend_mode": "normal",
+      "deformer": "rot_MaidHeaddress_3117",
+      "draw_order": 12,
+      "id": "mesh_MaidHeaddress_3117",
+      "indices": [
+        0,
+        1,
+        2,
+        2,
+        1,
+        3
+      ],
+      "opacity": 1.0,
+      "part": "MaidHeaddress_3117",
+      "rendered": true,
+      "texture": "tex_8",
+      "uvs": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0
+        ],
+        [
+          1.0,
+          1.0
+        ]
+      ],
+      "vertices": [
+        [
+          -42.0,
+          185.0
+        ],
+        [
+          42.0,
+          185.0
+        ],
+        [
+          -42.0,
+          173.0
+        ],
+        [
+          42.0,
+          173.0
+        ]
+      ]
+    },
+    {
+      "blend_mode": "normal",
+      "deformer": "rot_BellCollar_3113",
+      "draw_order": 0,
+      "id": "mesh_BellCollar_3113",
+      "indices": [
+        0,
+        1,
+        2,
+        2,
+        1,
+        3
+      ],
+      "opacity": 1.0,
+      "part": "BellCollar_3113",
+      "rendered": true,
+      "texture": "tex_11",
+      "uvs": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0
+        ],
+        [
+          1.0,
+          1.0
+        ]
+      ],
+      "vertices": [
+        [
+          -17.0,
+          92.5
+        ],
+        [
+          17.0,
+          92.5
+        ],
+        [
+          -17.0,
+          83.5
+        ],
+        [
+          17.0,
+          83.5
+        ]
+      ]
+    },
+    {
+      "blend_mode": "normal",
+      "deformer": "rot_BodyRoot_1010",
+      "draw_order": 8,
+      "id": "mesh_DressBodice_3114",
+      "indices": [
+        0,
+        1,
+        2,
+        2,
+        1,
+        3
+      ],
+      "opacity": 1.0,
+      "part": "DressBodice_3114",
+      "rendered": true,
+      "texture": "tex_6",
+      "uvs": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0
+        ],
+        [
+          1.0,
+          1.0
+        ]
+      ],
+      "vertices": [
+        [
+          -59.0,
+          60.0
+        ],
+        [
+          59.0,
+          60.0
+        ],
+        [
+          -59.0,
+          -44.0
+        ],
+        [
+          59.0,
+          -44.0
+        ]
+      ]
+    },
+    {
+      "blend_mode": "normal",
+      "deformer": "rot_BodyRoot_1010",
+      "draw_order": 9,
+      "id": "mesh_DressSkirt_3115",
+      "indices": [
+        0,
+        1,
+        2,
+        2,
+        1,
+        3
+      ],
+      "opacity": 1.0,
+      "part": "DressSkirt_3115",
+      "rendered": true,
+      "texture": "tex_6",
+      "uvs": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0
+        ],
+        [
+          1.0,
+          1.0
+        ]
+      ],
+      "vertices": [
+        [
+          -62.0,
+          -38.0
+        ],
+        [
+          62.0,
+          -38.0
+        ],
+        [
+          -62.0,
+          -94.0
+        ],
+        [
+          62.0,
+          -94.0
+        ]
+      ]
+    },
+    {
+      "blend_mode": "normal",
+      "deformer": "rot_BodyRoot_1010",
+      "draw_order": 7,
+      "id": "mesh_Apron_3116",
+      "indices": [
+        0,
+        1,
+        2,
+        2,
+        1,
+        3
+      ],
+      "opacity": 1.0,
+      "part": "Apron_3116",
+      "rendered": true,
+      "texture": "tex_7",
+      "uvs": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0
+        ],
+        [
+          1.0,
+          1.0
+        ]
+      ],
+      "vertices": [
+        [
+          -42.0,
+          -16.0
+        ],
+        [
+          42.0,
+          -16.0
+        ],
+        [
+          -42.0,
+          -108.0
+        ],
+        [
+          42.0,
+          -108.0
+        ]
+      ]
+    }
+  ],
+  "parameters": [
+    {
+      "default": 0.0,
+      "id": "ParamAngleX_2001_x",
+      "kind": "scalar",
+      "max": 30.0,
+      "min": -30.0
+    },
+    {
+      "default": 0.0,
+      "id": "ParamAngleY_2002_x",
+      "kind": "scalar",
+      "max": 30.0,
+      "min": -30.0
+    },
+    {
+      "default": 0.0,
+      "id": "ParamAngleZ_2003_x",
+      "kind": "scalar",
+      "max": 30.0,
+      "min": -30.0
+    },
+    {
+      "default": 0.0,
+      "id": "ParamBodyAngleX_2004_x",
+      "kind": "scalar",
+      "max": 30.0,
+      "min": -30.0
+    },
+    {
+      "default": 0.0,
+      "id": "ParamBodyAngleY_2005_x",
+      "kind": "scalar",
+      "max": 30.0,
+      "min": -30.0
+    },
+    {
+      "default": 0.0,
+      "id": "ParamBodyAngleZ_2006_x",
+      "kind": "scalar",
+      "max": 30.0,
+      "min": -30.0
+    },
+    {
+      "default": 0.0,
+      "id": "ParamBreath_2007_x",
+      "kind": "scalar",
+      "max": 1.0,
+      "min": 0.0
+    },
+    {
+      "default": 1.0,
+      "id": "ParamEyeLOpen_2008_x",
+      "kind": "scalar",
+      "max": 1.0,
+      "min": 0.0
+    },
+    {
+      "default": 1.0,
+      "id": "ParamEyeROpen_2009_x",
+      "kind": "scalar",
+      "max": 1.0,
+      "min": 0.0
+    },
+    {
+      "default": 0.0,
+      "id": "ParamEyeLSmile_2010_x",
+      "kind": "scalar",
+      "max": 1.0,
+      "min": 0.0
+    },
+    {
+      "default": 0.0,
+      "id": "ParamEyeRSmile_2011_x",
+      "kind": "scalar",
+      "max": 1.0,
+      "min": 0.0
+    },
+    {
+      "default": 0.0,
+      "id": "ParamBrowLY_2012_x",
+      "kind": "scalar",
+      "max": 1.0,
+      "min": -1.0
+    },
+    {
+      "default": 0.0,
+      "id": "ParamBrowRY_2013_x",
+      "kind": "scalar",
+      "max": 1.0,
+      "min": -1.0
+    },
+    {
+      "default": 0.0,
+      "id": "ParamMouthOpenY_2014_x",
+      "kind": "scalar",
+      "max": 1.0,
+      "min": 0.0
+    },
+    {
+      "default": 0.0,
+      "id": "ParamMouthForm_2015_x",
+      "kind": "scalar",
+      "max": 1.0,
+      "min": -1.0
+    },
+    {
+      "default": 0.5,
+      "id": "ParamMouthX_2016_x",
+      "kind": "scalar",
+      "max": 1.0,
+      "min": 0.0
+    },
+    {
+      "default": 0.0,
+      "id": "ParamHairSway1_9011_x",
+      "kind": "scalar",
+      "max": 1.0,
+      "min": -1.0
+    },
+    {
+      "default": 0.0,
+      "id": "ParamHairSway2_9012_x",
+      "kind": "scalar",
+      "max": 1.0,
+      "min": -1.0
+    },
+    {
+      "default": 0.0,
+      "id": "ParamHairSway3_9013_x",
+      "kind": "scalar",
+      "max": 1.0,
+      "min": -1.0
+    },
+    {
+      "default": 0.0,
+      "id": "ParamHairBounceY_9020_x",
+      "kind": "scalar",
+      "max": 1.0,
+      "min": -1.0
+    },
+    {
+      "default": 0.0,
+      "id": "ParamHairFan_9021_x",
+      "kind": "scalar",
+      "max": 1.0,
+      "min": -1.0
+    },
+    {
+      "default": 0.0,
+      "id": "ParamBreastL_9028_x",
+      "kind": "scalar",
+      "max": 1.0,
+      "min": -1.0
+    },
+    {
+      "default": 0.0,
+      "id": "ParamBreastR_9029_x",
+      "kind": "scalar",
+      "max": 1.0,
+      "min": -1.0
+    },
+    {
+      "default": 0.0,
+      "id": "ParamBreastY_9036_x",
+      "kind": "scalar",
+      "max": 1.0,
+      "min": -1.0
+    },
+    {
+      "default": 0.0,
+      "id": "ParamBreastApart_9037_x",
+      "kind": "scalar",
+      "max": 1.0,
+      "min": -1.0
+    },
+    {
+      "default": 0.0,
+      "id": "ParamEyeRoll_2101_x",
+      "kind": "scalar",
+      "max": 1.0,
+      "min": 0.0
+    },
+    {
+      "default": 0.0,
+      "id": "ParamEyeCross_2102_x",
+      "kind": "scalar",
+      "max": 1.0,
+      "min": 0.0
+    },
+    {
+      "default": 0.800000011920929,
+      "id": "ParamFullness_3201_x",
+      "kind": "scalar",
+      "max": 1.0,
+      "min": 0.0
+    },
+    {
+      "default": 0.0,
+      "id": "ParamSuctionCycle_3202_x",
+      "kind": "scalar",
+      "max": 1.0,
+      "min": 0.0
+    },
+    {
+      "default": 0.0,
+      "id": "ParamMilkEmission_3203_x",
+      "kind": "scalar",
+      "max": 1.0,
+      "min": 0.0
+    },
+    {
+      "default": 1.0,
+      "id": "ParamHucowSet_3204_x",
+      "kind": "scalar",
+      "max": 1.0,
+      "min": 0.0
+    }
+  ],
+  "parts": [
+    {
+      "id": "root"
+    },
+    {
+      "id": "BodyRoot_1010",
+      "parent": "root"
+    },
+    {
+      "id": "Body_1011",
+      "parent": "BodyRoot_1010"
+    },
+    {
+      "id": "BreastAnchor_1012",
+      "parent": "BodyRoot_1010"
+    },
+    {
+      "id": "breast-xSeg1_9022",
+      "parent": "BreastAnchor_1012"
+    },
+    {
+      "id": "breast-xPhys1_9023",
+      "parent": "BreastAnchor_1012"
+    },
+    {
+      "id": "breast-xRot1_9024",
+      "parent": "BreastAnchor_1012"
+    },
+    {
+      "id": "breast-xSegAnchor2_9025",
+      "parent": "breast-xRot1_9024"
+    },
+    {
+      "id": "breast-xSeg2_9026",
+      "parent": "breast-xSegAnchor2_9025"
+    },
+    {
+      "id": "breast-xPhys2_9027",
+      "parent": "breast-xSegAnchor2_9025"
+    },
+    {
+      "id": "breast-ySeg1_9030",
+      "parent": "BreastAnchor_1012"
+    },
+    {
+      "id": "breast-yPhys1_9031",
+      "parent": "BreastAnchor_1012"
+    },
+    {
+      "id": "breast-yRot1_9032",
+      "parent": "BreastAnchor_1012"
+    },
+    {
+      "id": "breast-ySegAnchor2_9033",
+      "parent": "breast-yRot1_9032"
+    },
+    {
+      "id": "breast-ySeg2_9034",
+      "parent": "breast-ySegAnchor2_9033"
+    },
+    {
+      "id": "breast-yPhys2_9035",
+      "parent": "breast-ySegAnchor2_9033"
+    },
+    {
+      "id": "BreastL_3101",
+      "parent": "BreastAnchor_1012"
+    },
+    {
+      "id": "BreastR_3102",
+      "parent": "BreastAnchor_1012"
+    },
+    {
+      "id": "NippleL_3103",
+      "parent": "BreastAnchor_1012"
+    },
+    {
+      "id": "NippleR_3104",
+      "parent": "BreastAnchor_1012"
+    },
+    {
+      "id": "MilkAnchorL_3105",
+      "parent": "BreastAnchor_1012"
+    },
+    {
+      "id": "MilkStreamL_3106",
+      "parent": "MilkAnchorL_3105"
+    },
+    {
+      "id": "MilkAnchorR_3107",
+      "parent": "BreastAnchor_1012"
+    },
+    {
+      "id": "MilkStreamR_3108",
+      "parent": "MilkAnchorR_3107"
+    },
+    {
+      "id": "SkirtAnchor_1013",
+      "parent": "BodyRoot_1010"
+    },
+    {
+      "id": "HeadAnchor_1020",
+      "parent": "BodyRoot_1010"
+    },
+    {
+      "id": "Head_1021",
+      "parent": "HeadAnchor_1020"
+    },
+    {
+      "id": "EyeL_1022",
+      "parent": "HeadAnchor_1020"
+    },
+    {
+      "id": "EyeR_1023",
+      "parent": "HeadAnchor_1020"
+    },
+    {
+      "id": "BrowL_1024",
+      "parent": "HeadAnchor_1020"
+    },
+    {
+      "id": "BrowR_1025",
+      "parent": "HeadAnchor_1020"
+    },
+    {
+      "id": "Mouth_1026",
+      "parent": "HeadAnchor_1020"
+    },
+    {
+      "id": "HairAnchor_1030",
+      "parent": "HeadAnchor_1020"
+    },
+    {
+      "id": "hair-sway-3stepSeg1_9001",
+      "parent": "HairAnchor_1030"
+    },
+    {
+      "id": "hair-sway-3stepPhys1_9002",
+      "parent": "HairAnchor_1030"
+    },
+    {
+      "id": "hair-sway-3stepRot1_9003",
+      "parent": "HairAnchor_1030"
+    },
+    {
+      "id": "hair-sway-3stepSegAnchor2_9004",
+      "parent": "hair-sway-3stepRot1_9003"
+    },
+    {
+      "id": "hair-sway-3stepSeg2_9005",
+      "parent": "hair-sway-3stepSegAnchor2_9004"
+    },
+    {
+      "id": "hair-sway-3stepPhys2_9006",
+      "parent": "hair-sway-3stepSegAnchor2_9004"
+    },
+    {
+      "id": "hair-sway-3stepRot2_9007",
+      "parent": "hair-sway-3stepSegAnchor2_9004"
+    },
+    {
+      "id": "hair-sway-3stepSegAnchor3_9008",
+      "parent": "hair-sway-3stepRot2_9007"
+    },
+    {
+      "id": "hair-sway-3stepSeg3_9009",
+      "parent": "hair-sway-3stepSegAnchor3_9008"
+    },
+    {
+      "id": "hair-sway-3stepPhys3_9010",
+      "parent": "hair-sway-3stepSegAnchor3_9008"
+    },
+    {
+      "id": "hair-bounceSeg1_9014",
+      "parent": "HairAnchor_1030"
+    },
+    {
+      "id": "hair-bouncePhys1_9015",
+      "parent": "HairAnchor_1030"
+    },
+    {
+      "id": "hair-bounceRot1_9016",
+      "parent": "HairAnchor_1030"
+    },
+    {
+      "id": "hair-bounceSegAnchor2_9017",
+      "parent": "hair-bounceRot1_9016"
+    },
+    {
+      "id": "hair-bounceSeg2_9018",
+      "parent": "hair-bounceSegAnchor2_9017"
+    },
+    {
+      "id": "hair-bouncePhys2_9019",
+      "parent": "hair-bounceSegAnchor2_9017"
+    },
+    {
+      "id": "IrisL_3001",
+      "parent": "HeadAnchor_1020"
+    },
+    {
+      "id": "IrisR_3002",
+      "parent": "HeadAnchor_1020"
+    },
+    {
+      "id": "UpperLidL_3003",
+      "parent": "HeadAnchor_1020"
+    },
+    {
+      "id": "UpperLidR_3004",
+      "parent": "HeadAnchor_1020"
+    },
+    {
+      "id": "CowEarL_3109",
+      "parent": "HeadAnchor_1020"
+    },
+    {
+      "id": "CowEarR_3110",
+      "parent": "HeadAnchor_1020"
+    },
+    {
+      "id": "HornL_3111",
+      "parent": "HeadAnchor_1020"
+    },
+    {
+      "id": "HornR_3112",
+      "parent": "HeadAnchor_1020"
+    },
+    {
+      "id": "MaidHeaddress_3117",
+      "parent": "HeadAnchor_1020"
+    },
+    {
+      "id": "BellCollar_3113",
+      "parent": "HeadAnchor_1020"
+    },
+    {
+      "id": "DressBodice_3114",
+      "parent": "BodyRoot_1010"
+    },
+    {
+      "id": "DressSkirt_3115",
+      "parent": "BodyRoot_1010"
+    },
+    {
+      "id": "Apron_3116",
+      "parent": "BodyRoot_1010"
+    }
+  ],
+  "physics": [
+    {
+      "gravity": [
+        0.0,
+        -980.0
+      ],
+      "id": "phys_breast-xPhys1_9023",
+      "inputs": [],
+      "strands": [
+        {
+          "anchor": {
+            "id": "rot_BodyRoot_1010",
+            "kind": "deformer",
+            "offset": [
+              0.0,
+              55.0
+            ]
+          },
+          "id": "strand",
+          "output": {
+            "offset": 0.0,
+            "parameter": "ParamBreastL_9028_x",
+            "scale": 0.0027777778450399637
+          },
+          "particles": [
+            {
+              "damping": 0.15000000596046448,
+              "delay": 0.0,
+              "length": 25.0,
+              "mobility": 0.0,
+              "radius": 0.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "gravity": [
+        0.0,
+        -980.0
+      ],
+      "id": "phys_breast-xPhys2_9027",
+      "inputs": [],
+      "strands": [
+        {
+          "anchor": {
+            "id": "rot_breast-xRot1_9024",
+            "kind": "deformer",
+            "offset": [
+              0.0,
+              -25.0
+            ]
+          },
+          "id": "strand",
+          "output": {
+            "offset": 0.0,
+            "parameter": "ParamBreastR_9029_x",
+            "scale": 0.0027777778450399637
+          },
+          "particles": [
+            {
+              "damping": 0.15000000596046448,
+              "delay": 0.0,
+              "length": 25.0,
+              "mobility": 0.0,
+              "radius": 0.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "gravity": [
+        0.0,
+        -980.0
+      ],
+      "id": "phys_breast-yPhys1_9031",
+      "inputs": [],
+      "strands": [
+        {
+          "anchor": {
+            "id": "rot_BodyRoot_1010",
+            "kind": "deformer",
+            "offset": [
+              0.0,
+              55.0
+            ]
+          },
+          "id": "strand",
+          "output": {
+            "offset": 0.0,
+            "parameter": "ParamBreastY_9036_x",
+            "scale": 0.0027777778450399637
+          },
+          "particles": [
+            {
+              "damping": 0.15000000596046448,
+              "delay": 0.0,
+              "length": 25.0,
+              "mobility": 0.0,
+              "radius": 0.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "gravity": [
+        0.0,
+        -980.0
+      ],
+      "id": "phys_breast-yPhys2_9035",
+      "inputs": [],
+      "strands": [
+        {
+          "anchor": {
+            "id": "rot_breast-yRot1_9032",
+            "kind": "deformer",
+            "offset": [
+              0.0,
+              -25.0
+            ]
+          },
+          "id": "strand",
+          "output": {
+            "offset": 0.0,
+            "parameter": "ParamBreastApart_9037_x",
+            "scale": 0.0027777778450399637
+          },
+          "particles": [
+            {
+              "damping": 0.15000000596046448,
+              "delay": 0.0,
+              "length": 25.0,
+              "mobility": 0.0,
+              "radius": 0.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "gravity": [
+        0.0,
+        -980.0
+      ],
+      "id": "phys_hair-sway-3stepPhys1_9002",
+      "inputs": [],
+      "strands": [
+        {
+          "anchor": {
+            "id": "rot_HeadAnchor_1020",
+            "kind": "deformer",
+            "offset": [
+              0.0,
+              34.0
+            ]
+          },
+          "id": "strand",
+          "output": {
+            "offset": 0.0,
+            "parameter": "ParamHairSway1_9011_x",
+            "scale": 0.00030864198924973607
+          },
+          "particles": [
+            {
+              "damping": 0.15000000596046448,
+              "delay": 0.0,
+              "length": 35.0,
+              "mobility": 0.0,
+              "radius": 0.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "gravity": [
+        0.0,
+        -980.0
+      ],
+      "id": "phys_hair-sway-3stepPhys2_9006",
+      "inputs": [],
+      "strands": [
+        {
+          "anchor": {
+            "id": "rot_hair-sway-3stepRot1_9003",
+            "kind": "deformer",
+            "offset": [
+              0.0,
+              -35.0
+            ]
+          },
+          "id": "strand",
+          "output": {
+            "offset": 0.0,
+            "parameter": "ParamHairSway2_9012_x",
+            "scale": 0.0025925925001502037
+          },
+          "particles": [
+            {
+              "damping": 0.15000000596046448,
+              "delay": 0.0,
+              "length": 35.0,
+              "mobility": 0.0,
+              "radius": 0.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "gravity": [
+        0.0,
+        -980.0
+      ],
+      "id": "phys_hair-sway-3stepPhys3_9010",
+      "inputs": [],
+      "strands": [
+        {
+          "anchor": {
+            "id": "rot_hair-sway-3stepRot2_9007",
+            "kind": "deformer",
+            "offset": [
+              0.0,
+              -35.0
+            ]
+          },
+          "id": "strand",
+          "output": {
+            "offset": 0.0,
+            "parameter": "ParamHairSway3_9013_x",
+            "scale": 0.0055555556900799274
+          },
+          "particles": [
+            {
+              "damping": 0.15000000596046448,
+              "delay": 0.0,
+              "length": 35.0,
+              "mobility": 0.0,
+              "radius": 0.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "gravity": [
+        0.0,
+        -980.0
+      ],
+      "id": "phys_hair-bouncePhys1_9015",
+      "inputs": [],
+      "strands": [
+        {
+          "anchor": {
+            "id": "rot_HeadAnchor_1020",
+            "kind": "deformer",
+            "offset": [
+              0.0,
+              34.0
+            ]
+          },
+          "id": "strand",
+          "output": {
+            "offset": 0.0,
+            "parameter": "ParamHairBounceY_9020_x",
+            "scale": 0.0027777778450399637
+          },
+          "particles": [
+            {
+              "damping": 0.15000000596046448,
+              "delay": 0.0,
+              "length": 30.0,
+              "mobility": 0.0,
+              "radius": 0.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "gravity": [
+        0.0,
+        -980.0
+      ],
+      "id": "phys_hair-bouncePhys2_9019",
+      "inputs": [],
+      "strands": [
+        {
+          "anchor": {
+            "id": "rot_hair-bounceRot1_9016",
+            "kind": "deformer",
+            "offset": [
+              0.0,
+              -30.0
+            ]
+          },
+          "id": "strand",
+          "output": {
+            "offset": 0.0,
+            "parameter": "ParamHairFan_9021_x",
+            "scale": 0.0027777778450399637
+          },
+          "particles": [
+            {
+              "damping": 0.15000000596046448,
+              "delay": 0.0,
+              "length": 30.0,
+              "mobility": 0.0,
+              "radius": 0.0
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "textures": [
+    {
+      "id": "tex_0",
+      "source": "textures/slot-0.png"
+    },
+    {
+      "id": "tex_1",
+      "source": "textures/slot-1.png"
+    },
+    {
+      "id": "tex_2",
+      "source": "textures/slot-2.png"
+    },
+    {
+      "id": "tex_3",
+      "source": "textures/slot-3.png"
+    },
+    {
+      "id": "tex_4",
+      "source": "textures/slot-4.png"
+    },
+    {
+      "id": "tex_5",
+      "source": "textures/slot-5.png"
+    },
+    {
+      "id": "tex_6",
+      "source": "textures/slot-6.png"
+    },
+    {
+      "id": "tex_7",
+      "source": "textures/slot-7.png"
+    },
+    {
+      "id": "tex_8",
+      "source": "textures/slot-8.png"
+    },
+    {
+      "id": "tex_9",
+      "source": "textures/slot-9.png"
+    },
+    {
+      "id": "tex_10",
+      "source": "textures/slot-10.png"
+    },
+    {
+      "id": "tex_11",
+      "source": "textures/slot-11.png"
+    }
+  ]
+}

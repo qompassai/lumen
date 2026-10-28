@@ -24,7 +24,7 @@ pub fn parse_model(bytes: &[u8]) -> Result<Model, ParseError> {
             max: INPUT_BYTES_MAX,
         });
     }
-    probe_header(bytes)?;
+    probe_header(bytes, "lumen-rig-model")?;
     let raw: RawModel = serde_json::from_slice(bytes).map_err(map_serde_error)?;
     validate_model(raw)
 }
@@ -32,7 +32,9 @@ pub fn parse_model(bytes: &[u8]) -> Result<Model, ParseError> {
 /// Section-8 step 2: read the header first, so a wrong format or
 /// version fails as itself. A header that cannot be read at all
 /// defers to the full parse, which reports the precise error.
-fn probe_header(bytes: &[u8]) -> Result<(), ParseError> {
+/// Shared by every asset kind's parser; `expected_format` is
+/// the caller's own format token.
+pub(crate) fn probe_header(bytes: &[u8], expected_format: &str) -> Result<(), ParseError> {
     let header: RawHeader = match serde_json::from_slice(bytes) {
         Ok(header) => header,
         Err(_) => return Ok(()),
@@ -43,7 +45,7 @@ fn probe_header(bytes: &[u8]) -> Result<(), ParseError> {
                 found: "<missing>".to_string(),
             });
         }
-        Some(found) if found != "lumen-rig-model" => {
+        Some(found) if found != expected_format => {
             return Err(ParseError::UnsupportedFormat {
                 found: bounded_quote(found),
             });
@@ -61,7 +63,7 @@ fn probe_header(bytes: &[u8]) -> Result<(), ParseError> {
 /// Map a serde_json failure onto the loud-error table. Number
 /// overflow is `LRF-301` even though serde reports it as a parse
 /// failure: the value, not the grammar, is what is wrong.
-fn map_serde_error(err: serde_json::Error) -> ParseError {
+pub(crate) fn map_serde_error(err: serde_json::Error) -> ParseError {
     let message = bounded_quote(&err.to_string());
     if message.contains("number out of range") {
         return ParseError::NonFinite {
@@ -89,7 +91,7 @@ fn map_serde_error(err: serde_json::Error) -> ParseError {
 }
 
 /// An id must be 1..=64 bytes of `[A-Za-z0-9_-]` (SPEC section 1.3).
-fn check_id(id: &str) -> Result<(), ParseError> {
+pub(crate) fn check_id(id: &str) -> Result<(), ParseError> {
     let valid = !id.is_empty()
         && id.len() <= ID_BYTES_MAX
         && id
@@ -125,7 +127,7 @@ fn collect_ids<'a>(
 
 /// A float field must be finite (no NaN, no infinity, no f32
 /// overflow smuggled in as an f64 the parser accepted).
-fn check_finite(value: f32, context: &str) -> Result<f32, ParseError> {
+pub(crate) fn check_finite(value: f32, context: &str) -> Result<f32, ParseError> {
     if value.is_finite() {
         Ok(value)
     } else {

@@ -20,6 +20,8 @@ pub const MESHES_MAX: usize = 1024;
 pub const PHYSICS_GROUPS_MAX: usize = 64;
 pub const STRANDS_PER_GROUP_MAX: usize = 32;
 pub const PARTICLES_PER_STRAND_MAX: usize = 64;
+pub const CURVES_PER_MOTION_MAX: usize = 512;
+pub const KEYFRAMES_PER_CURVE_MAX: usize = 4096;
 
 pub const VERTICES_PER_MESH_MAX: usize = 65_536;
 pub const INDICES_PER_MESH_MAX: usize = 393_216;

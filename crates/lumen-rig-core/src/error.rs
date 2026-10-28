@@ -104,8 +104,24 @@ pub enum ParseError {
     },
     /// LRF-405: a blend mode string outside the section-3.5 set.
     UnsupportedBlendMode { mesh_id: String, value: String },
+    /// LRF-501: keyframe times are not strictly increasing,
+    /// or fall outside `[0, duration_seconds]`.
+    KeyframeTimes {
+        motion_id: String,
+        parameter: String,
+    },
+    /// LRF-502: a cubic tangent is invalid (negative `dt`, a
+    /// tangent reaching past its neighboring key, or a tangent
+    /// carried by a non-cubic key).
+    TangentInvalid { context: String },
     /// LRF-601: two physics strands write the same parameter.
     PhysicsOutputConflict { parameter: String },
+    /// LRF-602: a motion curve targets a physics-output
+    /// parameter (the one-writer rule, SPEC.md section 4.1).
+    PhysicsOutputTarget {
+        motion_id: String,
+        parameter: String,
+    },
 }
 
 impl ParseError {
@@ -136,7 +152,10 @@ impl ParseError {
             ParseError::LengthMismatch { .. } => "LRF-403",
             ParseError::LatticeInvalid { .. } => "LRF-404",
             ParseError::UnsupportedBlendMode { .. } => "LRF-405",
+            ParseError::KeyframeTimes { .. } => "LRF-501",
+            ParseError::TangentInvalid { .. } => "LRF-502",
             ParseError::PhysicsOutputConflict { .. } => "LRF-601",
+            ParseError::PhysicsOutputTarget { .. } => "LRF-602",
         }
     }
 }
@@ -233,10 +252,31 @@ impl fmt::Display for ParseError {
                     "{code}: mesh {mesh_id:?} blend mode {value:?} unsupported"
                 )
             }
+            ParseError::KeyframeTimes {
+                motion_id,
+                parameter,
+            } => {
+                write!(
+                    f,
+                    "{code}: motion {motion_id:?} curve {parameter:?} keyframe times invalid"
+                )
+            }
+            ParseError::TangentInvalid { context } => {
+                write!(f, "{code}: cubic tangent invalid at {context}")
+            }
             ParseError::PhysicsOutputConflict { parameter } => {
                 write!(
                     f,
                     "{code}: two physics outputs write parameter {parameter:?}"
+                )
+            }
+            ParseError::PhysicsOutputTarget {
+                motion_id,
+                parameter,
+            } => {
+                write!(
+                    f,
+                    "{code}: motion {motion_id:?} curve targets physics output {parameter:?}"
                 )
             }
         }

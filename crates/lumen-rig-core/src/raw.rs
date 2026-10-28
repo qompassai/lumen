@@ -220,3 +220,108 @@ pub struct RawPhysicsOutput {
     pub scale: f32,
     pub offset: f32,
 }
+
+/// The full raw motion document. `duration_seconds` is read as
+/// f64 so an out-of-f32-range value survives to the validator,
+/// which reports it as `LRF-301` (the value, not the grammar,
+/// is what is wrong) instead of a generic parse failure.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RawMotion {
+    pub format: String,
+    pub format_version: u32,
+    pub id: String,
+    pub model: String,
+    pub duration_seconds: f64,
+    #[serde(rename = "loop")]
+    pub loop_: Option<bool>,
+    pub frames_per_second: u32,
+    pub curves: Vec<RawCurve>,
+    pub audio: Option<RawAudio>,
+    pub fathom: Option<RawFathom>,
+}
+
+/// A raw parameter curve. `interpolation` on keys stays a
+/// string here so an unknown mode can be reported precisely,
+/// not as a generic schema error.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RawCurve {
+    pub parameter: String,
+    pub fade_in_seconds: Option<f32>,
+    pub fade_out_seconds: Option<f32>,
+    pub keyframes: Vec<RawKeyframe>,
+}
+
+/// A raw keyframe. Tangents stay optional pairs; which keys may
+/// carry them is the validator's job (`LRF-502`).
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RawKeyframe {
+    pub time: f32,
+    pub value: f32,
+    pub interpolation: Option<String>,
+    pub tangent_in: Option<[f32; 2]>,
+    pub tangent_out: Option<[f32; 2]>,
+}
+
+/// The raw `audio` object: baked curve sets only (SPEC.md
+/// section 6.1). The runtime follower (section 6.2) is a host
+/// binding, not asset data, and has no raw shape here.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RawAudio {
+    pub baked: Vec<RawBakedCurveSet>,
+}
+
+/// A raw baked curve set: a curve plus its provenance.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RawBakedCurveSet {
+    pub parameter: String,
+    pub fade_in_seconds: Option<f32>,
+    pub fade_out_seconds: Option<f32>,
+    pub keyframes: Vec<RawKeyframe>,
+    pub provenance: RawBakedProvenance,
+}
+
+/// Raw baked-set provenance. `kind` stays a string so an
+/// unknown kind reports precisely.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RawBakedProvenance {
+    pub kind: String,
+    pub tool: String,
+    pub tool_version: String,
+    pub source_audio_sha256: Option<String>,
+    pub window_seconds: Option<f32>,
+    pub hop_seconds: Option<f32>,
+}
+
+/// The raw fathom binding (SPEC.md section 4.4). Vocabulary
+/// strings stay strings so unknown values report precisely.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RawFathom {
+    pub schema: String,
+    pub phases: Vec<RawFathomPhase>,
+    pub arc: RawFathomArc,
+}
+
+/// A raw fathom phase.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RawFathomPhase {
+    pub label: String,
+    pub start_frame: u32,
+    pub end_frame: u32,
+    pub provenance: String,
+    pub source: Option<String>,
+}
+
+/// The raw fathom arc descriptor.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RawFathomArc {
+    pub kind: String,
+}

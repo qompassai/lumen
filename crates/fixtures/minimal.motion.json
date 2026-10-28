@@ -1,0 +1,1 @@
+{"curves":[{"keyframes":[{"interpolation":"linear","time":0.0,"value":0.0},{"time":1.0,"value":15.0}],"parameter":"angle_x"}],"duration_seconds":1.0,"format":"lumen-rig-motion","format_version":1,"frames_per_second":30,"id":"nod","model":"minimal"}
