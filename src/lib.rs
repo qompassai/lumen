@@ -19,6 +19,8 @@ pub mod cli;
 pub mod doc;
 pub mod dream;
 pub mod export;
+pub mod generation;
+pub mod guard;
 pub mod inspect;
 pub mod oracle;
 pub mod pack;

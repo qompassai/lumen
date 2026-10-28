@@ -434,11 +434,27 @@ fn stdio_vrm_inspect_and_grade_end_to_end() {
     assert!(project.path().join("graded.vrm").exists());
 }
 
+/// The modern era's per-request metadata (protocol 2026-07-28):
+/// every request carries its version and client identity in
+/// `_meta`; sessions open with `server/discover`, never
+/// `initialize` (D-113 migration, 2026-10-27).
+fn modern_meta() -> Value {
+    json!({
+        "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+        "io.modelcontextprotocol/clientInfo": {"name": "vrm-test", "version": "0"},
+        "io.modelcontextprotocol/clientCapabilities": {}
+    })
+}
+
 /// Minimal MCP stdio client (tools/call only), after tests/policy.rs.
 fn stdio_calls(project: &std::path::Path, calls: &[(&str, Value)]) -> Vec<Value> {
     let mut child = Command::new(env!("CARGO_BIN_EXE_lumen"))
         .env_remove("LUMEN_POLICY")
         .env_remove("LUMEN_ALLOW_REMOTE_BRP")
+        // The folded generation lane reads a default config from
+        // $HOME; keep stdio spawns hermetic (atelier fold, D-143).
+        .env_remove("ATELIER_CONFIG")
+        .env("HOME", project)
         .env("LUMEN_PROJECT_ROOT", project)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -472,18 +488,18 @@ fn stdio_calls(project: &std::path::Path, calls: &[(&str, Value)]) -> Vec<Value>
         }
     };
     send(
-        json!({"jsonrpc":"2.0","id":0,"method":"initialize","params":{
-        "protocolVersion":"2025-06-18","capabilities":{},
-        "clientInfo":{"name":"vrm-test","version":"0"}}}),
+        json!({"jsonrpc":"2.0","id":0,"method":"server/discover","params":{"_meta":modern_meta()}}),
     );
-    let init = recv_id(0);
-    assert!(init.get("result").is_some(), "initialize failed: {init}");
-    send(json!({"jsonrpc":"2.0","method":"notifications/initialized"}));
+    let discovery = recv_id(0);
+    assert!(
+        discovery.get("result").is_some(),
+        "server/discover failed: {discovery}"
+    );
     let mut replies = Vec::new();
     for (index, (tool, arguments)) in calls.iter().enumerate() {
         let id = u64::try_from(index).expect("small") + 1;
         send(json!({"jsonrpc":"2.0","id":id,"method":"tools/call",
-            "params":{"name":tool,"arguments":arguments}}));
+            "params":{"name":tool,"arguments":arguments,"_meta":modern_meta()}}));
         replies.push(recv_id(id));
     }
     drop(send);

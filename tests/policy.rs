@@ -18,6 +18,10 @@ use lumen::policy::{
 use serde_json::{Map, Value, json};
 
 const REGISTERED: &[&str] = &[
+    "atelier_img2img",
+    "atelier_models",
+    "atelier_status",
+    "atelier_txt2img",
     "bevy_discover",
     "sprite_info",
     "style_apply",
@@ -81,12 +85,29 @@ fn write_policy(dir: &tempfile::TempDir, text: &str) -> std::path::PathBuf {
     path
 }
 
-/// Minimal MCP stdio client: initialize, then one tools/call per item.
-/// Returns the JSON-RPC responses for the tool calls, in order.
+/// The modern era's per-request metadata (protocol 2026-07-28):
+/// every request carries its version and client identity in
+/// `_meta`; sessions open with `server/discover`, never
+/// `initialize` (D-113 migration, 2026-10-27).
+fn modern_meta() -> Value {
+    json!({
+        "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+        "io.modelcontextprotocol/clientInfo": {"name": "policy-test", "version": "0"},
+        "io.modelcontextprotocol/clientCapabilities": {}
+    })
+}
+
+/// Minimal MCP stdio client: `server/discover`, then one
+/// tools/call per item, each carrying `_meta`. Returns the
+/// JSON-RPC responses for the tool calls, in order.
 fn stdio_session(project: &std::path::Path, calls: &[(&str, Value)]) -> Vec<Value> {
     let mut child = Command::new(env!("CARGO_BIN_EXE_lumen"))
         .env_remove("LUMEN_POLICY")
         .env_remove("LUMEN_ALLOW_REMOTE_BRP")
+        // The folded generation lane reads a default config from
+        // $HOME; keep stdio spawns hermetic (atelier fold, D-143).
+        .env_remove("ATELIER_CONFIG")
+        .env("HOME", project)
         .env("LUMEN_PROJECT_ROOT", project)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -120,18 +141,18 @@ fn stdio_session(project: &std::path::Path, calls: &[(&str, Value)]) -> Vec<Valu
         }
     };
     send(
-        json!({"jsonrpc":"2.0","id":0,"method":"initialize","params":{
-        "protocolVersion":"2025-06-18","capabilities":{},
-        "clientInfo":{"name":"policy-test","version":"0"}}}),
+        json!({"jsonrpc":"2.0","id":0,"method":"server/discover","params":{"_meta":modern_meta()}}),
     );
-    let init = recv_id(0);
-    assert!(init.get("result").is_some(), "initialize failed: {init}");
-    send(json!({"jsonrpc":"2.0","method":"notifications/initialized"}));
+    let discovery = recv_id(0);
+    assert!(
+        discovery.get("result").is_some(),
+        "server/discover failed: {discovery}"
+    );
     let mut replies = Vec::new();
     for (index, (tool, arguments)) in calls.iter().enumerate() {
         let id = u64::try_from(index).expect("small") + 1;
         send(json!({"jsonrpc":"2.0","id":id,"method":"tools/call",
-            "params":{"name":tool,"arguments":arguments}}));
+            "params":{"name":tool,"arguments":arguments,"_meta":modern_meta()}}));
         replies.push(recv_id(id));
     }
     drop(send);
@@ -331,7 +352,7 @@ fn ok_binary_policy_check_passes() {
     let (code, out) = run_cli("check", None);
     assert_eq!(code, 0, "{out}");
     assert!(out.contains("PASS every required tool is labeled"));
-    assert!(out.contains("registered tools: 7"));
+    assert!(out.contains("registered tools: 11"));
 }
 
 #[test]

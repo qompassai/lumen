@@ -19,12 +19,29 @@ use serde_json::{Value, json};
 const STDIO_REPLY_TIMEOUT: Duration = Duration::from_secs(20);
 const DOC: &str = "s.lumen.json";
 
-/// Minimal MCP stdio client: initialize, then send each (method, params)
-/// request in order, returning the JSON-RPC replies in order.
+/// The modern era's per-request metadata (protocol 2026-07-28):
+/// every request carries its version and client identity in
+/// `_meta`; sessions open with `server/discover`, never
+/// `initialize` (D-113 migration, 2026-10-27).
+fn modern_meta() -> Value {
+    json!({
+        "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+        "io.modelcontextprotocol/clientInfo": {"name": "stdio-style-test", "version": "0"},
+        "io.modelcontextprotocol/clientCapabilities": {}
+    })
+}
+
+/// Minimal MCP stdio client: `server/discover`, then send each
+/// (method, params) request in order with `_meta` stamped into
+/// its params, returning the JSON-RPC replies in order.
 fn stdio_requests(project: &std::path::Path, requests: &[(&str, Value)]) -> Vec<Value> {
     let mut child = Command::new(env!("CARGO_BIN_EXE_lumen"))
         .env_remove("LUMEN_POLICY")
         .env_remove("LUMEN_ALLOW_REMOTE_BRP")
+        // The folded generation lane reads a default config from
+        // $HOME; keep stdio spawns hermetic (atelier fold, D-143).
+        .env_remove("ATELIER_CONFIG")
+        .env("HOME", project)
         .env("LUMEN_PROJECT_ROOT", project)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -58,16 +75,20 @@ fn stdio_requests(project: &std::path::Path, requests: &[(&str, Value)]) -> Vec<
         }
     };
     send(
-        json!({"jsonrpc":"2.0","id":0,"method":"initialize","params":{
-        "protocolVersion":"2025-06-18","capabilities":{},
-        "clientInfo":{"name":"stdio-style-test","version":"0"}}}),
+        json!({"jsonrpc":"2.0","id":0,"method":"server/discover","params":{"_meta":modern_meta()}}),
     );
-    let init = recv_id(0);
-    assert!(init.get("result").is_some(), "initialize failed: {init}");
-    send(json!({"jsonrpc":"2.0","method":"notifications/initialized"}));
+    let discovery = recv_id(0);
+    assert!(
+        discovery.get("result").is_some(),
+        "server/discover failed: {discovery}"
+    );
     let mut replies = Vec::new();
     for (index, (method, params)) in requests.iter().enumerate() {
         let id = u64::try_from(index).expect("small") + 1;
+        let mut params = params.clone();
+        if let Some(object) = params.as_object_mut() {
+            object.insert("_meta".to_string(), modern_meta());
+        }
         send(json!({"jsonrpc":"2.0","id":id,"method":method,"params":params}));
         replies.push(recv_id(id));
     }
@@ -112,6 +133,10 @@ fn stdio_tools_list_includes_style_ops() {
     assert_eq!(
         names,
         [
+            "atelier_img2img",
+            "atelier_models",
+            "atelier_status",
+            "atelier_txt2img",
             "bevy_discover",
             "sprite_info",
             "style_apply",

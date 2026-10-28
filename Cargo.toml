@@ -1,18 +1,26 @@
 [package]
 name = "lumen"
-version = "0.1.0"
+version = "0.3.0"
 edition = "2024"
 description = "Lux in motu - cross-platform, cross-media deterministic conversion engine: 2D art, 3D models and engine formats from code-first records"
 
 [dependencies]
-rmcp = { version = "3.3", features = ["server", "macros", "schemars", "transport-io"] }
+# rmcp is pinned to the fleet version (D-113 standardization): one
+# SDK version across every estate server; bumps are single fleet
+# events. As of 0.2.0 the server speaks the modern protocol era
+# only (2026-07-28); see src/guard.rs.
+rmcp = { version = "=3.8.0", features = ["server", "macros", "schemars", "transport-io"] }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "process", "time", "fs", "io-util", "sync", "net"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 schemars = "1"
 image = { version = "0.25", default-features = false, features = ["png", "gif"] }
-reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "multipart", "rustls-tls"] }
 base64 = "0.22"
+# The generation lane folded from atelier (D-143): sha2 pins model
+# admission hashes; png reads generated-image dimensions directly.
+sha2 = "0.10"
+png = "0.17"
 mlua = { version = "0.11", features = ["vendored", "lua54"] }
 asefile = "0.3"
 rectangle-pack = "0.4"

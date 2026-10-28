@@ -1,0 +1,370 @@
+{
+ "source": "per-tool objects measured from the standalone servers: lumen baseline (mcp-lumen-migration-20261027/baseline-evidence.json) and atelier baseline (mcp-atelier-fold-20261027/atelier-baseline-evidence.json, primo ~/atelier @ 11f027a)",
+ "tools": [
+  {
+   "annotations": {
+    "openWorldHint": false,
+    "readOnlyHint": false
+   },
+   "description": "Generate one image with a registered image model (`model` id; omitted = the configured img2img default) from one PNG source under the active profile's allowed source roots, at the requested denoise, through the pinned img2img template. The same default anime style steering as atelier_txt2img is applied to the prompts. Returns the txt2img fields plus the source SHA-256.",
+   "inputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "properties": {
+     "cfg": {
+      "format": "double",
+      "type": [
+       "number",
+       "null"
+      ]
+     },
+     "denoise": {
+      "description": "Finite, in [0.05, 1.0] (template operating range inside [0, 1]).",
+      "format": "double",
+      "type": [
+       "number",
+       "null"
+      ]
+     },
+     "height": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": [
+       "integer",
+       "null"
+      ]
+     },
+     "model": {
+      "description": "Registered image model id; absent selects the configured\n`defaults.img2img`.",
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "negative_prompt": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "prompt": {
+      "type": "string"
+     },
+     "sampler_name": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "scheduler": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "seed": {
+      "format": "uint64",
+      "minimum": 0,
+      "type": [
+       "integer",
+       "null"
+      ]
+     },
+     "source_path": {
+      "description": "Absolute path of a PNG under one of the active profile's source roots.",
+      "type": "string"
+     },
+     "steps": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": [
+       "integer",
+       "null"
+      ]
+     },
+     "width": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": [
+       "integer",
+       "null"
+      ]
+     }
+    },
+    "required": [
+     "prompt",
+     "source_path"
+    ],
+    "type": "object"
+   },
+   "name": "atelier_img2img"
+  },
+  {
+   "annotations": {
+    "openWorldHint": false,
+    "readOnlyHint": true
+   },
+   "description": "List every registered model with its modality and availability (checkpoint file present): admitted ones under `models` (backend readiness, pinned-hash result), the rest under `not_admitted` with the refusal; plus the per-tool `defaults` and unimplemented roster names. Optional lane: image, video, or music. Never starts the engine.",
+   "inputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "properties": {
+     "lane": {
+      "description": "`image`, `video`, or `music`.",
+      "type": [
+       "string",
+       "null"
+      ]
+     }
+    },
+    "type": "object"
+   },
+   "name": "atelier_models"
+  },
+  {
+   "annotations": {
+    "openWorldHint": false,
+    "readOnlyHint": true
+   },
+   "description": "Report atelier's active profile, version, config status, backend, engine state (stopped/owned_running/unowned_present/degraded), lifecycle owner, GPU, current job, queue depth, admitted models, and last job/cleanup result. Never starts the engine.",
+   "inputSchema": {
+    "properties": {},
+    "type": "object"
+   },
+   "name": "atelier_status"
+  },
+  {
+   "annotations": {
+    "openWorldHint": false,
+    "readOnlyHint": false
+   },
+   "description": "Generate one image from a text prompt with a registered image model (`model` id, e.g. iris or wai; omitted = the configured txt2img default; an unregistered id is refused as model_unknown) through the pinned txt2img template. The server prepends its default anime style tags (anime coloring, cel shading, flat color, sharp lineart, vibrant colors, detailed eyes, shiny hair) to the prompt and merges default style exclusions (painterly, watercolor, soft shading, semi-realistic, muted/dull colors, airbrushed) into the negative prompt, skipping any already present; the parameters used report the effective prompts. Returns job ID, profile, prompt ID, parameters used, output path/SHA-256/size/dimensions, elapsed ms, and manifest path.",
+   "inputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "properties": {
+     "cfg": {
+      "format": "double",
+      "type": [
+       "number",
+       "null"
+      ]
+     },
+     "height": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": [
+       "integer",
+       "null"
+      ]
+     },
+     "model": {
+      "description": "Registered image model id (e.g. `iris`, `wai`); absent selects the\nconfigured `defaults.txt2img`.",
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "negative_prompt": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "prompt": {
+      "type": "string"
+     },
+     "sampler_name": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "scheduler": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "seed": {
+      "format": "uint64",
+      "minimum": 0,
+      "type": [
+       "integer",
+       "null"
+      ]
+     },
+     "steps": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": [
+       "integer",
+       "null"
+      ]
+     },
+     "width": {
+      "description": "Positive multiple of 8 within the configured ceilings.",
+      "format": "uint32",
+      "minimum": 0,
+      "type": [
+       "integer",
+       "null"
+      ]
+     }
+    },
+    "required": [
+     "prompt"
+    ],
+    "type": "object"
+   },
+   "name": "atelier_txt2img"
+  },
+  {
+   "description": "Probe a Bevy Remote Protocol endpoint and classify it: BRP-confirmed, JSON-RPC-speaking, unreachable, or not-BRP.",
+   "inputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "properties": {
+     "endpoint": {
+      "description": "BRP endpoint URL. Defaults to http://127.0.0.1:15702.\nNon-loopback hosts are rejected unless LUMEN_ALLOW_REMOTE_BRP=1.",
+      "type": [
+       "string",
+       "null"
+      ]
+     }
+    },
+    "type": "object"
+   },
+   "name": "bevy_discover"
+  },
+  {
+   "description": "Report width, height, color type and alpha presence of a project .png sprite.",
+   "inputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "properties": {
+     "path": {
+      "description": "Project-relative path to a .png sprite.",
+      "type": "string"
+     }
+    },
+    "required": [
+     "path"
+    ],
+    "type": "object"
+   },
+   "name": "sprite_info"
+  },
+  {
+   "description": "Apply a named style grade preset to every layer of a project .lumen.json document.",
+   "inputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "properties": {
+     "doc": {
+      "description": "Project-relative input `.lumen.json` document.",
+      "type": "string"
+     },
+     "output": {
+      "description": "Project-relative output `.lumen.json`; omit to overwrite the input.",
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "strength": {
+      "description": "0.0 (no change) ..= 1.0 (full grade).",
+      "format": "float",
+      "type": "number"
+     },
+     "style": {
+      "description": "Style preset name (see `style_list`).",
+      "type": "string"
+     }
+    },
+    "required": [
+     "doc",
+     "style",
+     "strength"
+    ],
+    "type": "object"
+   },
+   "name": "style_apply"
+  },
+  {
+   "description": "List the style grade presets (name + description) that style_apply accepts.",
+   "inputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "properties": {},
+    "type": "object"
+   },
+   "name": "style_list"
+  },
+  {
+   "description": "Validate a .png against the Light Show atlas contract: 384x1152, 4x6 grid of 96x192 cells, RGBA.",
+   "inputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "properties": {
+     "path": {
+      "description": "Project-relative path to a candidate Light Show atlas .png.",
+      "type": "string"
+     }
+    },
+    "required": [
+     "path"
+    ],
+    "type": "object"
+   },
+   "name": "validate_atlas"
+  },
+  {
+   "description": "Grade a VRM avatar's embedded textures with a named style preset; writes the repackaged .vrm.",
+   "inputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "properties": {
+     "output": {
+      "description": "Project-relative output `.vrm`; omit to overwrite the input.",
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "strength": {
+      "description": "0.0 (byte-identical passthrough) ..= 1.0 (full grade).",
+      "format": "float",
+      "type": "number"
+     },
+     "style": {
+      "description": "Style preset name (see `style_list`).",
+      "type": "string"
+     },
+     "vrm": {
+      "description": "Project-relative input `.vrm` file.",
+      "type": "string"
+     }
+    },
+    "required": [
+     "vrm",
+     "style",
+     "strength"
+    ],
+    "type": "object"
+   },
+   "name": "vrm_grade"
+  },
+  {
+   "description": "Inspect a VRM avatar file: flavor (VRM 1.0 or 0.x), meta name and author, embedded textures.",
+   "inputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "properties": {
+     "vrm": {
+      "description": "Project-relative input `.vrm` file.",
+      "type": "string"
+     }
+    },
+    "required": [
+     "vrm"
+    ],
+    "type": "object"
+   },
+   "name": "vrm_inspect"
+  }
+ ]
+}

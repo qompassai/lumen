@@ -108,6 +108,27 @@ sink = "trusted"
 reads = ["low"]
 sink = "brp"
 
+# Generation lane folded from atelier (src/generation/): local engine,
+# local files. img2img takes an absolute source path under the active
+# profile's roots (the lane's own admission rules bound it); an
+# absolute path argument labels `restricted`, which A4 covers for the
+# trusted sink.
+[tools.atelier_status]
+reads = ["low"]
+sink = "trusted"
+
+[tools.atelier_models]
+reads = ["low"]
+sink = "trusted"
+
+[tools.atelier_txt2img]
+reads = ["low"]
+sink = "trusted"
+
+[tools.atelier_img2img]
+reads = ["low"]
+sink = "trusted"
+
 # Bevy bridge (src/bevy.rs).
 [tools.bevy_call]
 reads = ["low"]
