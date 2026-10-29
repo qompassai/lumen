@@ -84,18 +84,18 @@ How to work this roadmap (any agent): run `bloch task start R-xxx --agent <you>`
 - [ ] R-603 Release artefacts are built from a clean checkout and checksummed
   - verify: cargo build
   - evidence:
-- [ ] R-604 G-L1 lumen-side motion evaluator (Torogao Phase F handoff) — 1.0 close-out worker
+- [x] R-604 G-L1 lumen-side motion evaluator (Torogao Phase F handoff) — 1.0 close-out worker
   - verify: cargo test
-  - evidence:
-- [ ] R-605 G-L2 sprite->3D fidelity metric (silhouette IoU + facial landmark delta) with first measurement — 1.0 close-out worker
+  - evidence: 1 verify commands, all exit 0 at 2026-10-29T07:54:00Z
+- [x] R-605 G-L2 sprite->3D fidelity metric (silhouette IoU + facial landmark delta) with first measurement — 1.0 close-out worker
   - verify: cargo test
-  - evidence:
-- [ ] R-606 G-L3 EFLO re-measure (real tokenizer) for the 14-tool surface; number on record — 1.0 close-out worker
+  - evidence: 1 verify commands, all exit 0 at 2026-10-29T07:54:21Z
+- [x] R-606 G-L3 EFLO re-measure (real tokenizer) for the 14-tool surface; number on record — 1.0 close-out worker
   - verify: cargo test
-  - evidence:
-- [ ] R-607 canon_convert: existing conversion tools gain the optional canon handle (canon SPEC S1 fourth tool) — 1.0 close-out worker
+  - evidence: 1 verify commands, all exit 0 at 2026-10-29T07:54:41Z
+- [x] R-607 canon_convert: existing conversion tools gain the optional canon handle (canon SPEC S1 fourth tool) — 1.0 close-out worker
   - verify: cargo test
-  - evidence:
-- [ ] R-608 Rename/package line audit for the 1.0.0 release (name, server.json, registry record agree) — 1.0 close-out worker
+  - evidence: 1 verify commands, all exit 0 at 2026-10-29T07:55:02Z
+- [x] R-608 Rename/package line audit for the 1.0.0 release (name, server.json, registry record agree) — 1.0 close-out worker
   - verify: cargo test
-  - evidence:
+  - evidence: 1 verify commands, all exit 0 at 2026-10-29T07:55:23Z
