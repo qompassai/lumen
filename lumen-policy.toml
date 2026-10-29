@@ -104,6 +104,19 @@ sink = "trusted"
 reads = ["low"]
 sink = "trusted"
 
+# Canon machinery (src/canon.rs): local store reads + receipt writes.
+[tools.canon_resolve]
+reads = ["low"]
+sink = "trusted"
+
+[tools.canon_gate]
+reads = ["low"]
+sink = "trusted"
+
+[tools.canon_generate]
+reads = ["low"]
+sink = "trusted"
+
 [tools.bevy_discover]
 reads = ["low"]
 sink = "brp"

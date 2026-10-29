@@ -1445,6 +1445,7 @@ dependencies = [
  "image 0.25.10",
  "imageproc",
  "indicatif",
+ "lumen-canon",
  "mlua",
  "notify",
  "ort",
@@ -1463,6 +1464,15 @@ dependencies = [
  "toml",
  "tracing",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "lumen-canon"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "sha2",
 ]
 
 [[package]]

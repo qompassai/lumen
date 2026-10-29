@@ -32,6 +32,40 @@ Companion strategy — pair, don't duplicate — is in
 and under what governance (including the evidence rule its first
 failed build produced) is in [HISTORY.md](HISTORY.md).
 
+## Canon machinery (B2, 2026-10-28, D-292/D-312)
+
+Character generation and derivation run against a single canon
+record per character (`canon-record/1`), enforced by three tools
+(14 registered total; the 11 pre-B2 tools are unchanged):
+
+- `canon_resolve` — handle (`canon://<lane>/<character>@<version>`
+  + record SHA-256) → record summary. Lane law in server code:
+  nsfw records are refused to qompass-lane callers; unclassified
+  defaults to nsfw. Records live in the SFW store under the
+  project root (`canon/<lane>/<character>.json`); lumen never
+  persists an adult record.
+- `canon_gate` — measurements → verdict over proportion **and**
+  register bands (ink colour, stroke weight, shadow-edge
+  hardness, saturation/contrast percentiles, key-light direction,
+  iris spec, blush). Drift returns a typed `drift_detected`
+  refusal with per-metric deltas. PASS releases an artifact to
+  the eye sheet, never to adoption.
+- `canon_generate` — anchored generation broker. **There is no
+  unanchored mode**: a job requires a canon handle, an anchor
+  role, the keeper anchor + style-authority hashes among its
+  inputs, and turnaround + plate reference inputs (reference
+  conditioning). Jobs anchored outside the Owner-adopted keeper
+  set are refused pre-generation. Every job persists a
+  workflow-JSON provenance receipt (`canon-receipts/<job_id>.json`,
+  digest-verified; tampering is detectable), and any supplied
+  outputs are gated before the job returns as admitted.
+
+The format/handle/gate crate is `crates/lumen-canon` (package
+`lumen-canon`, lib `canon_record`), absorbed from the B1
+reference implementation without re-derivation. `canon_convert`
+(handle-aware conversion) is deferred to the 1.0 close-out; the
+existing conversion surface is unchanged.
+
 ## Verified state (2026-10-01, primo)
 
 - Build and clippy clean; **303 tests passed / 0 failed / 8 ignored**

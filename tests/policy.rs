@@ -23,6 +23,9 @@ const REGISTERED: &[&str] = &[
     "atelier_status",
     "atelier_txt2img",
     "bevy_discover",
+    "canon_gate",
+    "canon_generate",
+    "canon_resolve",
     "sprite_info",
     "style_apply",
     "style_list",
@@ -352,7 +355,7 @@ fn ok_binary_policy_check_passes() {
     let (code, out) = run_cli("check", None);
     assert_eq!(code, 0, "{out}");
     assert!(out.contains("PASS every required tool is labeled"));
-    assert!(out.contains("registered tools: 11"));
+    assert!(out.contains("registered tools: 14"));
 }
 
 #[test]

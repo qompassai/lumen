@@ -15,6 +15,7 @@ pub mod a2a;
 pub mod animation;
 pub mod aseprite;
 pub mod bevy;
+pub mod canon;
 pub mod cli;
 pub mod doc;
 pub mod dream;

@@ -194,6 +194,75 @@ pub struct BevyDiscoverRequest {
     pub endpoint: Option<String>,
 }
 
+#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+pub struct CanonResolveRequest {
+    /// Canon handle: canon://<lane>/<character>@<version>.
+    pub handle: String,
+    /// SHA-256 pin of the record bytes.
+    pub record_sha256: String,
+    /// Caller lane: qompass or ntranch.
+    pub caller_lane: String,
+}
+
+#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+pub struct CanonGateRequest {
+    /// Canon handle: canon://<lane>/<character>@<version>.
+    pub handle: String,
+    /// SHA-256 pin of the record bytes.
+    pub record_sha256: String,
+    /// Caller lane: qompass or ntranch.
+    pub caller_lane: String,
+    /// Anchor hash the artifact declares lineage from; absent = refused.
+    pub anchor_sha256: Option<String>,
+    /// Measured metrics keyed by band metric (proportion + register).
+    pub measurements: serde_json::Value,
+}
+
+#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+pub struct CanonInputRequest {
+    /// anchor | turnaround | plate | reference | style-authority.
+    pub kind: String,
+    pub handle: String,
+    pub sha256: String,
+}
+
+#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+pub struct CanonOutputRequest {
+    pub handle: String,
+    pub sha256: String,
+    /// Measured metrics keyed by band metric.
+    pub measurements: serde_json::Value,
+}
+
+#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+pub struct CanonParamsRequest {
+    pub seed: Option<u64>,
+    pub denoise: Option<f64>,
+    pub steps: Option<u32>,
+    pub cfg: Option<f64>,
+    pub prompt_hash: Option<String>,
+}
+
+#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+pub struct CanonGenerateRequest {
+    /// Canon handle: canon://<lane>/<character>@<version>.
+    pub handle: String,
+    /// SHA-256 pin of the record bytes.
+    pub record_sha256: String,
+    /// Caller lane: qompass or ntranch.
+    pub caller_lane: String,
+    /// Anchor role in the record; empty = unanchored = refused.
+    pub anchor_role: String,
+    pub backend: String,
+    pub params: CanonParamsRequest,
+    pub inputs: Vec<CanonInputRequest>,
+    pub outputs: Option<Vec<CanonOutputRequest>>,
+}
+
+fn canon_err(e: canon_record::Refusal) -> String {
+    serde_json::to_string(&e).unwrap_or_else(|_| e.to_string())
+}
+
 fn ok_json<T: serde::Serialize>(v: &T) -> String {
     serde_json::to_string_pretty(v).unwrap_or_else(|e| {
         serde_json::json!({"error": format!("serialization failed: {e}")}).to_string()
@@ -375,6 +444,118 @@ impl Lumen {
         match vrm_inspect(&root, req).await {
             Ok(info) => ok_json(&info),
             Err(e) => err_json(e),
+        }
+    }
+
+    // Canon machinery (B2, D-292/D-312): lumen::canon over the
+    // absorbed canon-record/1 crate. Three tools; canon_convert is
+    // deferred to the 1.0 close-out (existing conversion behaviour
+    // is unchanged without a handle, SPEC §6).
+    #[tool(
+        description = "Resolve a canon handle (canon://<lane>/<character>@<version> + record SHA-256) to a record summary. Lane law enforced: nsfw records are refused to qompass callers.",
+        annotations(read_only_hint = true, open_world_hint = false)
+    )]
+    fn canon_resolve(&self, Parameters(req): Parameters<CanonResolveRequest>) -> String {
+        let root = match project_root() {
+            Ok(root) => root,
+            Err(e) => return err_json(e),
+        };
+        match lumen::canon::canon_resolve(
+            &root,
+            &lumen::canon::ResolveRequest {
+                handle: req.handle,
+                record_sha256: req.record_sha256,
+                caller_lane: req.caller_lane,
+            },
+        ) {
+            Ok(summary) => ok_json(&summary),
+            Err(e) => canon_err(e),
+        }
+    }
+
+    #[tool(
+        description = "Gate an artifact's measurements against a canon record: proportion + register bands, per-metric deltas on drift. Requires declared anchor lineage; PASS releases to the eye sheet, never to adoption.",
+        annotations(read_only_hint = true, open_world_hint = false)
+    )]
+    fn canon_gate(&self, Parameters(req): Parameters<CanonGateRequest>) -> String {
+        let root = match project_root() {
+            Ok(root) => root,
+            Err(e) => return err_json(e),
+        };
+        let measurements: canon_record::Measurements =
+            match serde_json::from_value(req.measurements) {
+                Ok(m) => m,
+                Err(e) => return err_json(format!("bad measurements: {e}")),
+            };
+        match lumen::canon::canon_gate(
+            &root,
+            &lumen::canon::GateRequest {
+                handle: req.handle,
+                record_sha256: req.record_sha256,
+                caller_lane: req.caller_lane,
+                anchor_sha256: req.anchor_sha256,
+                measurements,
+            },
+        ) {
+            Ok(verdict) => ok_json(&verdict),
+            Err(e) => canon_err(e),
+        }
+    }
+
+    #[tool(
+        description = "Anchored generation broker: a job requires a canon handle, an anchor role, the keeper anchor + style-authority hashes in its inputs, and turnaround + plate reference inputs. There is no unanchored mode. Validates pre-generation, gates any supplied outputs, and persists a workflow-JSON provenance receipt.",
+        annotations(read_only_hint = false, open_world_hint = false)
+    )]
+    fn canon_generate(&self, Parameters(req): Parameters<CanonGenerateRequest>) -> String {
+        let root = match project_root() {
+            Ok(root) => root,
+            Err(e) => return err_json(e),
+        };
+        let mut inputs = Vec::new();
+        for input in req.inputs {
+            let kind: lumen::canon::InputKind =
+                match serde_json::from_value(serde_json::Value::String(input.kind.clone())) {
+                    Ok(k) => k,
+                    Err(_) => return err_json(format!("bad input kind: {}", input.kind)),
+                };
+            inputs.push(lumen::canon::JobInput {
+                kind,
+                handle: input.handle,
+                sha256: input.sha256,
+            });
+        }
+        let mut outputs = Vec::new();
+        for output in req.outputs.unwrap_or_default() {
+            let measurements: canon_record::Measurements =
+                match serde_json::from_value(output.measurements) {
+                    Ok(m) => m,
+                    Err(e) => return err_json(format!("bad output measurements: {e}")),
+                };
+            outputs.push(lumen::canon::JobOutput {
+                handle: output.handle,
+                sha256: output.sha256,
+                measurements,
+            });
+        }
+        let request = lumen::canon::GenerateRequest {
+            handle: req.handle,
+            record_sha256: req.record_sha256,
+            caller_lane: req.caller_lane,
+            anchor_role: req.anchor_role,
+            backend: req.backend,
+            params: canon_record::ChainParams {
+                seed: req.params.seed,
+                denoise: req.params.denoise,
+                steps: req.params.steps,
+                cfg: req.params.cfg,
+                prompt_hash: req.params.prompt_hash,
+            },
+            inputs,
+            outputs,
+        };
+        match lumen::canon::canon_generate(&root, &request) {
+            Ok(receipt) => ok_json(&receipt),
+            Err(e) => canon_err(e),
         }
     }
 }

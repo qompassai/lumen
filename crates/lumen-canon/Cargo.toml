@@ -1,0 +1,21 @@
+[package]
+name = "lumen-canon"
+version = "0.1.0"
+edition = "2021"
+description = "canon-record/1 — lumen B2 (D-292/D-312): schema, validator, handle protocol, proportion + register band gate, broker refusals. Absorbed from the B1 reference implementation (D-290) without re-derivation."
+license = "Apache-2.0"
+
+[lib]
+name = "canon_record"
+path = "src/lib.rs"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+
+[dev-dependencies]
+serde_json = "1"
+
+[lints.rust]
+unsafe_code = "forbid"

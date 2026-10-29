@@ -1,3 +1,7 @@
+[workspace]
+members = ["crates/lumen-canon"]
+resolver = "2"
+
 [package]
 name = "lumen"
 version = "0.3.0"
@@ -17,6 +21,9 @@ schemars = "1"
 image = { version = "0.25", default-features = false, features = ["png", "gif"] }
 reqwest = { version = "0.12", default-features = false, features = ["json", "multipart", "rustls-tls"] }
 base64 = "0.22"
+# Canon machinery (B2, D-292/D-312): canon-record/1 format, handle
+# protocol, proportion + register band gate (crates/lumen-canon).
+canon-record = { package = "lumen-canon", version = "0.1.0", path = "crates/lumen-canon" }
 # The generation lane folded from atelier (D-143): sha2 pins model
 # admission hashes; png reads generated-image dimensions directly.
 sha2 = "0.10"

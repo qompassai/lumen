@@ -243,7 +243,14 @@ fn fold_tools_list_matches_both_baselines() {
         .as_array()
         .expect("tools array")
         .clone();
-    assert_eq!(tools.len(), 11, "folded surface is 7 + 4 tools");
+    // B2 (D-292/D-312): the canon tools (canon_resolve, canon_gate,
+    // canon_generate) are additive on top of the folded surface;
+    // the 11 fold-baseline tools below must still match byte-for-byte.
+    assert_eq!(
+        tools.len(),
+        14,
+        "folded surface 7 + 4, plus 3 canon tools (B2)"
+    );
     let baseline: Value =
         serde_json::from_str(include_str!("fixtures/generation-baseline-tools.json"))
             .expect("baseline fixture parses");
