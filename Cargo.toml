@@ -7,6 +7,7 @@ name = "lumen-mcp-server"
 version = "1.0.0"
 edition = "2024"
 license = "Apache-2.0"
+description = "Lux in motu - cross-platform, cross-media deterministic conversion engine: 2D art, 3D models and engine formats from code-first records"
 
 # The library keeps its pre-rename crate name: the workspace's
 # tests and the A2A surface link `lumen::` (D-298 renamed the
@@ -14,7 +15,6 @@ license = "Apache-2.0"
 [lib]
 name = "lumen"
 path = "src/lib.rs"
-description = "Lux in motu - cross-platform, cross-media deterministic conversion engine: 2D art, 3D models and engine formats from code-first records"
 
 [dependencies]
 # rmcp is pinned to the fleet version (D-113 standardization): one
