@@ -5,9 +5,12 @@
 //! Contract summary:
 //! - [`ParameterRecord`] (schema `lumen.factory-params`, version 1)
 //!   is the canonical parameter data for one companion: proportion
-//!   band scales, appearance palette assignments (`#rrggbb` strings,
-//!   or `null` = take the color from the identity record), a hair
-//!   length scalar, and a face eye-scale scalar. It serializes as
+//!   band scales plus the optional per-character frame fields (a
+//!   bust delta and per-band width/depth scale sets, all absent =
+//!   the canonical base frame), appearance palette assignments
+//!   (`#rrggbb` strings, or `null` = take the color from the
+//!   identity record), a hair length scalar, and a face eye-scale
+//!   scalar. It serializes as
 //!   canonical JSON (sorted keys, fixed-precision floats — the same
 //!   discipline as `identity.rs`) and as TOML (the `toml` crate,
 //!   pinned `=0.8.23`, the same pin as lumen main); both forms parse
@@ -42,7 +45,7 @@ use std::path::Path;
 
 use serde::{Deserialize, Serialize};
 
-use crate::identity::{IdentityRecord, SCALE_MAX, SCALE_MIN, scales_for_ratios};
+use crate::identity::{BandScaleSet, IdentityRecord, SCALE_MAX, SCALE_MIN, scales_for_ratios};
 use crate::{FactoryError, sha256_hex};
 
 /// Schema identifier emitted in every record.
@@ -60,8 +63,17 @@ pub const HAIR_LENGTH_MAX: f64 = 1.0;
 pub const EYE_SCALE_MIN: f64 = 0.8;
 /// Maximum accepted eye scale.
 pub const EYE_SCALE_MAX: f64 = 1.3;
+/// Minimum accepted bust delta (bust − underbust circumference),
+/// cm — the f64 view of the range `base.rs` owns.
+pub const BUST_DELTA_MIN_CM: f64 = crate::base::BUST_DELTA_MIN_CM as f64;
+/// Maximum accepted bust delta (bust − underbust circumference), cm.
+pub const BUST_DELTA_MAX_CM: f64 = crate::base::BUST_DELTA_MAX_CM as f64;
 
 /// Proportion band scales (the applied scales of the projection).
+///
+/// Field order is load-bearing for the TOML serialization: the
+/// scalar fields come first, the optional [`BandScaleSet`] tables
+/// last (TOML emits values before tables).
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ProportionParams {
@@ -71,6 +83,45 @@ pub struct ProportionParams {
     pub leg_scale: f64,
     /// Torso band scale, finite in [SCALE_MIN, SCALE_MAX].
     pub torso_scale: f64,
+    /// Bust delta (bust − underbust circumference) in centimetres,
+    /// finite in [BUST_DELTA_MIN_CM, BUST_DELTA_MAX_CM] when
+    /// present. `None` reproduces the canonical base torso exactly;
+    /// the field is omitted from serialization when `None`, so
+    /// records written before this parameter existed keep
+    /// identical bytes and hashes (GAP-11-3).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub bust_delta_cm: Option<f64>,
+    /// Per-band depth (Z) scales, or `None` for the locked base
+    /// depths (every band exactly 1.0); omitted from serialization
+    /// when `None` (GAP-11-4).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub depth_scales: Option<BandScaleSet>,
+    /// Per-band width (X) scales, or `None` for the locked base
+    /// widths (every band exactly 1.0); omitted from serialization
+    /// when `None` (GAP-11-4).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub width_scales: Option<BandScaleSet>,
+}
+
+/// Named bust grade for a bust delta in centimetres, on the
+/// Japanese-anchored scale (2.5 cm steps: A = 10, B = 12.5, C = 15,
+/// D = 17.5, E = 20, F = 22.5, G = 25), each grade spanning ±1.25 cm
+/// around its centre; a delta exactly on a seam belongs to the lower
+/// grade. Returns `None` outside the graded band.
+pub fn bust_grade(delta_cm: f64) -> Option<char> {
+    const CENTRES: [(f64, char); 7] = [
+        (10.0, 'A'),
+        (12.5, 'B'),
+        (15.0, 'C'),
+        (17.5, 'D'),
+        (20.0, 'E'),
+        (22.5, 'F'),
+        (25.0, 'G'),
+    ];
+    CENTRES
+        .iter()
+        .find(|(centre, _)| (delta_cm - centre).abs() <= 1.25)
+        .map(|(_, grade)| *grade)
 }
 
 /// Appearance palette assignments. Each field is a `#rrggbb` color
@@ -272,6 +323,13 @@ impl ParameterRecord {
                 head_scale: head as f64,
                 leg_scale: leg as f64,
                 torso_scale: torso as f64,
+                // The identity record's authored frame fields ride
+                // through derivation unchanged (validated below);
+                // an identity without them derives the locked base
+                // frame, exactly as before they existed.
+                bust_delta_cm: record.bust_delta_cm()?,
+                depth_scales: record.depth_scales,
+                width_scales: record.width_scales,
             },
             record_hash: String::new(),
             schema: PARAMS_SCHEMA.to_string(),
@@ -307,6 +365,21 @@ impl ParameterRecord {
                     "{name} {scale} outside [{SCALE_MIN}, {SCALE_MAX}] (fail closed, not clamped)"
                 )));
             }
+        }
+        if let Some(delta) = self
+            .proportions
+            .bust_delta_cm
+            .filter(|d| !d.is_finite() || !(BUST_DELTA_MIN_CM..=BUST_DELTA_MAX_CM).contains(d))
+        {
+            return Err(FactoryError::BadParam(format!(
+                "bust_delta_cm {delta} outside [{BUST_DELTA_MIN_CM}, {BUST_DELTA_MAX_CM}] (fail closed, not clamped)"
+            )));
+        }
+        if let Some(set) = &self.proportions.width_scales {
+            set.validate("proportions.width_scales")?;
+        }
+        if let Some(set) = &self.proportions.depth_scales {
+            set.validate("proportions.depth_scales")?;
         }
         if !self.hair.length.is_finite()
             || !(HAIR_LENGTH_MIN..=HAIR_LENGTH_MAX).contains(&self.hair.length)
@@ -348,6 +421,27 @@ impl ParameterRecord {
             self.proportions.torso_scale as f32,
             self.proportions.leg_scale as f32,
         )
+    }
+
+    /// The per-band width scales `(head, torso, leg)` f32: the
+    /// record's authored set, resolved, or exactly `(1.0, 1.0, 1.0)`
+    /// when the record carries no set. Callers validate the record
+    /// first (`build_character_with_params` does), so the set here
+    /// is already known in-range.
+    pub fn width_scales(&self) -> (f32, f32, f32) {
+        match &self.proportions.width_scales {
+            None => (1.0, 1.0, 1.0),
+            Some(set) => set.resolved(),
+        }
+    }
+
+    /// The per-band depth scales `(head, torso, leg)` f32; the
+    /// depth counterpart of [`Self::width_scales`].
+    pub fn depth_scales(&self) -> (f32, f32, f32) {
+        match &self.proportions.depth_scales {
+            None => (1.0, 1.0, 1.0),
+            Some(set) => set.resolved(),
+        }
     }
 
     /// Canonical JSON: sorted keys, no insignificant whitespace,

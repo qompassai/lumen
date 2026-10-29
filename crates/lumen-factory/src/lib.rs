@@ -14,6 +14,11 @@
 //!   JSON report (schema `lumen.factory-validation` v1).
 //! - Phase 5 scope: ramp/toon material configuration (`toon`) as
 //!   data in GLB extras, plus the Blender render proof.
+//! - Factory-gap scope (GAP-11-1..4): blendshape displacement
+//!   amplitudes as a measured, checked-in spec (`amplitudes`);
+//!   per-character bust delta and per-band width/depth scales
+//!   carried end-to-end by the identity and parameter records
+//!   (`identity` / `params` / `base` / `project`).
 //! - Integration update: the factory branch carries lumen main's
 //!   landed VRoid wiring; the VRM proportions bridge (`params`)
 //!   consumes VRM structure alongside it (see `vrm` for the division
@@ -26,6 +31,7 @@
 
 #![forbid(unsafe_code)]
 
+pub mod amplitudes;
 pub mod base;
 pub mod blend;
 pub mod fidelity;

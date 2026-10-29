@@ -67,7 +67,7 @@ use image::{Rgba, RgbaImage};
 
 use crate::base::{
     HEAD_CENTER, HEAD_JAW_Y, HEAD_RADII, ScaledBuild, build_base_mesh_parametric,
-    default_body_profile, joint_table, remap_band_y, scaled_joint_table,
+    default_body_profile, joint_table, remap_band_y, scaled_joint_table_with_frame,
 };
 use crate::blend::{Templates, compose_targets};
 use crate::gltf::{MorphTarget, write_glb_with_toon};
@@ -85,9 +85,15 @@ pub use crate::identity::SCALE_MAX;
 pub use crate::identity::SCALE_MIN;
 /// Atlas edge length in pixels.
 pub const ATLAS_SIZE: u32 = 1024;
-/// Radial profile scale for the body, limbs, and shells: proportions
-/// drive their Y only (body width grading is not modeled). The head
-/// is the exception — it scales uniformly by the head scale.
+/// Uniform radial profile scale for the body, limbs, and shells.
+/// Proportions drive the bands' Y; per-band width/depth grading is
+/// a separate, optional axis (the parameter record's width/depth
+/// scale sets, GAP-11-4) applied inside `base.rs` on top of this
+/// uniform scale, and a bust delta (GAP-11-3) shapes the profile
+/// there too. With neither present the radial posture is exactly
+/// this constant, as it was before those parameters existed. The
+/// head scales uniformly by the head scale (plus its band's
+/// width/depth scales when present).
 pub const RADIAL_SCALE: f32 = 1.0;
 
 /// `demo_toon` hue shift (degrees).
@@ -101,11 +107,23 @@ pub const TOON_CONTRAST: f64 = 1.06;
 /// `demo_toon` lightness posterize levels (sprite variant).
 pub const TOON_POSTERIZE_LEVELS: f64 = 6.0;
 
-/// Normalized head coordinates of the eye centers (from the
-/// `base.rs` head-region mask geometry: eye at |nx| 0.36, ny 0.12).
-pub const EYE_NX: f32 = 0.36;
-/// Eye-center normalized Y.
-pub const EYE_NY: f32 = 0.12;
+/// Normalized head coordinates of the eye centers. The value is
+/// owned by `base.rs` ([`crate::base::EYE_CENTER_NX`], the
+/// head-region mask geometry the lid morphs deform around) and
+/// re-exported here: the painted eyes and the deform regions share
+/// one centre by construction, not by two literals that happen to
+/// agree (a test locks them together).
+///
+/// GAP-11-2 reconciliation, stated once, here and in `base.rs`:
+/// the eye-centre span in this space is 2 × 0.36 = 0.72 head radii
+/// = 0.36 of the head-ellipsoid width. The 2D canon's span band
+/// (0.704) divides by the colour-segmented *skin-face* width of a
+/// drawing, a narrower denominator; the numbers are different
+/// quantities, and no renumbering of this centre reconciles them
+/// (see `base::EYE_CENTER_NX` for the full statement).
+pub const EYE_NX: f32 = crate::base::EYE_CENTER_NX;
+/// Eye-center normalized Y (owned by `base.rs`, as [`EYE_NX`]).
+pub const EYE_NY: f32 = crate::base::EYE_CENTER_NY;
 /// Brow normalized Y: the mask brow band is centered at 0.30; the
 /// painted brow sits above the eye's lash line inside that band.
 pub const BROW_NY: f32 = 0.36;
@@ -607,8 +625,13 @@ pub fn build_character_with_params(
         .iter()
         .map(|&(y, rx, rz)| (remap(y), rx, rz))
         .collect();
+    let width_scales = params.width_scales();
+    let depth_scales = params.depth_scales();
     let scaled = ScaledBuild {
+        band_depth_scales: [depth_scales.0, depth_scales.1, depth_scales.2],
+        band_width_scales: [width_scales.0, width_scales.1, width_scales.2],
         body_y: (remap(0.92), remap(1.50)),
+        bust_delta_cm: params.proportions.bust_delta_cm.map(|d| d as f32),
         head_center: [HEAD_CENTER[0], remap(HEAD_CENTER[1]), HEAD_CENTER[2]],
         // Projection v2: the head scales uniformly (width and depth
         // with height), so the base head aspect is preserved.
@@ -619,7 +642,7 @@ pub fn build_character_with_params(
         ],
         hair_length: params.hair.length as f32,
         jaw_y: remap(HEAD_JAW_Y),
-        joints: scaled_joint_table(head_scale, torso_scale, leg_scale),
+        joints: scaled_joint_table_with_frame(head_scale, torso_scale, leg_scale, width_scales),
         outfit_y: (remap(0.97), remap(1.47)),
         profile,
         radial_scale: RADIAL_SCALE,

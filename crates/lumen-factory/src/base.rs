@@ -12,6 +12,12 @@
 //!   here).
 //! - Skinning: at most four influences per vertex, weights from
 //!   distance-to-bone-segment falloff, normalized to sum to 1.
+//! - Per-character frame (GAP-11-3 / GAP-11-4): a [`ScaledBuild`]
+//!   may carry per-band width/depth scales (profile rings, limb
+//!   tubes, head radii, joint spans) and a bust delta shaped into
+//!   the torso profile ([`apply_bust_delta`]). Both default to the
+//!   canonical base exactly (scales 1.0, delta absent), so the
+//!   unparameterized build is bit-for-bit the Phase 1a base.
 //! - Every loop is bounded by the table/profile sizes validated up front;
 //!   non-finite or non-positive profile values are rejected fail-closed.
 //!
@@ -577,6 +583,240 @@ fn finish_part(mut part: MeshPart) -> Result<MeshPart, FactoryError> {
     Ok(part)
 }
 
+/// Minimum accepted bust delta (bust − underbust circumference), cm.
+/// The f64 parameter record validates against these same bounds
+/// (`params.rs` converts; there is one range, owned here next to the
+/// shaping that consumes it).
+pub const BUST_DELTA_MIN_CM: f32 = 5.0;
+/// Maximum accepted bust delta (bust − underbust circumference), cm.
+pub const BUST_DELTA_MAX_CM: f32 = 35.0;
+
+/// Circumference of a lathe ring (an ellipse with semi-axes `rx`,
+/// `rz`), Ramanujan's first approximation. The error is far below
+/// shaping tolerance at the profile's mild eccentricities, and the
+/// perimeter is homogeneous of degree 1: scaling both semi-axes by
+/// `k` scales the circumference by exactly `k`, which is what makes
+/// [`apply_bust_delta`] exact at the bust ring.
+fn ring_circumference(rx: f32, rz: f32) -> f32 {
+    let a = rx;
+    let b = rz;
+    std::f32::consts::PI * (3.0 * (a + b) - ((3.0 * a + b) * (a + 3.0 * b)).sqrt())
+}
+
+/// Profile heights of the underbust and bust rings located by
+/// [`apply_bust_delta`], returned so callers can measure the shaped
+/// result at the right heights.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct BustAnchors {
+    /// Height of the bust ring (metres).
+    pub bust_y: f32,
+    /// Height of the underbust ring (metres).
+    pub under_y: f32,
+}
+
+/// A torso profile after bust shaping, with the anchors the
+/// shaping located in the source profile.
+#[derive(Clone, Debug, PartialEq)]
+pub struct ShapedProfile {
+    /// Underbust/bust ring heights of the source profile.
+    pub anchors: BustAnchors,
+    /// The shaped profile rings.
+    pub profile: Vec<(f32, f32, f32)>,
+}
+
+/// Shape a torso profile so its bust circumference exceeds its
+/// underbust circumference by `delta_cm` centimetres.
+///
+/// The underbust ring is the profile's narrowest interior ring (the
+/// torso's waist); the bust ring is the widest ring above it. (The
+/// widest ring overall may be the hip — it is not the bust.) The
+/// bust ring scales by exactly the factor that lands its
+/// circumference on `underbust + delta` (degree-1 homogeneity, see
+/// [`ring_circumference`]); rings between underbust and bust follow
+/// a smoothstep ramp, rings above the bust decay with a gaussian,
+/// and rings at or below the underbust never move — so the
+/// underbust circumference is an invariant of the shaping and the
+/// delta is controlled by the bust ring alone. The outfit torso
+/// lathe consumes the same profile, so a fitted garment follows
+/// the body. Fails closed on a non-finite or out-of-range delta, a
+/// profile with no ring below the bust ring, or a shaped profile
+/// that fails validation.
+///
+/// Prior art: this shaping was first built on the factory Stage-3
+/// line (bust-param branch, merged there as 65e3c9a) which never
+/// landed on main; it is ported here onto the landed factory as
+/// the GAP-11-3 fix, wired end-to-end through the identity and
+/// parameter records.
+pub fn apply_bust_delta(
+    profile: &[(f32, f32, f32)],
+    delta_cm: f32,
+) -> Result<ShapedProfile, FactoryError> {
+    if !delta_cm.is_finite() || !(BUST_DELTA_MIN_CM..=BUST_DELTA_MAX_CM).contains(&delta_cm) {
+        return Err(FactoryError::BadParam(format!(
+            "bust delta {delta_cm} cm outside [{BUST_DELTA_MIN_CM}, {BUST_DELTA_MAX_CM}] (fail closed, not clamped)"
+        )));
+    }
+    shape_profile(profile, delta_cm)
+}
+
+/// The shaping core of [`apply_bust_delta`], without the public
+/// range check — [`shape_bust`]'s correction pass may legitimately
+/// overshoot the public range by the modelled flattening error.
+fn shape_profile(
+    profile: &[(f32, f32, f32)],
+    delta_cm: f32,
+) -> Result<ShapedProfile, FactoryError> {
+    validate_profile(profile)?;
+    if profile.len() < 3 {
+        return Err(FactoryError::BadParam(
+            "profile needs at least three rings to locate a bust".to_string(),
+        ));
+    }
+    let circs: Vec<f32> = profile
+        .iter()
+        .map(|&(_, rx, rz)| ring_circumference(rx, rz))
+        .collect();
+    let under_i = (1..profile.len() - 1)
+        .min_by(|&a, &b| {
+            circs[a]
+                .partial_cmp(&circs[b])
+                .unwrap_or(std::cmp::Ordering::Equal)
+        })
+        .unwrap_or(1);
+    let bust_i = (under_i + 1..profile.len())
+        .max_by(|&a, &b| {
+            circs[a]
+                .partial_cmp(&circs[b])
+                .unwrap_or(std::cmp::Ordering::Equal)
+        })
+        .unwrap_or(under_i + 1);
+    let target = circs[under_i] + delta_cm / 100.0;
+    let k = target / circs[bust_i];
+    let y_b = profile[bust_i].0;
+    let y_u = profile[under_i].0;
+    let y_top = profile[profile.len() - 1].0;
+    let shaped: Vec<(f32, f32, f32)> = profile
+        .iter()
+        .map(|&(y, rx, rz)| {
+            let w = if y <= y_u {
+                0.0
+            } else if y <= y_b {
+                let t = (y - y_u) / (y_b - y_u);
+                t * t * (3.0 - 2.0 * t)
+            } else if y_top > y_b {
+                let d = (y - y_b) / (y_top - y_b);
+                (-d * d).exp()
+            } else {
+                1.0
+            };
+            let scale = 1.0 + w * (k - 1.0);
+            (y, rx * scale, rz * scale)
+        })
+        .collect();
+    validate_profile(&shaped)?;
+    Ok(ShapedProfile {
+        anchors: BustAnchors {
+            bust_y: y_b,
+            under_y: y_u,
+        },
+        profile: shaped,
+    })
+}
+
+/// The bust delta (cm) the built mesh will actually measure for a
+/// shaped profile, modelled without building the mesh: sample the
+/// profile at the body lathe's ring heights (the lathe only ever
+/// sees those samples, which flattens extrema between rings), scan
+/// section circumferences around the anchors, and apply the
+/// inscribed-polygon factor of the lathe's 16 radial segments.
+fn model_delta_cm(shaped: &[(f32, f32, f32)], body_y: (f32, f32), anchors: BustAnchors) -> f32 {
+    const RING_STEPS: usize = 18; // the body lathe's ring count
+    const POLYGON_FACTOR: f32 = 0.993_59; // sin(pi/16) / (pi/16)
+    let effective: Vec<(f32, f32, f32)> = (0..=RING_STEPS)
+        .map(|i| {
+            let y = body_y.0 + (body_y.1 - body_y.0) * (i as f32 / RING_STEPS as f32);
+            let (rx, rz) = profile_at(shaped, y);
+            (y, rx, rz)
+        })
+        .collect();
+    let section = |y: f32| {
+        let (rx, rz) = profile_at(&effective, y);
+        ring_circumference(rx, rz) * POLYGON_FACTOR
+    };
+    let mut bust = 0.0f32;
+    let mut y = anchors.bust_y - 0.035;
+    while y <= anchors.bust_y + 0.005 {
+        bust = bust.max(section(y));
+        y += 0.001;
+    }
+    let mut under = f32::INFINITY;
+    let mut y = anchors.under_y - 0.035;
+    while y <= anchors.under_y + 0.035 {
+        under = under.min(section(y));
+        y += 0.001;
+    }
+    (bust - under) * 100.0
+}
+
+/// Shape a profile to a bust delta, then correct once against the
+/// mesh model: the lathe's ring sampling flattens the bust peak, so
+/// a profile shaped to the analytic target measures up to ~1 cm
+/// small on the built mesh. One deterministic correction pass —
+/// reshape from the original profile at `delta + (delta − modelled)`
+/// — lands the mesh measure on target. This is what makes the
+/// parameter a measured fact about the generated character rather
+/// than a profile-space intention.
+fn shape_bust(
+    profile: &[(f32, f32, f32)],
+    delta_cm: f32,
+    body_y: (f32, f32),
+) -> Result<Vec<(f32, f32, f32)>, FactoryError> {
+    let shaped = apply_bust_delta(profile, delta_cm)?;
+    let err = delta_cm - model_delta_cm(&shaped.profile, body_y, shaped.anchors);
+    if err.abs() <= 0.05 {
+        return Ok(shaped.profile);
+    }
+    let reshaped = shape_profile(profile, delta_cm + err)?;
+    Ok(reshaped.profile)
+}
+
+/// Band index of a height under the estate band definitions
+/// (0 = head, 1 = torso, 2 = leg), using the same anchors as
+/// [`scaled_joint_table`]: at or below the hips is the leg band,
+/// at or below the neck is the torso band, above it the head band.
+fn band_of_y(y: f32, hips_y: f32, neck_y: f32) -> usize {
+    if y <= hips_y {
+        2
+    } else if y <= neck_y {
+        1
+    } else {
+        0
+    }
+}
+
+/// Apply per-band width (X) and depth (Z) scales to a torso
+/// profile: each ring's radii are multiplied by the scales of the
+/// band its height falls in (band anchors taken from `joints`, the
+/// same table the profile was remapped against). With every scale
+/// at exactly 1.0 each product is the identity, so the default
+/// build's profile is bit-for-bit the input profile.
+fn band_scaled_profile(
+    profile: &[(f32, f32, f32)],
+    joints: &[Joint],
+    width_scales: [f32; 3],
+    depth_scales: [f32; 3],
+) -> Vec<(f32, f32, f32)> {
+    let hips_y = joint_pos(joints, "Hips")[1];
+    let neck_y = joint_pos(joints, "Neck")[1];
+    profile
+        .iter()
+        .map(|&(y, rx, rz)| {
+            let band = band_of_y(y, hips_y, neck_y);
+            (y, rx * width_scales[band], rz * depth_scales[band])
+        })
+        .collect()
+}
+
 /// Interpolate the profile at height `y` (clamped to the profile range).
 fn profile_at(profile: &[(f32, f32, f32)], y: f32) -> (f32, f32) {
     if y <= profile[0].0 {
@@ -657,6 +897,35 @@ fn build_lathe(
         vertices,
     }
 }
+
+/// Eye deform-region centre, normalized head X (`nx`): the masks
+/// anchor lid/corner deformation here, and `project.rs` paints the
+/// eye features at the same point (it re-exports this constant —
+/// one source of truth, locked by test).
+///
+/// GAP-11-2 reconciliation (the two "eye span" numbers): this
+/// centre puts the eye-centre span at 2 × 0.36 = 0.72 head radii,
+/// i.e. a span share of **0.36 of the head-ellipsoid width**. The
+/// 2D canon band (A0 / Canon-01) puts the eye-centre span at
+/// **0.704 of the face width**, where "face width" is the widest
+/// span of the colour-segmented *skin component* of a drawing
+/// (`identity.rs`'s face segmentation) — a sub-region bounded by
+/// hair and sidelocks, systematically narrower than the full head
+/// width the mesh number divides by. The two numbers therefore
+/// measure different quantities against different denominators;
+/// neither is a misprint of the other, and converting between
+/// them requires the source art's face-width ÷ head-width ratio,
+/// which no estate record currently measures. This constant is a
+/// deform anchor + paint centre, NOT a claim that a frontal
+/// render reproduces the 2D band: closing that render-side gap is
+/// the sprite→3D fidelity work (PARITY leg 2c), and renumbering
+/// this anchor to 0.70 would misplace the lid deformation fields
+/// without moving any rendered eye (there is no eye geometry —
+/// the eyes are painted texture, placed by `project.rs` from this
+/// same constant).
+pub const EYE_CENTER_NX: f32 = 0.36;
+/// Eye deform-region centre, normalized head Y (`ny`).
+pub const EYE_CENTER_NY: f32 = 0.12;
 
 /// Default head ellipsoid center (meters, world space).
 pub const HEAD_CENTER: [f32; 3] = [0.0, 1.665, 0.005];
@@ -801,21 +1070,21 @@ fn build_head(
 /// line behind the head and back, then straight down to
 /// `neck_y + (hips_y - neck_y) * hair_length` on the (scaled) joints.
 /// `None` at hair length 0.0 (no hair below the neck).
-fn build_hair_tail(params: &ScaledBuild, joints: &[Joint]) -> Option<MeshPart> {
+fn build_hair_tail(
+    params: &ScaledBuild,
+    joints: &[Joint],
+    profile: &[(f32, f32, f32)],
+    radii: [f32; 3],
+) -> Option<MeshPart> {
     if params.hair_length <= 0.0 {
         return None;
     }
     let center = params.head_center;
-    let radii = params.head_radii;
     let neck_y = joint_pos(joints, "Neck")[1];
     let hips_y = joint_pos(joints, "Hips")[1];
     let bottom_y = neck_y + (hips_y - neck_y) * params.hair_length;
     let root_radius = HAIR_TAIL_ROOT_FRACTION * radii[0];
-    let body_back = params
-        .profile
-        .iter()
-        .map(|&(_, _, rz)| rz)
-        .fold(0.0f32, f32::max)
+    let body_back = profile.iter().map(|&(_, _, rz)| rz).fold(0.0f32, f32::max)
         * params.radial_scale
         * OUTFIT_TORSO_SCALE;
     let head_back = radii[2] * HAIR_SHELL_SCALE;
@@ -854,8 +1123,8 @@ fn head_region_weights(pos: [f32; 3], center: [f32; 3], radii: [f32; 3]) -> Head
     let ny = (pos[1] - center[1]) / radii[1];
     let nz = ((pos[2] - center[2]) / radii[2]).clamp(-1.0, 1.0);
     let front = nz.clamp(0.0, 1.0);
-    let eye_y = 0.12f32;
-    let eye_x = 0.36f32;
+    let eye_y = EYE_CENTER_NY;
+    let eye_x = EYE_CENTER_NX;
     let dist_eye = |sign: f32| -> f32 {
         let dx = nx - sign * eye_x;
         let dy = ny - eye_y;
@@ -985,8 +1254,22 @@ pub fn build_base_mesh() -> Result<BaseMesh, FactoryError> {
 /// multiplication by exactly 1.0 or as a literal-identical constant.
 #[derive(Clone, Debug, PartialEq)]
 pub struct ScaledBuild {
+    /// Per-band depth (Z) scales `(head, torso, leg)` applied to
+    /// profile ring depths and the head's Z radius. Exactly 1.0 per
+    /// band (the default) leaves every depth bit-identical.
+    pub band_depth_scales: [f32; 3],
+    /// Per-band width (X) scales `(head, torso, leg)` applied to
+    /// profile ring widths, limb tube radii, and the head's X
+    /// radius. Exactly 1.0 per band (the default) leaves every
+    /// width bit-identical.
+    pub band_width_scales: [f32; 3],
     /// Body lathe height span `(y0, y1)`.
     pub body_y: (f32, f32),
+    /// Optional bust delta (bust − underbust circumference) in
+    /// centimetres, shaped into the profile by [`shape_bust`].
+    /// `None` leaves the profile untouched, reproducing the
+    /// canonical base byte-for-byte.
+    pub bust_delta_cm: Option<f32>,
     /// Head ellipsoid center (world space).
     pub head_center: [f32; 3],
     /// Head ellipsoid radii.
@@ -1010,7 +1293,10 @@ pub struct ScaledBuild {
 impl Default for ScaledBuild {
     fn default() -> Self {
         Self {
+            band_depth_scales: [1.0, 1.0, 1.0],
+            band_width_scales: [1.0, 1.0, 1.0],
             body_y: (0.92, 1.50),
+            bust_delta_cm: None,
             head_center: HEAD_CENTER,
             head_radii: HEAD_RADII,
             hair_length: HAIR_LENGTH_DEFAULT,
@@ -1089,6 +1375,44 @@ pub fn scaled_joint_table(head_scale: f32, torso_scale: f32, leg_scale: f32) -> 
         .collect()
 }
 
+/// The canonical joint table with Y positions remapped by band
+/// (as [`scaled_joint_table`]) and X positions scaled per band by
+/// `width_scales` `(head, torso, leg)`: a joint's band is read off
+/// its canonical height, so the shoulder span takes the torso
+/// width scale, the hip span the leg width scale, and the head
+/// joint the head width scale. Z positions are anatomical offsets
+/// (toe and finger advances), not widths, and are unchanged — the
+/// depth axis is carried by the profile rings and the head radii.
+/// With all width scales at exactly 1.0 the result equals
+/// [`scaled_joint_table`] bit-for-bit.
+pub fn scaled_joint_table_with_frame(
+    head_scale: f32,
+    torso_scale: f32,
+    leg_scale: f32,
+    width_scales: (f32, f32, f32),
+) -> Vec<Joint> {
+    let canonical = joint_table();
+    let hips_y = canonical
+        .iter()
+        .find(|joint| joint.name == "Hips")
+        .map(|joint| joint.position[1])
+        .unwrap_or(0.0);
+    let neck_y = canonical
+        .iter()
+        .find(|joint| joint.name == "Neck")
+        .map(|joint| joint.position[1])
+        .unwrap_or(0.0);
+    let widths = [width_scales.0, width_scales.1, width_scales.2];
+    let mut joints = scaled_joint_table(head_scale, torso_scale, leg_scale);
+    // scaled_joint_table never touches X, so each joint's X is its
+    // canonical X; scale it by the width of the joint's band.
+    for (joint, canon) in joints.iter_mut().zip(canonical.iter()) {
+        let band = band_of_y(canon.position[1], hips_y, neck_y);
+        joint.position[0] = canon.position[0] * widths[band];
+    }
+    joints
+}
+
 /// Piecewise band remap used by [`scaled_joint_table`] and by the
 /// profile remap in `project.rs` (same anchors, same math).
 pub fn remap_band_y(
@@ -1146,15 +1470,53 @@ pub fn build_base_mesh_parametric(params: &ScaledBuild) -> Result<BaseMesh, Fact
             params.hair_length
         )));
     }
-    let profile: &[(f32, f32, f32)] = &params.profile;
-    validate_profile(profile)?;
+    for (axis, scales) in [
+        ("width", params.band_width_scales),
+        ("depth", params.band_depth_scales),
+    ] {
+        if !scales.iter().all(|s| s.is_finite() && *s > 0.0) {
+            return Err(FactoryError::BadParam(format!(
+                "band {axis} scales must be finite and positive: {scales:?}"
+            )));
+        }
+    }
+    validate_profile(&params.profile)?;
     let joints = params.joints.clone();
     validate_joints(&joints)?;
     let radial = params.radial_scale;
+    // The effective profile: per-band width/depth scales first (so
+    // the bust delta is measured against the character's actual
+    // underbust), then bust shaping when the parameter is present.
+    // With scales at 1.0 and no bust delta this is the input
+    // profile bit-for-bit.
+    let banded = band_scaled_profile(
+        &params.profile,
+        &joints,
+        params.band_width_scales,
+        params.band_depth_scales,
+    );
+    let shaped;
+    let profile: &[(f32, f32, f32)] = match params.bust_delta_cm {
+        Some(delta) => {
+            shaped = shape_bust(&banded, delta, params.body_y)?;
+            &shaped
+        }
+        None => &banded,
+    };
+    // The effective head radii: the head band's width/depth scales
+    // apply to the ellipsoid the head, hair shell, and hair tail
+    // are built from.
+    let head_radii = [
+        params.head_radii[0] * params.band_width_scales[0],
+        params.head_radii[1],
+        params.head_radii[2] * params.band_depth_scales[0],
+    ];
 
     let mut parts: Vec<MeshPart> = Vec::new();
 
     // Arms (upper arm .045->.038, forearm .038->.030, flattened hand).
+    // The arm tubes take the torso band's width scale.
+    let arm_radial = radial * params.band_width_scales[1];
     for (side_name, prefix) in [("left", "Left"), ("right", "Right")] {
         let chain = [
             joint_pos(&joints, &format!("{prefix}Arm")),
@@ -1166,10 +1528,10 @@ pub fn build_base_mesh_parametric(params: &ScaledBuild) -> Result<BaseMesh, Fact
             &format!("arm_{side_name}"),
             &chain,
             &[
-                0.045 * radial,
-                0.038 * radial,
-                0.030 * radial,
-                0.026 * radial,
+                0.045 * arm_radial,
+                0.038 * arm_radial,
+                0.030 * arm_radial,
+                0.026 * arm_radial,
             ],
             10,
             true,
@@ -1197,10 +1559,10 @@ pub fn build_base_mesh_parametric(params: &ScaledBuild) -> Result<BaseMesh, Fact
         true,
         &joints,
         params.head_center,
-        params.head_radii,
+        head_radii,
         params.jaw_y,
     );
-    if let Some(tail) = build_hair_tail(params, &joints) {
+    if let Some(tail) = build_hair_tail(params, &joints, profile, head_radii) {
         let base_idx = hair_part.vertices.len() as u32;
         hair_part.vertices.extend(tail.vertices);
         hair_part
@@ -1213,12 +1575,14 @@ pub fn build_base_mesh_parametric(params: &ScaledBuild) -> Result<BaseMesh, Fact
         false,
         &joints,
         params.head_center,
-        params.head_radii,
+        head_radii,
         params.jaw_y,
     );
     let head_part = finish_part(head_part)?;
 
     // Legs (thigh .078->.056, shin .054->.036, foot toe box).
+    // The leg tubes take the leg band's width scale.
+    let leg_radial = radial * params.band_width_scales[2];
     for (side_name, prefix) in [("left", "Left"), ("right", "Right")] {
         let chain = [
             joint_pos(&joints, &format!("{prefix}UpLeg")),
@@ -1231,11 +1595,11 @@ pub fn build_base_mesh_parametric(params: &ScaledBuild) -> Result<BaseMesh, Fact
             &format!("leg_{side_name}"),
             &chain,
             &[
-                0.078 * radial,
-                0.054 * radial,
-                0.036 * radial,
-                0.030 * radial,
-                0.018 * radial,
+                0.078 * leg_radial,
+                0.054 * leg_radial,
+                0.036 * leg_radial,
+                0.030 * leg_radial,
+                0.018 * leg_radial,
             ],
             12,
             true,
@@ -1258,9 +1622,9 @@ pub fn build_base_mesh_parametric(params: &ScaledBuild) -> Result<BaseMesh, Fact
                 "outfit_legs",
                 &chain,
                 &[
-                    0.078 * OUTFIT_LEGS_SCALE * radial,
-                    0.054 * OUTFIT_LEGS_SCALE * radial,
-                    0.036 * OUTFIT_LEGS_SCALE * radial,
+                    0.078 * OUTFIT_LEGS_SCALE * leg_radial,
+                    0.054 * OUTFIT_LEGS_SCALE * leg_radial,
+                    0.036 * OUTFIT_LEGS_SCALE * leg_radial,
                 ],
                 12,
                 false,

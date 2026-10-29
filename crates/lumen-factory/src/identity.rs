@@ -16,6 +16,14 @@
 //! - Proportions come from frame 0 of the mature sprite when one is
 //!   present (the mature set is the default target, factory plan §1),
 //!   else from the base sprite; `proportions_source` records which.
+//! - The record also carries three OPTIONAL authored fields —
+//!   `bust_delta_cm` and per-band `width_scales` / `depth_scales`
+//!   ([`BandScaleSet`]) — for the per-character frame the sprite
+//!   cannot measure (a silhouette carries no depth; GAP-11-3 /
+//!   GAP-11-4). Ingest always leaves them `None`; they enter a
+//!   record only as authored data, are omitted from serialization
+//!   when `None` (pre-existing records keep identical bytes and
+//!   hashes), and are validated fail-closed at every use.
 //!   The head is segmented by color as well as alpha (see "Head
 //!   segmentation" below), so the head band measures the head, not
 //!   the hair mass around it. A fully transparent sprite, a sprite
@@ -317,11 +325,75 @@ pub struct SourceFile {
     pub sha256: String,
 }
 
+/// Per-band scales for one horizontal axis (width or depth), in
+/// the band order the scales law uses everywhere: head, torso,
+/// leg. Each component is a scale against the canonical base,
+/// finite in [`SCALE_MIN`]..=[`SCALE_MAX`] — the same fail-closed
+/// range discipline as the Y band scales. A record that carries no
+/// set at all resolves to exactly 1.0 per band (the locked base).
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BandScaleSet {
+    /// Head band scale.
+    pub head: f64,
+    /// Leg band scale.
+    pub leg: f64,
+    /// Torso band scale.
+    pub torso: f64,
+}
+
+impl BandScaleSet {
+    /// The scales as `(head, torso, leg)` f32, the order
+    /// `base::ScaledBuild`'s band arrays use.
+    pub fn resolved(&self) -> (f32, f32, f32) {
+        (self.head as f32, self.torso as f32, self.leg as f32)
+    }
+
+    /// Fail closed when any component is non-finite or outside
+    /// [`SCALE_MIN`]..=[`SCALE_MAX`] (never clamped).
+    pub fn validate(&self, field: &str) -> Result<(), FactoryError> {
+        let range = f64::from(SCALE_MIN)..=f64::from(SCALE_MAX);
+        for (name, scale) in [
+            ("head", self.head),
+            ("torso", self.torso),
+            ("leg", self.leg),
+        ] {
+            if !scale.is_finite() || !range.contains(&scale) {
+                return Err(FactoryError::BadParam(format!(
+                    "{field} {name} scale {scale} outside [{SCALE_MIN}, {SCALE_MAX}] (fail closed, not clamped)"
+                )));
+            }
+        }
+        Ok(())
+    }
+}
+
 /// The canonical identity record (schema `lumen.factory-identity` v1).
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct IdentityRecord {
+    /// Authored bust delta (bust − underbust circumference) in
+    /// centimetres, finite in the range `base.rs` owns
+    /// ([`crate::base::BUST_DELTA_MIN_CM`]..=
+    /// [`crate::base::BUST_DELTA_MAX_CM`]) when present. This is
+    /// AUTHORED per-character data: ingest leaves it `None`,
+    /// because a sprite is a 2D silhouette and carries no depth —
+    /// the Canon-11 finding is that the 2D bust footprint does not
+    /// transfer to volume, so no depth-bearing value is ever
+    /// derived from art. `None` reproduces the canonical base
+    /// torso exactly; the field is omitted from serialization when
+    /// `None`, so records written before this field existed keep
+    /// identical bytes and hashes (GAP-11-3).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub bust_delta_cm: Option<f64>,
     /// Companion name (the ingest key).
     pub companion: String,
+    /// Authored per-band depth (Z) scales, or `None` for the
+    /// locked base depths (every band exactly 1.0). Authored data,
+    /// like [`Self::bust_delta_cm`]: ingest leaves it `None`, and
+    /// the field is omitted from serialization when `None`
+    /// (GAP-11-4).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub depth_scales: Option<BandScaleSet>,
     /// Derived palette anchors plus the combined dominant palette.
     pub palette: Palette,
     /// Combined dominant colors (portrait + sprite), population order.
@@ -341,6 +413,12 @@ pub struct IdentityRecord {
     pub sprite_measurements: SpriteMeasurements,
     /// Schema version ([`IDENTITY_VERSION`]).
     pub version: u32,
+    /// Authored per-band width (X) scales, or `None` for the
+    /// locked base widths (every band exactly 1.0). See
+    /// [`Self::depth_scales`] for the authored-data posture
+    /// (GAP-11-4).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub width_scales: Option<BandScaleSet>,
 }
 
 /// Write a `serde_json::Value` in the record's canonical form:
@@ -440,6 +518,54 @@ impl IdentityRecord {
     pub fn applied_scales(&self) -> Result<(f32, f32, f32), FactoryError> {
         let p = &self.proportions;
         scales_for_ratios(p.head_ratio, p.torso_ratio, p.leg_ratio)
+    }
+
+    /// The authored bust delta, validated against the range
+    /// `base.rs` owns. `None` (the ingest posture, and every record
+    /// written before the field existed) stays `None`. Fails closed
+    /// on a non-finite or out-of-range value — never clamped.
+    pub fn bust_delta_cm(&self) -> Result<Option<f64>, FactoryError> {
+        match self.bust_delta_cm {
+            None => Ok(None),
+            Some(delta) => {
+                let range = f64::from(crate::base::BUST_DELTA_MIN_CM)
+                    ..=f64::from(crate::base::BUST_DELTA_MAX_CM);
+                if !delta.is_finite() || !range.contains(&delta) {
+                    return Err(FactoryError::BadParam(format!(
+                        "bust_delta_cm {delta} outside [{}, {}] (fail closed, not clamped)",
+                        crate::base::BUST_DELTA_MIN_CM,
+                        crate::base::BUST_DELTA_MAX_CM
+                    )));
+                }
+                Ok(Some(delta))
+            }
+        }
+    }
+
+    /// The per-band width scales `(head, torso, leg)` this record
+    /// applies: the authored set, validated, or exactly
+    /// `(1.0, 1.0, 1.0)` when the record carries no set (the locked
+    /// base widths). Fails closed on an invalid set.
+    pub fn width_scales(&self) -> Result<(f32, f32, f32), FactoryError> {
+        match &self.width_scales {
+            None => Ok((1.0, 1.0, 1.0)),
+            Some(set) => {
+                set.validate("width_scales")?;
+                Ok(set.resolved())
+            }
+        }
+    }
+
+    /// The per-band depth scales `(head, torso, leg)`; the depth
+    /// counterpart of [`Self::width_scales`].
+    pub fn depth_scales(&self) -> Result<(f32, f32, f32), FactoryError> {
+        match &self.depth_scales {
+            None => Ok((1.0, 1.0, 1.0)),
+            Some(set) => {
+                set.validate("depth_scales")?;
+                Ok(set.resolved())
+            }
+        }
     }
 
     /// The hair length this record measures, in the parameter
@@ -1566,7 +1692,12 @@ pub fn ingest(art_dir: &Path, companion: &str) -> Result<IdentityRecord, Factory
     let (proportions, sprite_measurements) = measure_proportions(measured, skin, hair)?;
 
     let mut record = IdentityRecord {
+        // Ingest measures only what art can carry: the authored
+        // frame fields (bust delta, width/depth scales) stay None —
+        // a sprite silhouette has no depth to derive them from.
+        bust_delta_cm: None,
         companion: companion.to_string(),
+        depth_scales: None,
         palette: Palette {
             eye: eye.map(ColorEntry::new),
             hair: ColorEntry::new(hair),
@@ -1582,6 +1713,7 @@ pub fn ingest(art_dir: &Path, companion: &str) -> Result<IdentityRecord, Factory
         sources,
         sprite_measurements,
         version: IDENTITY_VERSION,
+        width_scales: None,
     };
     record.record_hash = record.compute_hash()?;
     Ok(record)

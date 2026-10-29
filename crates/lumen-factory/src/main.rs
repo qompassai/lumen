@@ -26,6 +26,11 @@
 //! - `validate --in <file.glb|.vrm> [--json]` runs the Phase 4
 //!   structural validator and prints its JSON report to stdout; the
 //!   exit code is nonzero when the report does not pass.
+//! - `amplitudes --in <file.glb> [--check <table.json>]` measures
+//!   the GLB's morph-target displacement amplitudes plus the
+//!   canonical channel amplitudes (GAP-11-1) and prints the
+//!   amplitude table as JSON; with `--check`, the printed table is
+//!   the recorded one and the exit code is nonzero on drift.
 //! - Failures are typed errors printed to stderr with a nonzero exit.
 
 #![forbid(unsafe_code)]
@@ -53,6 +58,17 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
+    /// Measure morph-target + channel displacement amplitudes of
+    /// a GLB (GAP-11-1), or check it against a recorded table.
+    Amplitudes {
+        /// Input GLB path.
+        #[arg(long = "in")]
+        input: PathBuf,
+        /// Optional recorded amplitude table: check the GLB (and
+        /// the channel fields) against it instead of measuring.
+        #[arg(long)]
+        check: Option<PathBuf>,
+    },
     /// Build the procedural base mesh and write it as a GLB.
     Base {
         /// Output GLB path.
@@ -491,6 +507,28 @@ fn run() -> Result<(), FactoryError> {
                 .map_err(|e| FactoryError::InvalidGlb(format!("report render: {e}")))?;
             println!("{rendered}");
             Ok(())
+        }
+        Commands::Amplitudes { input, check } => {
+            let bytes = std::fs::read(&input)?;
+            let name = input
+                .file_name()
+                .map(|n| n.to_string_lossy().into_owned())
+                .unwrap_or_default();
+            match &check {
+                Some(table_path) => {
+                    let text = std::fs::read_to_string(table_path)?;
+                    let table = lumen_factory::amplitudes::AmplitudeTable::from_json(&text)?;
+                    table.check(&bytes)?;
+                    println!("{}", table.to_json()?);
+                    println!("amplitudes: OK (within {} m)", table.tolerance_m);
+                    Ok(())
+                }
+                None => {
+                    let table = lumen_factory::amplitudes::AmplitudeTable::measure(&bytes, &name)?;
+                    println!("{}", table.to_json()?);
+                    Ok(())
+                }
+            }
         }
         Commands::VrmWrap { input, name, out } => {
             let bytes = std::fs::read(&input)?;

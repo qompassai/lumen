@@ -1,0 +1,359 @@
+{
+  "channels": [
+    {
+      "channel": "browDownLeft",
+      "max_displacement_m": 0.003074170555919409
+    },
+    {
+      "channel": "browDownRight",
+      "max_displacement_m": 0.003074169158935547
+    },
+    {
+      "channel": "browInnerUp",
+      "max_displacement_m": 0.0025326653849333525
+    },
+    {
+      "channel": "browOuterUpLeft",
+      "max_displacement_m": 0.0013571344316005707
+    },
+    {
+      "channel": "browOuterUpRight",
+      "max_displacement_m": 0.0013571345480158925
+    },
+    {
+      "channel": "cheekPuff",
+      "max_displacement_m": 0.0038379467558115744
+    },
+    {
+      "channel": "cheekSquintLeft",
+      "max_displacement_m": 0.0031648515783475606
+    },
+    {
+      "channel": "cheekSquintRight",
+      "max_displacement_m": 0.0031648520583402286
+    },
+    {
+      "channel": "eyeBlinkLeft",
+      "max_displacement_m": 0.002810769248753786
+    },
+    {
+      "channel": "eyeBlinkRight",
+      "max_displacement_m": 0.002810771344229579
+    },
+    {
+      "channel": "eyeLookDownLeft",
+      "max_displacement_m": 0.0020000000949949026
+    },
+    {
+      "channel": "eyeLookDownRight",
+      "max_displacement_m": 0.0020000000949949026
+    },
+    {
+      "channel": "eyeLookInLeft",
+      "max_displacement_m": 0.0020000000949949026
+    },
+    {
+      "channel": "eyeLookInRight",
+      "max_displacement_m": 0.0020000000949949026
+    },
+    {
+      "channel": "eyeLookOutLeft",
+      "max_displacement_m": 0.0020000000949949026
+    },
+    {
+      "channel": "eyeLookOutRight",
+      "max_displacement_m": 0.0020000000949949026
+    },
+    {
+      "channel": "eyeLookUpLeft",
+      "max_displacement_m": 0.0020000000949949026
+    },
+    {
+      "channel": "eyeLookUpRight",
+      "max_displacement_m": 0.0020000000949949026
+    },
+    {
+      "channel": "eyeSquintLeft",
+      "max_displacement_m": 0.0014030210440978408
+    },
+    {
+      "channel": "eyeSquintRight",
+      "max_displacement_m": 0.0014030220918357372
+    },
+    {
+      "channel": "eyeWideLeft",
+      "max_displacement_m": 0.0017558443360030651
+    },
+    {
+      "channel": "eyeWideRight",
+      "max_displacement_m": 0.0017558456165716052
+    },
+    {
+      "channel": "jawForward",
+      "max_displacement_m": 0.00432817405089736
+    },
+    {
+      "channel": "jawLeft",
+      "max_displacement_m": 0.0036068116314709187
+    },
+    {
+      "channel": "jawOpen",
+      "max_displacement_m": 0.007356481169988011
+    },
+    {
+      "channel": "jawRight",
+      "max_displacement_m": 0.0036068116314709187
+    },
+    {
+      "channel": "mouthClose",
+      "max_displacement_m": 0.0012258602073416114
+    },
+    {
+      "channel": "mouthDimpleLeft",
+      "max_displacement_m": 0.0006568874526878019
+    },
+    {
+      "channel": "mouthDimpleRight",
+      "max_displacement_m": 0.0006568867798626138
+    },
+    {
+      "channel": "mouthFrownLeft",
+      "max_displacement_m": 0.0014968147734180093
+    },
+    {
+      "channel": "mouthFrownRight",
+      "max_displacement_m": 0.0014968139585107565
+    },
+    {
+      "channel": "mouthFunnel",
+      "max_displacement_m": 0.0055397143587470055
+    },
+    {
+      "channel": "mouthLeft",
+      "max_displacement_m": 0.0031035568099468946
+    },
+    {
+      "channel": "mouthLowerDownLeft",
+      "max_displacement_m": 0.0023949510182245622
+    },
+    {
+      "channel": "mouthLowerDownRight",
+      "max_displacement_m": 0.0023949512582208967
+    },
+    {
+      "channel": "mouthPressLeft",
+      "max_displacement_m": 0.001742582768201828
+    },
+    {
+      "channel": "mouthPressRight",
+      "max_displacement_m": 0.0017425828846171498
+    },
+    {
+      "channel": "mouthPucker",
+      "max_displacement_m": 0.004290510434657335
+    },
+    {
+      "channel": "mouthRight",
+      "max_displacement_m": 0.0031035568099468946
+    },
+    {
+      "channel": "mouthRollLower",
+      "max_displacement_m": 0.0022099507717654467
+    },
+    {
+      "channel": "mouthRollUpper",
+      "max_displacement_m": 0.0022099507717654467
+    },
+    {
+      "channel": "mouthShrugLower",
+      "max_displacement_m": 0.003064650413580242
+    },
+    {
+      "channel": "mouthShrugUpper",
+      "max_displacement_m": 0.0022099507717654467
+    },
+    {
+      "channel": "mouthSmileLeft",
+      "max_displacement_m": 0.004241824441332031
+    },
+    {
+      "channel": "mouthSmileRight",
+      "max_displacement_m": 0.004241824441332031
+    },
+    {
+      "channel": "mouthStretchLeft",
+      "max_displacement_m": 0.0041594513073342
+    },
+    {
+      "channel": "mouthStretchRight",
+      "max_displacement_m": 0.0041594513073342
+    },
+    {
+      "channel": "mouthUpperUpLeft",
+      "max_displacement_m": 0.0023234437685459852
+    },
+    {
+      "channel": "mouthUpperUpRight",
+      "max_displacement_m": 0.002323444001376629
+    },
+    {
+      "channel": "noseSneerLeft",
+      "max_displacement_m": 0.002222242589426071
+    },
+    {
+      "channel": "noseSneerRight",
+      "max_displacement_m": 0.0022222430680049134
+    },
+    {
+      "channel": "tongueOut",
+      "max_displacement_m": 0.0037656562585706723
+    }
+  ],
+  "schema": "lumen.factory-amplitudes",
+  "source_glb": "seraphine.glb",
+  "source_glb_sha256": "ce45290a91875c0fcb201f54d152c31b035f88936bbbd785ec047641e9e1b68c",
+  "targets": [
+    {
+      "max_displacement_m": 0.0064073896991385364,
+      "name": "aa",
+      "vertices": 270
+    },
+    {
+      "max_displacement_m": 0.003970124185532522,
+      "name": "alarmed",
+      "vertices": 270
+    },
+    {
+      "max_displacement_m": 0.003162618497833047,
+      "name": "angry",
+      "vertices": 270
+    },
+    {
+      "max_displacement_m": 0.0025105290166642915,
+      "name": "annoyed",
+      "vertices": 270
+    },
+    {
+      "max_displacement_m": 0.002810779493302107,
+      "name": "blink",
+      "vertices": 270
+    },
+    {
+      "max_displacement_m": 0.0028107785619795322,
+      "name": "blinkLeft",
+      "vertices": 270
+    },
+    {
+      "max_displacement_m": 0.002810779493302107,
+      "name": "blinkRight",
+      "vertices": 270
+    },
+    {
+      "max_displacement_m": 0.0011076978004254954,
+      "name": "blush",
+      "vertices": 270
+    },
+    {
+      "max_displacement_m": 0.0038479707179184027,
+      "name": "celebrate",
+      "vertices": 270
+    },
+    {
+      "max_displacement_m": 0.0017359389543073198,
+      "name": "determined",
+      "vertices": 270
+    },
+    {
+      "max_displacement_m": 0.0036675859225846,
+      "name": "ee",
+      "vertices": 270
+    },
+    {
+      "max_displacement_m": 0.0015810306587784324,
+      "name": "embarrassed",
+      "vertices": 270
+    },
+    {
+      "max_displacement_m": 0.003407440787143737,
+      "name": "fun",
+      "vertices": 270
+    },
+    {
+      "max_displacement_m": 0.0038479707179184027,
+      "name": "happy",
+      "vertices": 270
+    },
+    {
+      "max_displacement_m": 0.00297222663822186,
+      "name": "ih",
+      "vertices": 270
+    },
+    {
+      "max_displacement_m": 0.0020000000949949026,
+      "name": "lookDown",
+      "vertices": 270
+    },
+    {
+      "max_displacement_m": 0.0020000000949949026,
+      "name": "lookLeft",
+      "vertices": 270
+    },
+    {
+      "max_displacement_m": 0.0020000000949949026,
+      "name": "lookRight",
+      "vertices": 270
+    },
+    {
+      "max_displacement_m": 0.0020000000949949026,
+      "name": "lookUp",
+      "vertices": 270
+    },
+    {
+      "max_displacement_m": 0.0,
+      "name": "neutral",
+      "vertices": 270
+    },
+    {
+      "max_displacement_m": 0.0046686432054140565,
+      "name": "oh",
+      "vertices": 270
+    },
+    {
+      "max_displacement_m": 0.00488384643658418,
+      "name": "ou",
+      "vertices": 270
+    },
+    {
+      "max_displacement_m": 0.0025102065554270473,
+      "name": "pout",
+      "vertices": 270
+    },
+    {
+      "max_displacement_m": 0.001538660264144446,
+      "name": "sad",
+      "vertices": 270
+    },
+    {
+      "max_displacement_m": 0.0028611112943381345,
+      "name": "smug",
+      "vertices": 270
+    },
+    {
+      "max_displacement_m": 0.003970124185532522,
+      "name": "surprised",
+      "vertices": 270
+    },
+    {
+      "max_displacement_m": 0.0038479707179184027,
+      "name": "wink",
+      "vertices": 270
+    },
+    {
+      "max_displacement_m": 0.0022846097286437824,
+      "name": "worried",
+      "vertices": 270
+    }
+  ],
+  "tolerance_m": 0.00001,
+  "version": 1
+}
