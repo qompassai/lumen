@@ -42,7 +42,7 @@ fn modern_meta() -> Value {
 /// modern session: `server/discover`, then each request in order
 /// with `_meta` stamped in. Returns the JSON-RPC replies in order.
 fn stdio_session(env: &[(&str, &std::ffi::OsStr)], requests: &[(&str, Value)]) -> Vec<Value> {
-    let mut command = Command::new(env!("CARGO_BIN_EXE_lumen"));
+    let mut command = Command::new(env!("CARGO_BIN_EXE_lumen-mcp-server"));
     command
         .env_clear()
         .env("PATH", std::env::var("PATH").unwrap_or_default())
@@ -245,11 +245,12 @@ fn fold_tools_list_matches_both_baselines() {
         .clone();
     // B2 (D-292/D-312): the canon tools (canon_resolve, canon_gate,
     // canon_generate) are additive on top of the folded surface;
-    // the 11 fold-baseline tools below must still match byte-for-byte.
+    // 1.0.0 (R-607) adds canon_convert as the fourth canon tool.
+    // The 11 fold-baseline tools below must still match byte-for-byte.
     assert_eq!(
         tools.len(),
-        14,
-        "folded surface 7 + 4, plus 3 canon tools (B2)"
+        15,
+        "folded surface 7 + 4, plus 4 canon tools (B2 + R-607)"
     );
     let baseline: Value =
         serde_json::from_str(include_str!("fixtures/generation-baseline-tools.json"))

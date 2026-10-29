@@ -19,6 +19,10 @@
 //!   humanoid bones, expressions, derived proportions).
 //! - `vrm-wrap --in <glb> --name <model name> --out <file.vrm>` wraps a
 //!   factory GLB as a VRM 1.0 file (VRMC_vrm humanoid + expressions).
+//! - `fidelity --sprite <png> --glb <file.glb> --skin <#hex>
+//!   --hair <#hex> [--grid N]` measures sprite->3D fidelity
+//!   (silhouette IoU + landmark delta, G-L2) and prints the JSON
+//!   report.
 //! - `validate --in <file.glb|.vrm> [--json]` runs the Phase 4
 //!   structural validator and prints its JSON report to stdout; the
 //!   exit code is nonzero when the report does not pass.
@@ -133,6 +137,33 @@ enum Commands {
         /// flag is accepted for call-site clarity).
         #[arg(long)]
         json: bool,
+    },
+    /// Measure sprite->3D fidelity (silhouette IoU + landmark
+    /// delta) of a GLB against its source sprite (G-L2).
+    Fidelity {
+        /// Source sprite PNG (alpha silhouette + identity
+        /// segmentation anchors).
+        #[arg(long)]
+        sprite: PathBuf,
+        /// GLB artifact to measure.
+        #[arg(long)]
+        glb: PathBuf,
+        /// Identity record JSON: supplies the palette anchors
+        /// and the stored sprite measurements (landmark leg
+        /// reads the record; the sprite supplies the silhouette).
+        #[arg(long)]
+        identity: Option<PathBuf>,
+        /// Skin anchor hex from the identity record palette
+        /// (required without --identity).
+        #[arg(long)]
+        skin: Option<String>,
+        /// Hair anchor hex from the identity record palette
+        /// (required without --identity).
+        #[arg(long)]
+        hair: Option<String>,
+        /// Silhouette lattice edge (default 256).
+        #[arg(long)]
+        grid: Option<u32>,
     },
     /// Wrap a factory GLB as a VRM 1.0 file.
     VrmWrap {
@@ -421,6 +452,45 @@ fn run() -> Result<(), FactoryError> {
                     failed.join(", ")
                 )))
             }
+        }
+        Commands::Fidelity {
+            sprite,
+            glb,
+            identity,
+            skin,
+            hair,
+            grid,
+        } => {
+            let img = image::open(&sprite)
+                .map_err(|e| FactoryError::BadParam(format!("sprite does not decode: {e}")))?
+                .to_rgba8();
+            let bytes = std::fs::read(&glb)?;
+            let grid = grid.unwrap_or(lumen_factory::fidelity::DEFAULT_GRID);
+            let report = match &identity {
+                Some(path) => {
+                    let record = load_record(path)?;
+                    let meas = record.sprite_measurements;
+                    lumen_factory::fidelity::measure_fidelity_measured(
+                        &img,
+                        &bytes,
+                        &meas,
+                        "identity_record",
+                        grid,
+                    )?
+                }
+                None => {
+                    let (Some(skin), Some(hair)) = (skin, hair) else {
+                        return Err(FactoryError::BadParam(
+                            "fidelity without --identity requires --skin and --hair".to_string(),
+                        ));
+                    };
+                    lumen_factory::fidelity::measure_fidelity(&img, &bytes, &skin, &hair, grid)?
+                }
+            };
+            let rendered = serde_json::to_string_pretty(&report)
+                .map_err(|e| FactoryError::InvalidGlb(format!("report render: {e}")))?;
+            println!("{rendered}");
+            Ok(())
         }
         Commands::VrmWrap { input, name, out } => {
             let bytes = std::fs::read(&input)?;

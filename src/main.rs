@@ -219,6 +219,24 @@ pub struct CanonGateRequest {
 }
 
 #[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+pub struct CanonConvertRequest {
+    /// Canon handle: canon://<lane>/<character>@<version>.
+    pub handle: String,
+    /// SHA-256 pin of the record bytes.
+    pub record_sha256: String,
+    /// Caller lane: qompass or ntranch.
+    pub caller_lane: String,
+    /// Anchor hash the input declares lineage from; absent = refused.
+    pub anchor_sha256: Option<String>,
+    /// Project-relative PNG input.
+    pub input_path: String,
+    /// Project-relative PNG output (written only on gate PASS).
+    pub output_path: String,
+    /// Measured metrics of the converted artifact, keyed by band metric.
+    pub measurements: serde_json::Value,
+}
+
+#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
 pub struct CanonInputRequest {
     /// anchor | turnaround | plate | reference | style-authority.
     pub kind: String,
@@ -448,9 +466,10 @@ impl Lumen {
     }
 
     // Canon machinery (B2, D-292/D-312): lumen::canon over the
-    // absorbed canon-record/1 crate. Three tools; canon_convert is
-    // deferred to the 1.0 close-out (existing conversion behaviour
-    // is unchanged without a handle, SPEC §6).
+    // absorbed canon-record/1 crate. Four tools; canon_convert
+    // landed with the 1.0 close-out (R-607) — handled conversion
+    // only, existing conversion behaviour is unchanged without a
+    // handle (SPEC §6).
     #[tool(
         description = "Resolve a canon handle (canon://<lane>/<character>@<version> + record SHA-256) to a record summary. Lane law enforced: nsfw records are refused to qompass callers.",
         annotations(read_only_hint = true, open_world_hint = false)
@@ -555,6 +574,37 @@ impl Lumen {
         };
         match lumen::canon::canon_generate(&root, &request) {
             Ok(receipt) => ok_json(&receipt),
+            Err(e) => canon_err(e),
+        }
+    }
+
+    #[tool(
+        description = "Convert a project PNG under a canon record: the record's palette governs a colour remap (nearest palette colour within its tolerance), and the converted artifact is gated against the record's proportion + register bands before anything is written. Requires a canon handle and adopted anchor lineage; lane law enforced. Without a handle this conversion does not exist — the other conversion tools keep their unhandled behaviour.",
+        annotations(read_only_hint = false, open_world_hint = false)
+    )]
+    fn canon_convert(&self, Parameters(req): Parameters<CanonConvertRequest>) -> String {
+        let root = match project_root() {
+            Ok(root) => root,
+            Err(e) => return err_json(e),
+        };
+        let measurements: canon_record::Measurements =
+            match serde_json::from_value(req.measurements) {
+                Ok(m) => m,
+                Err(e) => return err_json(format!("bad measurements: {e}")),
+            };
+        match lumen::canon::canon_convert(
+            &root,
+            &lumen::canon::ConvertRequest {
+                handle: req.handle,
+                record_sha256: req.record_sha256,
+                caller_lane: req.caller_lane,
+                anchor_sha256: req.anchor_sha256,
+                input_path: req.input_path,
+                output_path: req.output_path,
+                measurements,
+            },
+        ) {
+            Ok(report) => ok_json(&report),
             Err(e) => canon_err(e),
         }
     }

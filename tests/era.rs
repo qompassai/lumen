@@ -14,7 +14,7 @@ const META: &str = r#""_meta": {"io.modelcontextprotocol/protocolVersion": "2026
 const LEGACY_META: &str = r#""_meta": {"io.modelcontextprotocol/protocolVersion": "2025-06-18", "io.modelcontextprotocol/clientInfo": {"name": "era-test", "version": "0"}, "io.modelcontextprotocol/clientCapabilities": {}}"#;
 
 fn lumen_bin() -> &'static str {
-    env!("CARGO_BIN_EXE_lumen")
+    env!("CARGO_BIN_EXE_lumen-mcp-server")
 }
 
 fn temp_dir(tag: &str) -> PathBuf {

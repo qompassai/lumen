@@ -448,7 +448,7 @@ fn modern_meta() -> Value {
 
 /// Minimal MCP stdio client (tools/call only), after tests/policy.rs.
 fn stdio_calls(project: &std::path::Path, calls: &[(&str, Value)]) -> Vec<Value> {
-    let mut child = Command::new(env!("CARGO_BIN_EXE_lumen"))
+    let mut child = Command::new(env!("CARGO_BIN_EXE_lumen-mcp-server"))
         .env_remove("LUMEN_POLICY")
         .env_remove("LUMEN_ALLOW_REMOTE_BRP")
         // The folded generation lane reads a default config from

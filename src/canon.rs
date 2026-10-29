@@ -479,3 +479,166 @@ pub fn canon_generate(root: &Path, req: &GenerateRequest) -> Result<GenerationRe
         None => Ok(receipt),
     }
 }
+
+// ---------------------------------------------------------------------
+// canon_convert (R-607, SPEC §6 fourth tool)
+// ---------------------------------------------------------------------
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct ConvertRequest {
+    pub handle: String,
+    pub record_sha256: String,
+    pub caller_lane: String,
+    /// The anchor (by hash) the input artifact declares lineage
+    /// from. Absent = unanchored = refused, exactly as the gate.
+    pub anchor_sha256: Option<String>,
+    /// Project-relative PNG input.
+    pub input_path: String,
+    /// Project-relative PNG output (written only on gate PASS).
+    pub output_path: String,
+    /// Measurements of the converted artifact for the band gate.
+    pub measurements: Measurements,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ConvertReport {
+    pub input_path: String,
+    pub output_path: String,
+    /// Governing palette colours consumed from the fingerprint.
+    pub palette_entries: usize,
+    /// Opaque pixels examined.
+    pub pixels_total: usize,
+    /// Pixels whose colour changed (snapped to a palette colour).
+    pub pixels_remapped: usize,
+    /// Opaque pixels outside every palette colour's tolerance;
+    /// they keep their colour (the record governs partially,
+    /// never silently).
+    pub pixels_outside_palette: usize,
+    /// The band gate's verdict on the converted artifact.
+    pub gate: String,
+}
+
+fn parse_hex_rgb(hex: &str) -> Option<[u8; 3]> {
+    let h = hex.strip_prefix('#')?;
+    if h.len() != 6 || !h.bytes().all(|b| b.is_ascii_hexdigit()) {
+        return None;
+    }
+    Some([
+        u8::from_str_radix(&h[0..2], 16).ok()?,
+        u8::from_str_radix(&h[2..4], 16).ok()?,
+        u8::from_str_radix(&h[4..6], 16).ok()?,
+    ])
+}
+
+/// `canon_convert`: the conversion leg of the canon surface
+/// (SPEC §6). With a handle, the conversion consumes the
+/// record's fingerprint: the palette governs a colour remap of
+/// a project PNG (each opaque pixel snaps to its nearest
+/// palette colour when within that colour's tolerance,
+/// normalized RGB distance in [0, 1]; pixels outside every
+/// tolerance keep their colour and are counted), and the
+/// converted artifact is gated against the record's bands
+/// before anything is written — a drift refusal writes no
+/// output. Lane law is `load_resolved`'s, identical to the
+/// other canon tools: an nsfw record is refused to a qompass
+/// caller before any file is touched. Without a handle there
+/// is no conversion on this surface at all (the handle is a
+/// required field); the pre-canon conversion tools keep their
+/// existing unhandled behaviour, per SPEC §6.
+pub fn canon_convert(root: &Path, req: &ConvertRequest) -> Result<ConvertReport, Refusal> {
+    let record = load_resolved(root, &req.handle, &req.record_sha256, &req.caller_lane)?;
+    let anchor = req
+        .anchor_sha256
+        .as_deref()
+        .filter(|s| !s.trim().is_empty())
+        .ok_or(Refusal::UnanchoredLineage)?;
+    if !adopted_hashes(&record).contains(anchor) {
+        return Err(Refusal::AnchorNotAdopted {
+            sha256: anchor.to_string(),
+        });
+    }
+    if record.style_fingerprint.register_bands.is_empty() {
+        return Err(Refusal::MalformedRecord {
+            detail: "record carries no register bands; register enforcement (D-312) cannot pass what it does not score".to_string(),
+        });
+    }
+    if record.style_fingerprint.palette.is_empty() {
+        return Err(Refusal::MalformedRecord {
+            detail: "record carries no palette; canon conversion has nothing to consume"
+                .to_string(),
+        });
+    }
+    // Gate first: a drifted conversion writes nothing.
+    match gate_all(&record, &req.measurements) {
+        GateVerdict::Pass => {}
+        GateVerdict::Refused(r) => return Err(r),
+    }
+
+    let map_err = |e: crate::LumenError| Refusal::MalformedRecord {
+        detail: e.to_string(),
+    };
+    let input = crate::resolve_sprite_path(&req.input_path, root).map_err(map_err)?;
+    let output = crate::resolve_write_path(&req.output_path, root, &["png"]).map_err(map_err)?;
+    let mut img = image::open(&input)
+        .map_err(|e| Refusal::MalformedRecord {
+            detail: format!("input png does not decode: {e}"),
+        })?
+        .to_rgba8();
+
+    let mut palette: Vec<([u8; 3], f64)> =
+        Vec::with_capacity(record.style_fingerprint.palette.len());
+    for colour in &record.style_fingerprint.palette {
+        let rgb = parse_hex_rgb(&colour.hex).ok_or_else(|| Refusal::MalformedRecord {
+            detail: format!(
+                "palette colour {:?} hex {:?} is not #RRGGBB",
+                colour.role, colour.hex
+            ),
+        })?;
+        palette.push((rgb, colour.tolerance));
+    }
+
+    let norm = (3.0f64 * 255.0 * 255.0).sqrt();
+    let (mut total, mut remapped, mut outside) = (0usize, 0usize, 0usize);
+    for pixel in img.pixels_mut() {
+        if pixel[3] == 0 {
+            continue;
+        }
+        total += 1;
+        let mut best: Option<([u8; 3], f64)> = None;
+        for (rgb, tolerance) in &palette {
+            let d = ((f64::from(pixel[0]) - f64::from(rgb[0])).powi(2)
+                + (f64::from(pixel[1]) - f64::from(rgb[1])).powi(2)
+                + (f64::from(pixel[2]) - f64::from(rgb[2])).powi(2))
+            .sqrt()
+                / norm;
+            if d <= *tolerance && best.is_none_or(|(_, bd)| d < bd) {
+                best = Some((*rgb, d));
+            }
+        }
+        match best {
+            Some((rgb, _)) => {
+                if [pixel[0], pixel[1], pixel[2]] != rgb {
+                    remapped += 1;
+                }
+                pixel[0] = rgb[0];
+                pixel[1] = rgb[1];
+                pixel[2] = rgb[2];
+            }
+            None => outside += 1,
+        }
+    }
+    img.save(&output).map_err(|e| Refusal::MalformedRecord {
+        detail: format!("converted png does not write: {e}"),
+    })?;
+
+    Ok(ConvertReport {
+        input_path: req.input_path.clone(),
+        output_path: req.output_path.clone(),
+        palette_entries: palette.len(),
+        pixels_total: total,
+        pixels_remapped: remapped,
+        pixels_outside_palette: outside,
+        gate: "pass".to_string(),
+    })
+}

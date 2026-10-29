@@ -1,6 +1,6 @@
 [package]
 name = "lumen-canon"
-version = "0.1.0"
+version = "1.0.0"
 edition = "2021"
 description = "canon-record/1 — lumen B2 (D-292/D-312): schema, validator, handle protocol, proportion + register band gate, broker refusals. Absorbed from the B1 reference implementation (D-290) without re-derivation."
 license = "Apache-2.0"

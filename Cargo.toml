@@ -3,9 +3,17 @@ members = ["crates/lumen-canon"]
 resolver = "2"
 
 [package]
-name = "lumen"
-version = "0.3.0"
+name = "lumen-mcp-server"
+version = "1.0.0"
 edition = "2024"
+license = "Apache-2.0"
+
+# The library keeps its pre-rename crate name: the workspace's
+# tests and the A2A surface link `lumen::` (D-298 renamed the
+# server package, not the library API).
+[lib]
+name = "lumen"
+path = "src/lib.rs"
 description = "Lux in motu - cross-platform, cross-media deterministic conversion engine: 2D art, 3D models and engine formats from code-first records"
 
 [dependencies]
@@ -23,7 +31,7 @@ reqwest = { version = "0.12", default-features = false, features = ["json", "mul
 base64 = "0.22"
 # Canon machinery (B2, D-292/D-312): canon-record/1 format, handle
 # protocol, proportion + register band gate (crates/lumen-canon).
-canon-record = { package = "lumen-canon", version = "0.1.0", path = "crates/lumen-canon" }
+canon-record = { package = "lumen-canon", version = "1.0.0", path = "crates/lumen-canon" }
 # The generation lane folded from atelier (D-143): sha2 pins model
 # admission hashes; png reads generated-image dimensions directly.
 sha2 = "0.10"

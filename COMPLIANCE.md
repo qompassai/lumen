@@ -3,7 +3,13 @@
 This server's standing against the estate's canonical MCP compliance
 checklist, re-measured after the rmcp modern-era migration of
 2026-10-27 (crate 0.2.0, rmcp 3.8.0, protocol 2026-07-28 only) and
-the atelier fold of 2026-10-27 (crate 0.3.0; D-143). The
+the atelier fold of 2026-10-27 (crate 0.3.0; D-143), and brought
+current at the 1.0.0 close-out of 2026-10-29 (package
+`lumen-mcp-server` 1.0.0, D-298 rename; 15 tools — the 11 fold
+tools byte-identical to their baselines per the generation
+baseline test, plus the four canon tools; tools/list 12,224
+chars / 2,826 cl100k_base tokens with the EFLO disposition in
+`EFLO.md`; utilization session in `UTILIZATION.md`). The
 canonical checklist — every row's requirement, era, level, and
 specification link — is maintained in the estate's conformance
 records (`mcp-inspector-20261020/CHECKLIST.md`); this file reproduces

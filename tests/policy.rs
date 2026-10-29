@@ -23,6 +23,7 @@ const REGISTERED: &[&str] = &[
     "atelier_status",
     "atelier_txt2img",
     "bevy_discover",
+    "canon_convert",
     "canon_gate",
     "canon_generate",
     "canon_resolve",
@@ -71,7 +72,7 @@ fn loosened_policy() -> String {
 }
 
 fn run_cli(subcommand: &str, policy_file: Option<&std::path::Path>) -> (i32, String) {
-    let mut cmd = Command::new(env!("CARGO_BIN_EXE_lumen"));
+    let mut cmd = Command::new(env!("CARGO_BIN_EXE_lumen-mcp-server"));
     cmd.args(["policy", subcommand]).env_remove("LUMEN_POLICY");
     if let Some(path) = policy_file {
         cmd.env("LUMEN_POLICY", path);
@@ -104,7 +105,7 @@ fn modern_meta() -> Value {
 /// tools/call per item, each carrying `_meta`. Returns the
 /// JSON-RPC responses for the tool calls, in order.
 fn stdio_session(project: &std::path::Path, calls: &[(&str, Value)]) -> Vec<Value> {
-    let mut child = Command::new(env!("CARGO_BIN_EXE_lumen"))
+    let mut child = Command::new(env!("CARGO_BIN_EXE_lumen-mcp-server"))
         .env_remove("LUMEN_POLICY")
         .env_remove("LUMEN_ALLOW_REMOTE_BRP")
         // The folded generation lane reads a default config from
@@ -355,7 +356,7 @@ fn ok_binary_policy_check_passes() {
     let (code, out) = run_cli("check", None);
     assert_eq!(code, 0, "{out}");
     assert!(out.contains("PASS every required tool is labeled"));
-    assert!(out.contains("registered tools: 14"));
+    assert!(out.contains("registered tools: 15"));
 }
 
 #[test]

@@ -117,6 +117,10 @@ sink = "trusted"
 reads = ["low"]
 sink = "trusted"
 
+[tools.canon_convert]
+reads = ["low"]
+sink = "trusted"
+
 [tools.bevy_discover]
 reads = ["low"]
 sink = "brp"

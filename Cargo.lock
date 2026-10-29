@@ -1436,8 +1436,17 @@ dependencies = [
 ]
 
 [[package]]
-name = "lumen"
-version = "0.3.0"
+name = "lumen-canon"
+version = "1.0.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "sha2",
+]
+
+[[package]]
+name = "lumen-mcp-server"
+version = "1.0.0"
 dependencies = [
  "asefile",
  "base64 0.22.1",
@@ -1464,15 +1473,6 @@ dependencies = [
  "toml",
  "tracing",
  "tracing-subscriber",
-]
-
-[[package]]
-name = "lumen-canon"
-version = "0.1.0"
-dependencies = [
- "serde",
- "serde_json",
- "sha2",
 ]
 
 [[package]]

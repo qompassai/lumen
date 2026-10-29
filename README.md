@@ -1,7 +1,7 @@
 # lumen
 
 **Lux in motu** — light in motion. A cross-platform, cross-media
-conversion engine, written in Rust (edition 2024, `rmcp` 3.3): one
+conversion engine, written in Rust (edition 2024, `rmcp` 3.8.0): one
 operation core that bridges media formats — 2D art and sprite formats,
 3D models, and game-engine packages — converting between them
 deterministically from code-first records, so the same input record
@@ -35,8 +35,8 @@ failed build produced) is in [HISTORY.md](HISTORY.md).
 ## Canon machinery (B2, 2026-10-28, D-292/D-312)
 
 Character generation and derivation run against a single canon
-record per character (`canon-record/1`), enforced by three tools
-(14 registered total; the 11 pre-B2 tools are unchanged):
+record per character (`canon-record/1`), enforced by four tools
+(15 registered total at 1.0.0; the 11 pre-B2 tools are unchanged):
 
 - `canon_resolve` — handle (`canon://<lane>/<character>@<version>`
   + record SHA-256) → record summary. Lane law in server code:
@@ -60,16 +60,36 @@ record per character (`canon-record/1`), enforced by three tools
   digest-verified; tampering is detectable), and any supplied
   outputs are gated before the job returns as admitted.
 
+- `canon_convert` — handled conversion (1.0.0, R-607): a
+  project PNG is remapped under the record's fingerprint
+  palette (nearest palette colour within its tolerance;
+  out-of-tolerance pixels keep their colour and are counted)
+  and the result is gated against the record's bands before
+  anything is written — drift writes nothing. There is no
+  unhandled mode on this tool; the pre-canon conversion tools
+  keep their existing behaviour without a handle (SPEC §6).
+
 The format/handle/gate crate is `crates/lumen-canon` (package
 `lumen-canon`, lib `canon_record`), absorbed from the B1
-reference implementation without re-derivation. `canon_convert`
-(handle-aware conversion) is deferred to the 1.0 close-out; the
-existing conversion surface is unchanged.
+reference implementation without re-derivation.
 
-## Verified state (2026-10-01, primo)
+Also at 1.0.0: the Phase F motion evaluator leg is verified
+landed in `crates/lumen-rig-core` (`MOTION-EVALUATOR.md`), and
+the sprite→3D fidelity metric (silhouette IoU + landmark Δ)
+ships in `crates/lumen-factory` with its first measurement on
+record (`crates/lumen-factory/FIDELITY.md`). The server
+package is `lumen-mcp-server` 1.0.0 (D-298 rename; the library
+crate remains `lumen`). EFLO for the 15-tool surface:
+`EFLO.md`. Utilization evidence: `UTILIZATION.md`.
 
-- Build and clippy clean; **303 tests passed / 0 failed / 8 ignored**
-  (suite split between validation and adversarial cases).
+## Verified state (1.0.0, 2026-10-29, both machines)
+
+- Workspace **596 tests passed / 0 failed / 8 ignored** (root
+  557 + lumen-canon 39), lumen-rig-core **93 / 0**,
+  lumen-factory **149 / 0**; fmt clean; clippy `-D warnings`
+  clean (resolved clippy 0.1.100, nightly-2026-09-25 pin) on
+  sandbox and primo; Diver gate at the primo mirror.
+  (Suite split between validation and adversarial cases.)
 - Live interop gate against real Aseprite 1.3.18.6-dev and Bevy 0.18
   BRP (`scripts/interop_check.sh`): **5 passed / 3 failed** — the
   failures are documented premise mismatches between lumen's

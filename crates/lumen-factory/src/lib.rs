@@ -28,6 +28,7 @@
 
 pub mod base;
 pub mod blend;
+pub mod fidelity;
 pub mod gltf;
 pub mod identity;
 pub mod params;
