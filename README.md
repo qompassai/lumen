@@ -84,8 +84,8 @@ crate remains `lumen`). EFLO for the 15-tool surface:
 
 ## Verified state (1.0.0, 2026-10-29, both machines)
 
-- Workspace **596 tests passed / 0 failed / 8 ignored** (root
-  557 + lumen-canon 39), lumen-rig-core **93 / 0**,
+- Workspace **557 tests passed / 0 failed / 8 ignored**
+  (including lumen-canon's 39), lumen-rig-core **93 / 0**,
   lumen-factory **149 / 0**; fmt clean; clippy `-D warnings`
   clean (resolved clippy 0.1.100, nightly-2026-09-25 pin) on
   sandbox and primo; Diver gate at the primo mirror.
