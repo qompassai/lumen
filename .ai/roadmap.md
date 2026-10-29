@@ -99,15 +99,15 @@ How to work this roadmap (any agent): run `bloch task start R-xxx --agent <you>`
 - [x] R-608 Rename/package line audit for the 1.0.0 release (name, server.json, registry record agree) — 1.0 close-out worker
   - verify: cargo test
   - evidence: 1 verify commands, all exit 0 at 2026-10-29T07:55:23Z
-- [ ] R-609 GAP-11-3 per-character bust end-to-end: authored bust_delta_cm on the identity record, derived into the parameter record, shaped into the built mesh (A–G sweep measured on sections; absent parameter byte-identical)
+- [x] R-609 GAP-11-3 per-character bust end-to-end: authored bust_delta_cm on the identity record, derived into the parameter record, shaped into the built mesh (A–G sweep measured on sections; absent parameter byte-identical)
   - verify: cargo test --manifest-path crates/lumen-factory/Cargo.toml --test bust_validation --test bust_adversarial
-  - evidence:
-- [ ] R-610 GAP-11-4 widths/depths as identity variables: per-band BandScaleSet (head/torso/leg) on identity + parameter records, fail-closed [0.5, 2.0], unit frame byte-identical
+  - evidence: 1 verify commands, all exit 0 at 2026-10-29T16:43:52Z
+- [x] R-610 GAP-11-4 widths/depths as identity variables: per-band BandScaleSet (head/torso/leg) on identity + parameter records, fail-closed [0.5, 2.0], unit frame byte-identical
   - verify: cargo test --manifest-path crates/lumen-factory/Cargo.toml --test frame_validation --test frame_adversarial
-  - evidence:
-- [ ] R-611 GAP-11-1 blendshape displacement amplitudes specified: checked-in table (assets/seraphine.amplitudes.json, 28 targets + 52 channels) with a re-measurement drift gate at 1e-5 m
+  - evidence: 1 verify commands, all exit 0 at 2026-10-29T16:43:53Z
+- [x] R-611 GAP-11-1 blendshape displacement amplitudes specified: checked-in table (assets/seraphine.amplitudes.json, 28 targets + 52 channels) with a re-measurement drift gate at 1e-5 m
   - verify: cargo test --manifest-path crates/lumen-factory/Cargo.toml --test amplitudes_validation --test amplitudes_adversarial
-  - evidence:
-- [ ] R-612 GAP-11-2 eye-placement reconciliation: one source of truth (base::EYE_CENTER_NX/NY), mapping to the frontal-band quantity documented in code, painted-centroid + lid-peak gates green
+  - evidence: 1 verify commands, all exit 0 at 2026-10-29T16:43:53Z
+- [x] R-612 GAP-11-2 eye-placement reconciliation: one source of truth (base::EYE_CENTER_NX/NY), mapping to the frontal-band quantity documented in code, painted-centroid + lid-peak gates green
   - verify: cargo test --manifest-path crates/lumen-factory/Cargo.toml --test eye_reconciliation
-  - evidence:
+  - evidence: 1 verify commands, all exit 0 at 2026-10-29T16:43:54Z
