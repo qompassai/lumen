@@ -14,7 +14,12 @@ pub const PATH_BYTES_MAX: usize = 256;
 pub const PARAMETERS_MAX: usize = 512;
 pub const COMBINED_TERMS_MAX: usize = 16;
 pub const PARTS_MAX: usize = 256;
-pub const TEXTURES_MAX: usize = 64;
+// Amended 2026-10-26 in the rig runtime line (SPEC section 11):
+// real INP puppets exceed 64 texture slots (the Aka fixture
+// references 76); the bound is 256. Aligned here at the
+// lumen-rig-import landing (2026-10-29) — the converter's
+// texture-bound pin test names this value.
+pub const TEXTURES_MAX: usize = 256;
 pub const DEFORMERS_MAX: usize = 512;
 pub const MESHES_MAX: usize = 1024;
 pub const PHYSICS_GROUPS_MAX: usize = 64;

@@ -789,7 +789,7 @@ implementation.
 | `PARAMETERS_MAX` | 512 | parameters per model |
 | `COMBINED_TERMS_MAX` | 16 | terms per combined parameter |
 | `PARTS_MAX` | 256 | parts per model |
-| `TEXTURES_MAX` | 64 | textures per model |
+| `TEXTURES_MAX` | 256 | textures per model |
 | `DEFORMERS_MAX` | 512 | deformers per model |
 | `MESHES_MAX` | 1024 | meshes per model |
 | `VERTICES_PER_MESH_MAX` | 65,536 | base vertices per mesh |
