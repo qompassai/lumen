@@ -1,30 +1,33 @@
 # Conformance fixtures — torogao cast repertoire exports
 
-Seed fixtures for the lumen R2 motion parser and evaluator,
-taken verbatim from the torogao Phase F exports
-(`torogao-rust-port-20261027/phase-f-gates/exports/`, produced
-by the torogao-side `export-rig` bridge over the cast
-repertoire: Prima, Yui, Alma × Greeting, Daydream), as the R2
-handoff (`LUMEN-MOTION-HANDOFF.md`, item 4) prescribes.
+Conformance fixtures for the lumen R2 motion parser and
+evaluator: native output of the torogao-side `export-rig`
+bridge (`crates/torogao-cli/src/rigexport.rs` in the torogao
+tree) over the cast repertoire (Prima, Yui, Alma × Greeting,
+Daydream), regenerated 2026-10-29 from the Phase F repertoire
+fixtures. Every file here is byte-identical to the export it
+was copied from — no conversion, repair, or re-serialization
+of any kind is applied on the lumen side.
 
-Motion files are byte-identical to the exports. Model files
-differ from the exports by exactly one field: the format
-token. The bridge emits `torogao-rig-model` (its RP1-D1
-writer rule); the lumen R1 validator requires
-`lumen-rig-model`, and token reconciliation is an open item
-the handoff assigns to the R2/model work — it is NOT resolved
-by silently accepting the foreign token here. The fixture
-models carry the lumen token so the motion leg's conformance
-can run end-to-end; every other byte of model content is the
-export's own (re-serialized with 2-space indent by the copy
-step, so model files are content-identical, not
-byte-identical, to the exports).
+The bridge stamps the `lumen-rig-model` format token natively
+(its `LUMEN_MODEL_FORMAT_TOKEN`), and keyform scale components
+are floored by the exporter itself: a non-positive component
+is emitted as 1e-6 (f32) with a note in the export's
+conversion report. For this repertoire the floor touches only
+Alma's model — 14 components across the eight "feature off"
+rotation keyforms of her toggleable parts (milk streams,
+cow ears, horns, maid headdress, bell collar), whose INP
+source carries scale 0.0 ("hidden"); lumen SPEC section 3.4
+requires `sx, sy > 0` (`LRF-305`). Prima's and Yui's exports
+needed no flooring. The motion leg never evaluates
+deformers, so the floored values are inert for every
+conformance claim made here.
 
-Source sha256 (of the original exports):
+Source sha256 (of the native exports):
 
-- alma model:    d4d1d61649d6215afb089771615f77b541601595422b588cf9ec78a6055e8737
-- prima model:   05b6255a41c1feb7cea0f9241c585f97f23a0c2758a93c399af96f5e2d0c023b
-- yui model:     4c269642a08c43f4831a7f5d212226407cee74b2d36e5b14297f2f52509c9a2f
+- alma model:    fe0b395b45caa9fa30ded67ba1872e8f784ea3001354a09eeb14ba2cd6f01594
+- prima model:   49d28e5d762bf970c658fe0864c99e493d2bf2505b832fc4b872afde1cde6b44
+- yui model:     f59b5b4a6e86a32e4342d63d8bfcd768d113f9798035b57eb8587aca6cc54a8f
 - alma Daydream: 1747bee366d94357cc677b333e2bf50a6ec50428674b6b2613422ae8744c033c
 - alma Greeting: 7723411b54c9d7528ddbf8a7b61ceb3ed9b440a50c47970b6ea78820d5a1564d
 - prima Daydream: d77e9dfb15001ba1e494d15daca104b177eafa7ec1411a63c2686af7d10d80ae
@@ -37,15 +40,16 @@ All six motions are linear-only, fade-free, `loop: false`,
 Cubic and fade coverage lives in `../full.motion.json` and
 the evaluator's unit fixtures, not here.
 
-Second documented fixture repair (alma model only): eight
-rotation keyforms — the "feature off" lattice point of
-Alma's toggleable parts (cow ears, horns, maid headdress,
-bell collar, milk streams) — carry scale components of
-exactly 0.0 in the export. INP semantics read scale 0 as
-"hidden"; lumen SPEC section 3.4 requires `sx, sy > 0`
-(`LRF-305`), so the R1 validator refuses the export as-is.
-In this fixture those components are rewritten to 1e-6.
-The motion leg never evaluates deformers, so the repair is
-inert for every conformance claim made here; it is recorded
-as a bridge/model divergence for reconciliation alongside
-the format token, not as a property of the export.
+History: these fixtures were seeded at R2 from the Phase F
+exports with two documented lumen-side conversions — the
+model format token rewritten from `torogao-rig-model` to
+`lumen-rig-model`, and Alma's zero keyform scales rewritten
+to a literal 1e-6 — because the bridge emitted a foreign
+token and zero scales. Both conversions were retired
+2026-10-29: the bridge was fixed at the source (token law
+plus the exporter scale floor) and the fixtures re-seeded
+from its native output. The motion files are unchanged since
+the original seeding (identical sha256); the evaluated
+conformance traces are likewise unchanged (Greeting
+`9683dee682d77b01`, Daydream `3e0af7a21434ba9b` via the
+`evaluate_motion` example, all three rigs).
