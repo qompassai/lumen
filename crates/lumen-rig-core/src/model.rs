@@ -77,12 +77,20 @@ pub struct CombinedTerm {
 }
 
 /// A named group in the part forest (SPEC.md section 3.2).
+///
+/// `translation_keyforms` is the BIND-1 amendment field: an
+/// optional lattice of absolute model-space translations for
+/// the part's whole subtree. Absent means the part never
+/// translates — exactly the pre-amendment meaning — so models
+/// written before the amendment parse and re-emit unchanged.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct Part {
     pub id: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub parent: Option<String>,
     pub opacity: f32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub translation_keyforms: Option<Lattice<TranslationForm>>,
 }
 
 /// A reference to external image data (SPEC.md section 3.3).
@@ -163,6 +171,18 @@ pub struct RotationForm {
     pub at: Vec<u32>,
     pub angle_degrees: f32,
     pub scale: [f32; 2],
+}
+
+/// A part-translation keyform payload (BIND-1, SPEC.md
+/// section 3.2): the absolute model-space translation of the
+/// part's subtree at this lattice point. Never a delta: the
+/// interpolated translation replaces, it does not accumulate
+/// onto, any other lattice point's translation (accumulation
+/// happens only down the part chain, at evaluation).
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct TranslationForm {
+    pub at: Vec<u32>,
+    pub translation: [f32; 2],
 }
 
 /// A warp keyform payload: absolute control-point positions.

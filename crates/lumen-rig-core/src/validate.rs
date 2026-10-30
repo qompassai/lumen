@@ -347,7 +347,7 @@ pub fn validate_model(raw: RawModel) -> Result<Model, ParseError> {
     let parameters = convert_parameters(&raw.parameters, &param_ids)?;
     let param_map: HashMap<&str, &Parameter> =
         parameters.iter().map(|param| (param.id(), param)).collect();
-    let parts = convert_parts(&raw.parts, &part_ids)?;
+    let parts = convert_parts(&raw.parts, &part_ids, &param_map)?;
     let textures = convert_textures(&raw.textures)?;
     let deformers = convert_deformers(&raw.deformers, &deformer_ids, &param_map)?;
     let meshes = convert_meshes(
@@ -588,7 +588,11 @@ fn check_combined_graph(params: &[Parameter]) -> Result<(), ParseError> {
 
 /// Convert parts: resolve opacity defaults, check opacity range,
 /// parent existence, and forest acyclicity.
-fn convert_parts(raw: &[RawPart], part_ids: &HashSet<&str>) -> Result<Vec<Part>, ParseError> {
+fn convert_parts(
+    raw: &[RawPart],
+    part_ids: &HashSet<&str>,
+    params: &HashMap<&str, &Parameter>,
+) -> Result<Vec<Part>, ParseError> {
     let mut out = Vec::with_capacity(raw.len());
     let mut parents: HashMap<&str, Option<&str>> = HashMap::new();
     for part in raw {
@@ -613,11 +617,32 @@ fn convert_parts(raw: &[RawPart], part_ids: &HashSet<&str>) -> Result<Vec<Part>,
                 reference: parent.clone(),
             });
         }
+        // BIND-1: the translation lattice obeys the shared
+        // lattice law (section 3.7); its payload is one
+        // finite model-space point per form.
+        let context = format!("part {:?} translation_keyforms", part.id);
+        let translation_keyforms = match &part.translation_keyforms {
+            Some(lattice) => Some(convert_lattice(
+                "parts",
+                &part.id,
+                lattice,
+                params,
+                |form: &RawTranslationForm| {
+                    check_point(form.translation, &context)?;
+                    Ok(TranslationForm {
+                        at: form.at.clone(),
+                        translation: form.translation,
+                    })
+                },
+            )?),
+            None => None,
+        };
         parents.insert(part.id.as_str(), part.parent.as_deref());
         out.push(Part {
             id: part.id.clone(),
             parent: part.parent.clone(),
             opacity,
+            translation_keyforms,
         });
     }
     let order: Vec<&str> = raw.iter().map(|part| part.id.as_str()).collect();
@@ -817,6 +842,12 @@ impl LatticeForm for RawWarpForm {
 }
 
 impl LatticeForm for RawMeshForm {
+    fn at(&self) -> &[u32] {
+        &self.at
+    }
+}
+
+impl LatticeForm for RawTranslationForm {
     fn at(&self) -> &[u32] {
         &self.at
     }

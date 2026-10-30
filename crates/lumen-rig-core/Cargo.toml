@@ -16,3 +16,9 @@ serde = { version = "1.0", features = ["derive"] }
 # shortest-round-trip float formatting is part of the format's
 # canonical form (SPEC.md section 1.2), not an implementation detail.
 serde_json = "1.0"
+# image + png: RENDER-1's texture decode and frame encode.
+# PNG only — the format's textures are PNG files, and the
+# encoder is driven with fixed settings so a frame's bytes
+# are a pure function of its pixels.
+image = { version = "0.25", default-features = false, features = ["png"] }
+png = "0.17"
