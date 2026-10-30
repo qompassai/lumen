@@ -1,5 +1,6 @@
-//! lumen-rig-core — parser, validator, and motion evaluator
-//! for the Lumen native rig format.
+//! lumen-rig-core — parser, validator, motion evaluator,
+//! pose/physics runtime, and CPU rasteriser for the Lumen
+//! native rig format.
 //!
 //! The format is specified in `SPEC.md` beside this crate.
 //! This crate is the R2 stage of the rig runtime: it parses a
@@ -10,10 +11,18 @@
 //! evaluates motions exactly as sections 4.2 and 4.3 specify
 //! — the iteration counts in the cubic solver are part of the
 //! format, so evaluated frames are byte-stable across repeat
-//! runs and across conforming machines. Physics evaluation
-//! (section 5), expression assets (section 4.5), and rendering
-//! are later stages and are not present here — stubbed
-//! nowhere, simply absent.
+//! runs and across conforming machines.
+//!
+//! On top of the R1/R2 surface, the runtime stages land
+//! here: pose evaluation (lattice interpolation, warp and
+//! rotation deformer application, BIND-1 part translations —
+//! [`pose`]), the section 5 Verlet physics simulation
+//! ([`physics`]), the [`runtime::Rig`] that keeps parameters,
+//! physics, and geometry in step, and RENDER-1, the CPU
+//! software rasteriser ([`render`]) that turns a posed model
+//! into a PNG frame with no GPU dependency. Expression
+//! assets (section 4.5) remain a later stage — absent,
+//! not stubbed.
 //!
 //! Contract summary (SPEC.md sections 7–9):
 //! - Parsing is a pure function of the input bytes.
@@ -39,6 +48,10 @@ pub mod evaluate;
 pub mod limits;
 pub mod model;
 pub mod motion;
+pub mod physics;
+pub mod pose;
+pub mod render;
+pub mod runtime;
 
 mod raw;
 mod validate;
@@ -49,12 +62,16 @@ pub use evaluate::{EvaluatedContribution, MotionPlayer, curve_value_at};
 pub use model::{
     Anchor, AnchorKind, BlendMode, CombinedParameter, CombinedTerm, Deformer, FORMAT_VERSION,
     Lattice, Mesh, MeshForm, Model, Parameter, Part, Particle, PhysicsGroup, PhysicsInput,
-    PhysicsOutput, RotationDeformer, RotationForm, ScalarParameter, Strand, Texture, WarpDeformer,
-    WarpForm,
+    PhysicsOutput, RotationDeformer, RotationForm, ScalarParameter, Strand, Texture,
+    TranslationForm, WarpDeformer, WarpForm,
 };
 pub use motion::{
     ArcKind, BakedCurveSet, BakedProvenance, Contribution, Curve, FathomArc, FathomBinding,
     FathomPhase, Interpolation, Keyframe, Motion, PhaseProvenance, ProvenanceKind,
 };
+pub use physics::PhysicsSim;
+pub use pose::{EvaluatedMesh, ParameterValues, evaluate_pose};
+pub use render::{FrameMapping, RenderError, RgbaImage, decode_png, encode_png, render_frame};
+pub use runtime::Rig;
 pub use validate::parse_model;
 pub use validate_motion::parse_motion;

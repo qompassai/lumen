@@ -111,3 +111,11 @@ How to work this roadmap (any agent): run `bloch task start R-xxx --agent <you>`
 - [x] R-612 GAP-11-2 eye-placement reconciliation: one source of truth (base::EYE_CENTER_NX/NY), mapping to the frontal-band quantity documented in code, painted-centroid + lid-peak gates green
   - verify: cargo test --manifest-path crates/lumen-factory/Cargo.toml --test eye_reconciliation
   - evidence: 1 verify commands, all exit 0 at 2026-10-29T16:43:54Z
+
+## Phase 7 — Rig runtime completion (DISTILL P1 item 1 / CartoonAlive B1)
+- [x] R-614 BIND-1 + rig-core evaluation: part translation_keyforms (additive, defaulted v1 amendment carrying the dropped INP node-translation bindings), lattice interpolation, warp/rotation deformer application (chain root-first), SPEC section 5 Verlet physics with output writes — neutral fixture traces byte-identical (Greeting 9683dee682d77b01, Daydream 3e0af7a21434ba9b)
+  - verify: cargo test --manifest-path crates/lumen-rig-core/Cargo.toml
+  - evidence: 1 verify commands, all exit 0 at 2026-10-30T07:31:20Z
+- [x] R-615 RENDER-1: CPU-only headless batch rasteriser over the deformed mesh (texture sampling, (draw_order, id) order, opacity, W3C blend modes, clipping masks) + frame CLI; Prima F-03 vs rest pixel proof with brow-region diff localisation
+  - verify: cargo test --manifest-path crates/lumen-rig-core/Cargo.toml
+  - evidence: 1 verify commands, all exit 0 at 2026-10-30T07:31:21Z

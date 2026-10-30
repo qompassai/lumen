@@ -61,13 +61,16 @@ pub struct RawCombinedTerm {
     pub weight: f32,
 }
 
-/// A raw part.
+/// A raw part. `translation_keyforms` is the BIND-1
+/// amendment field (SPEC.md section 3.2); it is optional and
+/// defaulted, so pre-amendment documents parse unchanged.
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct RawPart {
     pub id: String,
     pub parent: Option<String>,
     pub opacity: Option<f32>,
+    pub translation_keyforms: Option<RawLattice<RawTranslationForm>>,
 }
 
 /// A raw texture reference.
@@ -132,6 +135,14 @@ pub struct RawWarpForm {
 pub struct RawMeshForm {
     pub at: Vec<u32>,
     pub vertices: Vec<[f32; 2]>,
+}
+
+/// A raw part-translation keyform (BIND-1).
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RawTranslationForm {
+    pub at: Vec<u32>,
+    pub translation: [f32; 2],
 }
 
 /// A raw mesh. `blend_mode` stays a string here so an unknown

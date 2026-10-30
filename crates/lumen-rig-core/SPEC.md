@@ -120,11 +120,12 @@ motion curves, expressions, physics, and deformers read.
 
 ### 2.3 The lattice (keyform grids)
 
-Meshes, rotation deformers, and warp deformers carry **keyforms**:
-complete states of the object, addressed by a lattice of one or two
+Meshes, rotation deformers, warp deformers, and (since the
+BIND-1 amendment, §3.2) parts carry **keyforms**: complete
+states of the object, addressed by a lattice of one or two
 scalar parameters (the **axes**). Evaluation (R2) interpolates
 between lattice points bilinearly (one axis: linearly). The lattice
-is specified in §3.7 and shared by all three object kinds.
+is specified in §3.7 and shared by all four object kinds.
 
 ---
 
@@ -183,15 +184,52 @@ an author's channel). What a parameter may NOT be is listed in §9.
 
 ### 3.2 Parts
 
-`{ "id", "parent", "opacity" }` — `parent` is an optional part id
-(absent or `null` = root), `opacity` is an optional f32 in
-`[0, 1]`, default `1.0`. Parts form a forest: every parent MUST
-exist (`LRF-203`) and the parent relation MUST be acyclic
-(`LRF-204`). A mesh's effective opacity is its own opacity times
-the product of its part chain's opacities (evaluation semantics,
-stated here so the data has one meaning). Part chains deeper than
-`TREE_DEPTH_MAX` (§11) are invalid (`LRF-204` — reported as a cycle
-class error because the check is the same bounded walk).
+`{ "id", "parent", "opacity", "translation_keyforms"? }` —
+`parent` is an optional part id (absent or `null` = root),
+`opacity` is an optional f32 in `[0, 1]`, default `1.0`. Parts
+form a forest: every parent MUST exist (`LRF-203`) and the
+parent relation MUST be acyclic (`LRF-204`). A mesh's effective
+opacity is its own opacity times the product of its part
+chain's opacities (evaluation semantics, stated here so the
+data has one meaning). Part chains deeper than `TREE_DEPTH_MAX`
+(§11) are invalid (`LRF-204` — reported as a cycle class error
+because the check is the same bounded walk).
+
+**Part translations (BIND-1 amendment).** `translation_keyforms`
+is an optional lattice (§3.7) whose payload is
+`{ "translation": [x, y] }`: the **absolute model-space
+translation of the part's whole subtree** at that lattice
+point. Evaluation interpolates it like every other lattice
+(§3.7), and a mesh's total part translation is the **sum over
+its part chain** (its own part plus every ancestor) — the
+translations commute, so the sum is their composition. The
+accumulated translation applies to the mesh's vertices
+**after** its deformer chain: the part forest and the
+deformer forest are separate trees, the format records no
+interleaving between a part node and a deformer node, and a
+model-space translation is the only order the data supports.
+Two consequences are named, not hidden:
+
+- A part translation does **not** move deformer origins or
+  physics anchors (both are absolute model-space positions in
+  this format). The INP reference's node translation also
+  moves descendant pivots; that behaviour has no
+  representation here.
+- The payload is a model-space vector. A converter carrying
+  an INP node-translation binding converts the binding's
+  local deltas into model space at rest orientation (the
+  bridge's `delta_to_world`); the INP behaviour of the delta
+  rotating with an ancestor's animated rotation is not
+  reproduced.
+
+The field exists because rigs author real deformation as
+node translations (brow height, head and body anchor shifts
+in the reference rigs): without it those parameter bindings
+have no representation and their channels are
+deformation-inert in this format — the failure BIND-1
+closes. Absent = the part never translates, exactly the
+pre-amendment meaning; see §10 for the amendment's
+versioning record.
 
 ### 3.3 Textures
 
@@ -234,6 +272,21 @@ the warp's grid deforms every descendant mesh's vertices and every
 descendant deformer's origin/control points. (The inox2d failure —
 MeshGroup nodes silently non-deforming — is impossible here: a
 warp group either validates whole or the model does not load.)
+
+**Warp mapping (R2 evaluation pin).** A point is mapped by
+locating it in a rest-grid cell, solving that cell's inverse
+bilinear (Newton-Raphson from the cell centre, a fixed 16
+iterations, barycentric fallback on the cell's first triangle),
+and evaluating the same bilinear coordinates in the deformed
+grid. Cells are scanned row-major, so a point on a shared edge
+resolves to the first containing cell, deterministically. A
+point outside every rest cell maps through the nearest cell
+(by rest-centroid distance) with its coordinates clamped to
+the cell — edge extension, never extrapolation. This is the
+format's own warp: the INP reference's per-triangle affine
+lattice (over the group mesh's own triangulation) is a
+different discretisation of the same idea, and the bridge's
+grid conversion is where the two are reconciled.
 
 ### 3.5 Meshes (drawables)
 
@@ -328,7 +381,7 @@ the output of any other strand in any group (`LRF-601`): one
 writer per parameter is what keeps evaluation order-free. Strand
 ids are unique within their group (`LRF-202`).
 
-### 3.7 The lattice (normative for meshes and both deformer kinds)
+### 3.7 The lattice (normative for meshes, both deformer kinds, and part translations)
 
 A `keyforms` object:
 
@@ -350,10 +403,13 @@ A `keyforms` object:
   index tuple, no duplicates, sorted ascending in lexicographic
   tuple order (canonical order, §1.2) (`LRF-404`).
 - A payload is a complete state of the object (absolute vertex
-  positions / absolute angle+scale / absolute control points),
-  never a delta. Interpolation between lattice points is
-  evaluation's business (R2) and is exact there: linear along one
-  axis, bilinear across two, in f64, rounded once to f32 at write.
+  positions / absolute angle+scale / absolute control points /
+  absolute part translation), never a delta. Interpolation
+  between lattice points is evaluation's business (R2) and is
+  exact there: linear along one axis, bilinear across two, in
+  f64, rounded once to f32 at write. A parameter value outside
+  the key range holds the edge form (the lattice never
+  extrapolates).
 
 An object with no `keyforms` is static under parameters (it can
 still move through ancestor deformers and physics).
@@ -518,6 +574,22 @@ For each physics group, for each strand, per step `s`
    `p = p'`. Particle 0 is not integrated; its position is the
    anchor object's evaluated position plus the strand offset,
    every step.
+
+   **R2 reading of the particle list.** Particle 0 *is* the
+   anchor point: the strand's listed particles are the free
+   particles, listed particle `k` joined to the previous point
+   by the segment of its own `length`, with the stiffness of
+   step 3 read from its own `mobility` ("particle `k + 1`"
+   counting the anchor point as particle 0). This is the only
+   reading under which a one-particle strand — the shape every
+   converted INP pendulum takes — has a segment, a tip, and an
+   output angle at all. The anchor object's evaluated position
+   is: for a deformer anchor, its origin carried through its
+   ancestor chain (a warp deformer's: the centroid of its
+   evaluated control grid — a warp has no single origin in this
+   format); for a mesh anchor, the centroid of the mesh's
+   evaluated vertices (the reference point the bridge records
+   when it converts a mesh anchor).
 3. **Constraint solve.** Exactly `CONSTRAINT_ITERATIONS = 4`
    relaxation passes. Each pass: pin particle 0 at the anchor;
    for each segment `k` (particles `k`, `k+1`) in order, enforce
@@ -773,6 +845,19 @@ implementation.
   deterministic, with golden tests), never by parser
   auto-migration. A v1 parser reading a v2 file says so and
   stops.
+- **Recorded exception — the BIND-1 amendment (in §3.2).**
+  `translation_keyforms` was admitted into v1 as an optional,
+  defaulted field without a version bump, by explicit owner
+  direction, and this note is its record so the exception is
+  not silent. The case: the field's absence reproduces the
+  pre-amendment meaning exactly (no part translates),
+  pre-amendment documents parse and re-emit byte-identically,
+  and a bump to v2 would have invalidated every landed
+  export and fixture in one move — including the format's
+  own adversarial fixture that uses version 2 as the
+  canonical unsupported version (`LRF-106`). No other field
+  may cite this exception as precedent; the next newly
+  permitted field bumps the version.
 - Error codes (§9.1) are never renumbered; new conditions get
   new codes.
 
