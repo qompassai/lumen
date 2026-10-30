@@ -114,5 +114,6 @@ How to work this roadmap (any agent): run `bloch task start R-xxx --agent <you>`
 - [x] R-613 moc3 interchange landing: lumen-rig-import crate under crates/ (moc3 + model3/cdi3/physics3/motion3/exp3 -> native, native -> moc3 export), verified end-to-end on the four official Cubism sample models (DISTILL P0 decision 3)
   - verify: cargo test --manifest-path crates/lumen-rig-import/Cargo.toml
   - evidence: 1 verify commands, all exit 0 at 2026-10-30T06:11:10Z
-- [ ] R-614 conformance fixture re-seed: rig-core conformance fixtures (Prima/Yui/Alma) re-seeded byte-identical from the fixed torogao export-rig bridge output (native lumen-rig-model token; Alma keyform scale components floored at f32 1e-6); the R2-era lumen-side fixture conversions retired; motions unchanged
+- [x] R-614 conformance fixture re-seed: rig-core conformance fixtures (Prima/Yui/Alma) re-seeded byte-identical from the fixed torogao export-rig bridge output (native lumen-rig-model token; Alma keyform scale components floored at f32 1e-6); the R2-era lumen-side fixture conversions retired; motions unchanged
   - verify: cargo test --manifest-path crates/lumen-rig-core/Cargo.toml --test motion_conformance
+  - evidence: 1 verify commands, all exit 0 at 2026-10-30T06:58:48Z
