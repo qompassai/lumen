@@ -1829,6 +1829,7 @@ pub fn convert_inp(bytes: &[u8], model_id: &str) -> Result<InpOutcome, ConvertEr
             id: part_id_by_node[node.index].clone().expect("minted above"),
             parent: native_parent_part(node.index),
             opacity: node.opacity,
+            translation_keyforms: None,
         });
     }
     // Rest draw order (authored zsort at default, ties broken

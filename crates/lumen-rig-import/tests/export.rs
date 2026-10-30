@@ -121,11 +121,13 @@ fn fixture_model() -> Model {
                 id: "PartRoot".to_string(),
                 parent: None,
                 opacity: 1.0,
+                translation_keyforms: None,
             },
             Part {
                 id: "PartChild".to_string(),
                 parent: Some("PartRoot".to_string()),
                 opacity: 0.9,
+                translation_keyforms: None,
             },
         ],
         textures: vec![Texture {

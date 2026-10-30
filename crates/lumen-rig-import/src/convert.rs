@@ -1046,6 +1046,7 @@ fn build_model(
                     None
                 },
                 opacity: 1.0,
+                translation_keyforms: None,
             })
         })
         .collect::<Result<_, ConvertError>>()?;
