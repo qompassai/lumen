@@ -1,0 +1,27 @@
+[package]
+name = "lumen-rig-import"
+version = "0.1.0"
+edition = "2024"
+license = "Apache-2.0"
+description = "Deterministic Cubism (moc3) to lumen-rig native asset converter. Import-time conversion only; the shipped runtime never parses moc3."
+
+# Standalone crate in the crates/ row (the lumen-factory /
+# lumen-rig-core pattern): its own workspace, wired to the landed
+# rig-core by path.
+[workspace]
+
+[lib]
+name = "lumen_rig_import"
+path = "src/lib.rs"
+
+[[bin]]
+name = "rig-import"
+path = "src/main.rs"
+
+[dependencies]
+lumen-rig-core = { path = "../lumen-rig-core" }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+[profile.release]
+debug = false
