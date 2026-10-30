@@ -111,6 +111,6 @@ How to work this roadmap (any agent): run `bloch task start R-xxx --agent <you>`
 - [x] R-612 GAP-11-2 eye-placement reconciliation: one source of truth (base::EYE_CENTER_NX/NY), mapping to the frontal-band quantity documented in code, painted-centroid + lid-peak gates green
   - verify: cargo test --manifest-path crates/lumen-factory/Cargo.toml --test eye_reconciliation
   - evidence: 1 verify commands, all exit 0 at 2026-10-29T16:43:54Z
-- [ ] R-613 moc3 interchange landing: lumen-rig-import crate under crates/ (moc3 + model3/cdi3/physics3/motion3/exp3 -> native, native -> moc3 export), verified end-to-end on the four official Cubism sample models (DISTILL P0 decision 3)
+- [x] R-613 moc3 interchange landing: lumen-rig-import crate under crates/ (moc3 + model3/cdi3/physics3/motion3/exp3 -> native, native -> moc3 export), verified end-to-end on the four official Cubism sample models (DISTILL P0 decision 3)
   - verify: cargo test --manifest-path crates/lumen-rig-import/Cargo.toml
-  - evidence:
+  - evidence: 1 verify commands, all exit 0 at 2026-10-30T06:11:10Z
