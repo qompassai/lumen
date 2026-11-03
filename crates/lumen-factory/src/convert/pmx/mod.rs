@@ -6,8 +6,11 @@
 //! (`glb`), and the MMD mapping profile as data (`profile`).
 
 pub mod census;
+pub mod glb;
 pub mod parse;
+pub mod profile;
 pub mod sha256;
 
 pub use census::{Census, census, census_of};
+pub use glb::{ConversionReport, ConvertOptions, ResolvedTexture, convert};
 pub use parse::{CensusError, PmxModel, parse_model};
