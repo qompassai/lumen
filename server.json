@@ -12,8 +12,8 @@
   "packages": [
     {
       "registryType": "mcpb",
-      "identifier": "https://github.com/qompassai/lumen/releases/download/v1.0.0/lumen-mcp-server-1.0.0-linux-x64.mcpb",
-      "fileSha256": "c207e29987b2a6b74638ee069f65ded3438349be891e35754e5a962a1ae03769",
+      "identifier": "https://github.com/qompassai/lumen/releases/download/v1.0.0/lumen-mcp-1.0.0-linux-x64.mcpb",
+      "fileSha256": "650aba63b4e7b246f8b865a6dabd658cf771bff8ee731aa55d7ff3ec8ea99a26",
       "transport": {
         "type": "stdio"
       }
