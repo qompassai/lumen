@@ -13,7 +13,11 @@
 //! runs and across conforming machines. Physics evaluation
 //! (section 5), expression assets (section 4.5), and rendering
 //! are later stages and are not present here — stubbed
-//! nowhere, simply absent.
+//! nowhere, simply absent. The VRMC_springBone evaluator
+//! ([`spring_bone`]) is a separate surface: it implements
+//! the VRM 1.0 spring-chain extension, an external glTF-side
+//! spec, under the same determinism law; it is not the
+//! section 5 strand physics, which remains absent.
 //!
 //! Contract summary (SPEC.md sections 7–9):
 //! - Parsing is a pure function of the input bytes.
@@ -39,6 +43,7 @@ pub mod evaluate;
 pub mod limits;
 pub mod model;
 pub mod motion;
+pub mod spring_bone;
 
 mod raw;
 mod validate;
@@ -55,6 +60,10 @@ pub use model::{
 pub use motion::{
     ArcKind, BakedCurveSet, BakedProvenance, Contribution, Curve, FathomArc, FathomBinding,
     FathomPhase, Interpolation, Keyframe, Motion, PhaseProvenance, ProvenanceKind,
+};
+pub use spring_bone::{
+    ColliderDef, ColliderShape, Frame, JointDef, JointParams, Quat, SpringChainDef, SpringConfig,
+    SpringError, SpringSystem, SpringSystemDef, TimeMode, Vec3,
 };
 pub use validate::parse_model;
 pub use validate_motion::parse_motion;
