@@ -35,6 +35,7 @@ pub mod amplitudes;
 pub mod base;
 pub mod blend;
 pub mod convert;
+pub mod face_uv;
 pub mod fidelity;
 pub mod gltf;
 pub mod head_census;
