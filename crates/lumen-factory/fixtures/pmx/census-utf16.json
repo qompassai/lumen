@@ -1,0 +1,74 @@
+{
+  "format": "pmx-census/1",
+  "pmx_version": 2,
+  "encoding": "utf-16le",
+  "additional_vec4_count": 0,
+  "input_bytes": 2236,
+  "file_sha256": "d7ab7d72729b68ab9b5eef4dba8be551904e28f150af2aa96c46489a7feff287",
+  "model": {
+    "name_local": "試験モデル",
+    "name_universal": "Stage0 Fixture Humanoid",
+    "comment_local": "",
+    "comment_universal": "Estate-authored synthetic fixture for pmx-import/1 Stage 0. No third-party content."
+  },
+  "counts": {
+    "vertices": 8,
+    "surface_indices": 12,
+    "faces": 4,
+    "textures": 2,
+    "materials": 2,
+    "bones": 10,
+    "morphs": 4,
+    "display_frames": 2,
+    "rigid_bodies": 2,
+    "joints": 1,
+    "soft_bodies": 0
+  },
+  "deform_counts": {
+    "bdef1": 5,
+    "bdef2": 1,
+    "bdef4": 1,
+    "sdef": 1,
+    "qdef": 0
+  },
+  "morphs_by_type": {
+    "group": 1,
+    "vertex": 3,
+    "bone": 0,
+    "uv": 0,
+    "material": 0,
+    "flip": 0,
+    "impulse": 0
+  },
+  "textures": [
+    {"index": 0, "path": "fixture_body.png", "path_sha256": "8e89a86f85aeeaf27f12d38cdadd03696400c7957acd41202438906602561df8"},
+    {"index": 1, "path": "fixture_toon.png", "path_sha256": "55f5686482294ae74231236f4805cc120cb59907030089181740333056def043"}
+  ],
+  "materials": [
+    {"index": 0, "name_local": "素材A", "name_universal": "fixture body mat", "texture_index": 0, "surface_count": 6},
+    {"index": 1, "name_local": "素材B", "name_universal": "fixture head mat", "texture_index": 1, "surface_count": 6}
+  ],
+  "bones": [
+    {"index": 0, "name_local": "全ての親", "name_universal": "all parent", "parent": -1, "has_ik": false},
+    {"index": 1, "name_local": "センター", "name_universal": "center", "parent": 0, "has_ik": false},
+    {"index": 2, "name_local": "下半身", "name_universal": "lower body", "parent": 1, "has_ik": false},
+    {"index": 3, "name_local": "上半身", "name_universal": "upper body", "parent": 1, "has_ik": false},
+    {"index": 4, "name_local": "首", "name_universal": "neck", "parent": 3, "has_ik": false},
+    {"index": 5, "name_local": "頭", "name_universal": "head", "parent": 4, "has_ik": false},
+    {"index": 6, "name_local": "左腕", "name_universal": "left arm", "parent": 3, "has_ik": false},
+    {"index": 7, "name_local": "左ひじ", "name_universal": "left elbow", "parent": 6, "has_ik": false},
+    {"index": 8, "name_local": "右腕", "name_universal": "right arm", "parent": 3, "has_ik": false},
+    {"index": 9, "name_local": "左足", "name_universal": "left leg", "parent": 2, "has_ik": false}
+  ],
+  "morphs": [
+    {"index": 0, "name_local": "まばたき", "name_universal": "blink", "panel": 2, "type": "vertex", "offset_count": 2},
+    {"index": 1, "name_local": "笑い", "name_universal": "smile", "panel": 2, "type": "vertex", "offset_count": 1},
+    {"index": 2, "name_local": "あ", "name_universal": "a", "panel": 3, "type": "vertex", "offset_count": 1},
+    {"index": 3, "name_local": "代表", "name_universal": "representative", "panel": 4, "type": "group", "offset_count": 1}
+  ],
+  "rigid_bodies": [
+    {"index": 0, "name_local": "頭剛体", "name_universal": "head body", "bone": 5, "shape": "sphere", "physics_mode": "follow_bone"},
+    {"index": 1, "name_local": "上半身剛体", "name_universal": "upper body", "bone": 3, "shape": "box", "physics_mode": "follow_bone"}
+  ],
+  "material_surface_sum_matches": true
+}

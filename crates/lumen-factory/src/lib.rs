@@ -34,6 +34,7 @@
 pub mod amplitudes;
 pub mod base;
 pub mod blend;
+pub mod convert;
 pub mod fidelity;
 pub mod gltf;
 pub mod identity;
