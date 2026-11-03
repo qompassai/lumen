@@ -35,8 +35,10 @@ pub mod amplitudes;
 pub mod base;
 pub mod blend;
 pub mod convert;
+pub mod face_uv;
 pub mod fidelity;
 pub mod gltf;
+pub mod head_census;
 pub mod identity;
 pub mod params;
 pub mod project;
@@ -74,6 +76,11 @@ pub enum FactoryError {
     /// A mesh invariant was violated during generation.
     #[error("mesh invalid: {0}")]
     MeshInvalid(String),
+    /// Read-back verification of an export failed (D-732): the
+    /// payload is the census diff, one `field: expected X, actual
+    /// Y` line per differing field.
+    #[error("read-back mismatch: {0}")]
+    ReadBackMismatch(String),
     /// The GLB is well-formed but carries no VRM extension.
     #[error("not a vrm: {0}")]
     NotVrm(String),

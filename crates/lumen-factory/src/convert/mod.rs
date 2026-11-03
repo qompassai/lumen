@@ -5,6 +5,13 @@
 //! | `pmx-import/1` | PMX 2.0/2.1 → census record + canonical GLB | Stage 1 (this tree) |
 //! | `gltf-import/1` | Stage 1 GLB → `torogao-mmd-ingest/1` record | Stage 2 (Route A, D-633) |
 //! | `vmd-import/1` | VMD motion → torogao-motion-clip/1 | Stage 2 remainder — not built here |
+//! | `normals-from-proxy/1` | proxy mesh → custom normals on a target mesh (GLB out) | T-12 (D-741) |
+//!
+//! Every converter carries a [`contract::ConverterContract`]: the
+//! union-solver clause (T-2, D-730) and the read-back verification
+//! clause (T-4, D-732) live in [`contract`].
 
+pub mod contract;
 pub mod gltf;
+pub mod normals;
 pub mod pmx;
