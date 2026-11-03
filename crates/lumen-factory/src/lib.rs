@@ -37,6 +37,7 @@ pub mod blend;
 pub mod convert;
 pub mod fidelity;
 pub mod gltf;
+pub mod head_census;
 pub mod identity;
 pub mod params;
 pub mod project;
