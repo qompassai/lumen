@@ -66,6 +66,11 @@ pub struct ConvertOptions {
     pub scale_to_meters: f32,
     /// Textures that resolved at conversion time, in any order.
     pub textures: Vec<ResolvedTexture>,
+    /// SHA-256 of the source PMX file (the census `file_sha256`),
+    /// carried into provenance so Stage 2's `gltf-import/1` can
+    /// anchor its ingest record to the censused source. `None`
+    /// when the caller did not census first (ledgered as null).
+    pub source_sha256: Option<String>,
 }
 
 impl Default for ConvertOptions {
@@ -73,6 +78,7 @@ impl Default for ConvertOptions {
         ConvertOptions {
             scale_to_meters: MmdProfile::builtin().proportions.scale_to_meters,
             textures: Vec::new(),
+            source_sha256: None,
         }
     }
 }
@@ -734,6 +740,72 @@ pub fn convert(
         Vec::new()
     };
 
+    // Stage 2 physics/morph provenance, built outside the root
+    // `json!` (the macro has a recursion limit the root record
+    // would otherwise exceed).
+    let morphs_json: Vec<Value> = model
+        .morphs
+        .iter()
+        .enumerate()
+        .map(|(i, m)| {
+            json!({
+                "index": i,
+                "name_local": m.name_local,
+                "name_universal": m.name_universal,
+                "panel": m.panel,
+                "type": m.type_name(),
+                "offset_count": m.offsets.len(),
+            })
+        })
+        .collect();
+    let rigid_bodies_json: Vec<Value> = model
+        .rigid_bodies
+        .iter()
+        .enumerate()
+        .map(|(i, r)| {
+            json!({
+                "index": i,
+                "name_local": r.name_local,
+                "name_universal": r.name_universal,
+                "bone": r.bone,
+                "group_id": r.group_id,
+                "non_collision_mask": r.non_collision_mask,
+                "shape": r.shape_name(),
+                "size": r.size,
+                "position_pmx": r.position,
+                "rotation_pmx": r.rotation,
+                "mass": r.mass,
+                "move_attenuation": r.move_attenuation,
+                "rotation_damping": r.rotation_damping,
+                "repulsion": r.repulsion,
+                "friction": r.friction,
+                "physics_mode": r.physics_mode_name(),
+            })
+        })
+        .collect();
+    let joints_json: Vec<Value> = model
+        .joints
+        .iter()
+        .enumerate()
+        .map(|(i, j)| {
+            json!({
+                "index": i,
+                "name_local": j.name_local,
+                "name_universal": j.name_universal,
+                "rigid_a": j.rigid_a,
+                "rigid_b": j.rigid_b,
+                "position_pmx": j.position,
+                "rotation_pmx": j.rotation,
+                "position_min": j.position_min,
+                "position_max": j.position_max,
+                "rotation_min": j.rotation_min,
+                "rotation_max": j.rotation_max,
+                "position_spring": j.position_spring,
+                "rotation_spring": j.rotation_spring,
+            })
+        })
+        .collect();
+
     let root_provenance = json!({
         "pmx_provenance": {
             "converter": "pmx-import/1",
@@ -795,6 +867,19 @@ pub fn convert(
             "joint_count": model.joints.len(),
             "soft_body_count": model.soft_bodies.len(),
             "spans_adjusted": spans_adjusted,
+            // Stage 2 amendment (gltf-import/1, D-633): the GLB is
+            // the auditable midpoint of Route A, so it must carry
+            // everything ingest needs — the source census hash, the
+            // census counts, the full morph table, and the physics
+            // records verbatim (PMX-space values, named as such).
+            // Without these, physics and zero-silent-drop accounting
+            // could not be derived from the GLB alone.
+            "source_file_sha256": options.source_sha256.clone()
+                .map_or(Value::Null, Value::String),
+            "census_counts": census_counts_json(model),
+            "morphs": morphs_json,
+            "rigid_bodies": rigid_bodies_json,
+            "joints": joints_json,
         }
     });
 
@@ -985,6 +1070,38 @@ fn offset_json(offset: &MorphOffset) -> Value {
             "velocity": velocity, "torque": torque,
         }),
     }
+}
+
+/// Census counts as provenance JSON (Stage 2 amendment): the
+/// denominators of `gltf-import/1`'s zero-silent-drop accounting,
+/// derived from the same retained parse the census derives from,
+/// so the two can never disagree.
+fn census_counts_json(model: &PmxModel) -> Value {
+    let mut by_class = Map::new();
+    for class in [
+        "group", "vertex", "bone", "uv", "material", "flip", "impulse",
+    ] {
+        by_class.insert(class.to_string(), Value::from(0usize));
+    }
+    for morph in &model.morphs {
+        let key = morph.type_name();
+        if let Some(slot) = by_class.get_mut(key) {
+            *slot = Value::from(slot.as_u64().unwrap_or(0) + 1);
+        }
+    }
+    json!({
+        "vertices": model.vertices.len(),
+        "faces": model.surface_indices.len() / 3,
+        "textures": model.textures.len(),
+        "materials": model.materials.len(),
+        "bones": model.bones.len(),
+        "morphs_total": model.morphs.len(),
+        "morphs_by_class": Value::Object(by_class),
+        "rigid_bodies": model.rigid_bodies.len(),
+        "joints": model.joints.len(),
+        "soft_bodies": model.soft_bodies.len(),
+        "display_frames": model.display_frames.len(),
+    })
 }
 
 /// The skin's `pmx_provenance`: every bone's flag-conditional detail

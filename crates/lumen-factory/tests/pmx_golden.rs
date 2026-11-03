@@ -52,7 +52,12 @@ fn fixture_glb_sha256_is_pinned() {
     let (glb, _) = convert_fixture();
     assert_eq!(
         sha256_hex(&glb),
-        "921a0ccd639ad8147fbc514a855fa3d7d31bc9b1320243a7a70f4639581761c5",
+        // Stage 2 amendment (D-633, gltf-import/1): the root
+        // provenance gained source_file_sha256, census_counts, the
+        // full morph table, and verbatim rigid-body/joint records
+        // so the GLB is a self-contained Route A midpoint. The
+        // Stage 1 pin was 921a0ccd...; this pin supersedes it.
+        "b588126c93a0c9a60b7b573e91113ba5bc573eba82893157d4064db28f146ecc",
         "fixture GLB hash moved: {}",
         sha256_hex(&glb)
     );
@@ -335,6 +340,7 @@ fn conversion_rejects_nonpositive_scale() {
     let options = ConvertOptions {
         scale_to_meters: 0.0,
         textures: Vec::new(),
+        source_sha256: None,
     };
     assert!(convert(&model, &options).is_err());
 }

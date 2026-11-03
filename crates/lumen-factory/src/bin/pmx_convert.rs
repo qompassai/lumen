@@ -103,6 +103,7 @@ fn run() -> Result<(), String> {
     let options = ConvertOptions {
         scale_to_meters: profile.proportions.scale_to_meters,
         textures,
+        source_sha256: Some(census.file_sha256.clone()),
     };
     let (glb, report) = convert(&model, &options).map_err(|err| err.to_string())?;
     std::fs::write(&out_path, &glb).map_err(|err| format!("cannot write {out_path:?}: {err}"))?;
