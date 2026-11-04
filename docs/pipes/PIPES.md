@@ -410,3 +410,18 @@ own binding summary.
 
 *PIPES.md ends. Companion: PIPELINES-REPORT.md (stage gates,
 evidence, deviations) in this directory.*
+
+---
+
+## Amendment 2026-11-03 (D-874) — Describe-stage vocabulary
+
+The Describe stage's expression/reaction/camera vocabulary for
+this lane is now versioned in **DESCRIBE-VOCABULARY.md** (v1.0.0,
+lane sfw, this directory): the face-state field shape
+`{name, brow, lid_band, gaze}`, the hold → spike → hold reaction
+timing terms, and the locked-camera staging vocabulary — mechanics
+only, per lane law, extracted from the D-874 favourites reference
+census (`~/workspace/danbooru-reference-20261103/`). The matching
+Keeper Lessons pack is `sfw/expression-mechanics` v1.0.0. Records
+authored after this amendment cite the vocabulary version in
+their run record, per the curriculum's pinning rule.
