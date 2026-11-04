@@ -233,9 +233,7 @@ pub fn measure_bounds(eval: &mut PuppetEval, model: &Model, dt: f32) -> Bounds {
     let mut hi = f64::NEG_INFINITY;
     let mut foot_y = f64::NEG_INFINITY;
     for mesh in &model.meshes {
-        let verts = eval
-            .node_world_vertices(&mesh.id)
-            .expect("bounds vertices");
+        let verts = eval.node_world_vertices(&mesh.id).expect("bounds vertices");
         for v in &verts {
             lo = lo.min(f64::from(v[1]));
             hi = hi.max(f64::from(v[1]));
@@ -251,9 +249,7 @@ pub fn measure_bounds(eval: &mut PuppetEval, model: &Model, dt: f32) -> Bounds {
         if !is_leg_part(&mesh.id) {
             continue;
         }
-        let verts = eval
-            .node_world_vertices(&mesh.id)
-            .expect("bounds vertices");
+        let verts = eval.node_world_vertices(&mesh.id).expect("bounds vertices");
         for v in &verts {
             if f64::from(v[1]) > foot_y - 60.0 {
                 foot_xs.push(f64::from(v[0]));
@@ -349,7 +345,11 @@ impl TuneOutcome {
     /// expected outputs: the names of fields that differ
     /// (exact f64 comparison — the reads of record are
     /// bit-level gate values).
-    pub fn diff_expected(&self, expected: &TuneExpected, contact_offsets: [[f64; 2]; 2]) -> Vec<String> {
+    pub fn diff_expected(
+        &self,
+        expected: &TuneExpected,
+        contact_offsets: [[f64; 2]; 2],
+    ) -> Vec<String> {
         let mut diffs = Vec::new();
         let mut check = |name: &str, got: f64, want: f64| {
             if got != want {
@@ -358,15 +358,51 @@ impl TuneOutcome {
         };
         check("b_x", self.b_x, expected.b_x);
         check("target_row_y", self.target_row_y, expected.target_row_y);
-        check("target_left_x", self.target_left[0], expected.target_left[0]);
-        check("target_left_y", self.target_left[1], expected.target_left[1]);
-        check("target_right_x", self.target_right[0], expected.target_right[0]);
-        check("target_right_y", self.target_right[1], expected.target_right[1]);
-        check("predicted_slip", self.predicted_slip, expected.predicted_slip);
-        check("pre_solve_slip_0", self.pre_solve_slip[0], expected.pre_solve_slip[0]);
-        check("pre_solve_slip_1", self.pre_solve_slip[1], expected.pre_solve_slip[1]);
-        check("grasp_arm_l", f64::from(self.grasp_arm_l), expected.grasp_arm_l);
-        check("crouch_depth", f64::from(self.crouch_depth), expected.crouch_depth);
+        check(
+            "target_left_x",
+            self.target_left[0],
+            expected.target_left[0],
+        );
+        check(
+            "target_left_y",
+            self.target_left[1],
+            expected.target_left[1],
+        );
+        check(
+            "target_right_x",
+            self.target_right[0],
+            expected.target_right[0],
+        );
+        check(
+            "target_right_y",
+            self.target_right[1],
+            expected.target_right[1],
+        );
+        check(
+            "predicted_slip",
+            self.predicted_slip,
+            expected.predicted_slip,
+        );
+        check(
+            "pre_solve_slip_0",
+            self.pre_solve_slip[0],
+            expected.pre_solve_slip[0],
+        );
+        check(
+            "pre_solve_slip_1",
+            self.pre_solve_slip[1],
+            expected.pre_solve_slip[1],
+        );
+        check(
+            "grasp_arm_l",
+            f64::from(self.grasp_arm_l),
+            expected.grasp_arm_l,
+        );
+        check(
+            "crouch_depth",
+            f64::from(self.crouch_depth),
+            expected.crouch_depth,
+        );
         check("turn_lift", self.turn_lift, expected.turn_lift);
         check("crouch_drop", self.crouch_drop, expected.crouch_drop);
         check("hand_rise", self.hand_rise, expected.hand_rise);
@@ -472,8 +508,8 @@ pub fn run_tune(
     let dt = 1.0 / scene.rate as f32;
     let hand = tune.hand_actor;
     let band_actor = tune.band_actor;
-    let mut eval_a =
-        PuppetEval::new(&staging.stages[hand], &staging.textures[hand]).map_err(|e| e.to_string())?;
+    let mut eval_a = PuppetEval::new(&staging.stages[hand], &staging.textures[hand])
+        .map_err(|e| e.to_string())?;
     let mut eval_b = PuppetEval::new(&staging.stages[band_actor], &staging.textures[band_actor])
         .map_err(|e| e.to_string())?;
     settle(&mut eval_a, scene.settle_steps, dt);
@@ -518,9 +554,27 @@ pub fn run_tune(
     let mut best_any: Option<Cand> = None;
     for &g in &tune.g_candidates {
         let family = resolve_family(tune, g, tune.default_crouch)?;
-        let hands_g = hand_pair(&mut eval_a, &staging.models[hand], &family.grasp, &tune.hand_parts, dt);
-        let hands_c = hand_pair(&mut eval_a, &staging.models[hand], &family.crouch, &tune.hand_parts, dt);
-        let hands_l = hand_pair(&mut eval_a, &staging.models[hand], &family.lift, &tune.hand_parts, dt);
+        let hands_g = hand_pair(
+            &mut eval_a,
+            &staging.models[hand],
+            &family.grasp,
+            &tune.hand_parts,
+            dt,
+        );
+        let hands_c = hand_pair(
+            &mut eval_a,
+            &staging.models[hand],
+            &family.crouch,
+            &tune.hand_parts,
+            dt,
+        );
+        let hands_l = hand_pair(
+            &mut eval_a,
+            &staging.models[hand],
+            &family.lift,
+            &tune.hand_parts,
+            dt,
+        );
         let mid = |h: &([f64; 2], [f64; 2])| [(h.0[0] + h.1[0]) / 2.0, (h.0[1] + h.1[1]) / 2.0];
         let mid_g = mid(&hands_g);
         let mid_c = mid(&hands_c);
@@ -542,10 +596,10 @@ pub fn run_tune(
                 let target_pos = [hi, row];
                 let target_sep = target_pos[0] - target_neg[0];
                 let slip = (hand_sep - target_sep).abs() / 2.0;
-                let engage =
-                    (mid_g[1] + staging.bounds[hand].foot_y) - (row + staging.bounds[band_actor].foot_y);
-                let clearance =
-                    (mid_l[1] + staging.bounds[hand].foot_y) - (row + staging.bounds[band_actor].foot_y);
+                let engage = (mid_g[1] + staging.bounds[hand].foot_y)
+                    - (row + staging.bounds[band_actor].foot_y);
+                let clearance = (mid_l[1] + staging.bounds[hand].foot_y)
+                    - (row + staging.bounds[band_actor].foot_y);
                 let (target_hand_l, target_hand_r) = if hand_l_is_neg {
                     (target_neg, target_pos)
                 } else {
@@ -567,7 +621,8 @@ pub fn run_tune(
                 if best_any.as_ref().is_none_or(|b| cand.slip < b.slip) {
                     best_any = Some(Cand { ..cand });
                 }
-                let feasible = cand.clearance >= tune.clearance_bar && cand.engage >= tune.engage_min;
+                let feasible =
+                    cand.clearance >= tune.clearance_bar && cand.engage >= tune.engage_min;
                 if feasible
                     && best.as_ref().is_none_or(|b| {
                         cand.slip < b.slip
@@ -592,8 +647,20 @@ pub fn run_tune(
         }
     }
     let family_cd = resolve_family(tune, f64::from(chosen.g), f64::from(cd))?;
-    let hands_c = hand_pair(&mut eval_a, &staging.models[hand], &family_cd.crouch, &tune.hand_parts, dt);
-    let hands_l = hand_pair(&mut eval_a, &staging.models[hand], &family_cd.lift, &tune.hand_parts, dt);
+    let hands_c = hand_pair(
+        &mut eval_a,
+        &staging.models[hand],
+        &family_cd.crouch,
+        &tune.hand_parts,
+        dt,
+    );
+    let hands_l = hand_pair(
+        &mut eval_a,
+        &staging.models[hand],
+        &family_cd.lift,
+        &tune.hand_parts,
+        dt,
+    );
     let mid = |h: &([f64; 2], [f64; 2])| [(h.0[0] + h.1[0]) / 2.0, (h.0[1] + h.1[1]) / 2.0];
     let mid_g = mid(&chosen.hands_g);
     let mid_c = mid(&hands_c);
@@ -630,7 +697,11 @@ pub fn run_tune(
                 min_y = min_y.min(probe.apply(*v)[1]);
             }
         }
-        if min_y < 0.0 { -min_y } else { 0.0 }
+        if min_y < 0.0 {
+            -min_y
+        } else {
+            0.0
+        }
     };
     let b_x = chosen.hand_mid_x - chosen.target_mid_x;
     let slip = |hand_pt: [f64; 2], target: [f64; 2]| {
@@ -718,9 +789,8 @@ pub fn build_contact_scene(
         .map(|t| t.band_part.clone())
         .unwrap_or_else(|| "Body".to_string());
     let body_default = {
-        let mut scratch =
-            PuppetEval::new(&staging.stages[b_actor], &staging.textures[b_actor])
-                .map_err(|e| e.to_string())?;
+        let mut scratch = PuppetEval::new(&staging.stages[b_actor], &staging.textures[b_actor])
+            .map_err(|e| e.to_string())?;
         settle(&mut scratch, scene.settle_steps, dt);
         set_pose(&mut scratch, &[]);
         scratch.end_frame(dt).expect("scratch frame");
@@ -899,8 +969,12 @@ pub fn simulate(
                 .map(|c| (c.active_from..c.active_to).contains(&t))
                 .collect(),
         };
-        let read = evaluate_frame_with_geometry(cfg.contact_scene, &input, &[geo_a.clone(), geo_b.clone()])
-            .map_err(|e| e.to_string())?;
+        let read = evaluate_frame_with_geometry(
+            cfg.contact_scene,
+            &input,
+            &[geo_a.clone(), geo_b.clone()],
+        )
+        .map_err(|e| e.to_string())?;
         let world_a = world_meshes(&cfg.staging.models[0], &geo_a, &read.placements[0]);
         let world_b = world_meshes(&cfg.staging.models[1], &geo_b, &read.placements[1]);
         let points_a = points_of(&geo_a, &read.placements[0], false);
@@ -910,7 +984,8 @@ pub fn simulate(
         let points_b_nh = points_of(&geo_b, &read.placements[1], true);
         margins_no_hands
             .push(margin_of(&points_a_nh, &world_b).min(margin_of(&points_b_nh, &world_a)));
-        body_a_y.push(centroid_of(mesh_named(&geo_a, "Body"))[1] + read.placements[0].translation[1]);
+        body_a_y
+            .push(centroid_of(mesh_named(&geo_a, "Body"))[1] + read.placements[0].translation[1]);
         // Hand-to-waist-band reads (the D-859 acceptance
         // measure, in the shared scene frame).
         let corners = [
