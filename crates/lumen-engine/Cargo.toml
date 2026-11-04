@@ -1,0 +1,9 @@
+[workspace]
+members = ["crates/lumen-engine-bevy", "crates/lumen-engine-core"]
+resolver = "2"
+
+[workspace.package]
+edition = "2021"
+homepage = "https://qompass.ai"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/qompassai/lumen"
