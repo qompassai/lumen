@@ -1,0 +1,15 @@
+[package]
+name = "lumen-engine-bevy"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "Minimal Bevy host binding for lumen-engine-core (D-895 Stage 1): a headless Bevy App whose Update schedule steps the deterministic core; puppet staging, instruments and rasterization bind the evaluator of record (lumen-rig-core) to the engine's records."
+
+[dependencies]
+bevy_app = "0.20"
+bevy_ecs = "0.20"
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "tga"] }
+lumen-engine-core = { path = "../lumen-engine-core" }
+lumen-rig-core = { path = "../../../lumen-rig-core" }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = { version = "1.0", features = ["preserve_order"] }

@@ -1,0 +1,273 @@
+// The standing two-body lift protocol (D-847 Stage 1
+// timeline, D-859 staging acceptance, D-875 carry-over to
+// the full rigs), declared as an engine scene record:
+// Prima lifts Alma over 12 seconds at 60 steps/s.
+//
+// The reads of record this scene must reproduce live in
+// the D-875 verdict pack (verdict-pack-v3/summary.json);
+// the tune block pins them as gate values. Rig imports
+// are directories relative to the host's imports base
+// (the D-859 full-rig imports: prima/, alma/).
+(
+    version: 1,
+    id: "twobody-lift",
+    steps: 720,
+    rate: 60,
+    settle_steps: 30,
+    actors: [
+        (
+            id: "prima",
+            display: "Prima",
+            rig: "prima",
+            pose_track: [
+                (t: 0.0, params: {}),
+                (t: 2.0, params: {
+                    "ParamArmR": Const(0.9),
+                    "ParamElbowR": Const(0.2),
+                    "ParamArmL": Ref("g"),
+                    "ParamElbowL": Const(0.5),
+                }),
+                (t: 3.0, params: {
+                    "ParamArmR": Const(1.0),
+                    "ParamElbowR": Const(0.25),
+                    "ParamArmL": Add("g", 0.05),
+                    "ParamElbowL": Const(0.55),
+                    "ParamCrouch": Ref("cd"),
+                }),
+                (t: 3.9, params: {
+                    "ParamArmR": Const(1.0),
+                    "ParamElbowR": Const(0.25),
+                    "ParamArmL": Add("g", 0.05),
+                    "ParamElbowL": Const(0.55),
+                    "ParamCrouch": Ref("cd"),
+                }),
+                (t: 5.0, params: {
+                    "ParamArmR": Const(1.0),
+                    "ParamElbowR": Const(0.1),
+                    "ParamArmL": Const(1.0),
+                    "ParamElbowL": Const(0.1),
+                    "ParamCrouch": Mul("cd", 0.3125),
+                }),
+                (t: 8.6, params: {
+                    "ParamArmR": Const(1.0),
+                    "ParamElbowR": Const(0.1),
+                    "ParamArmL": Const(1.0),
+                    "ParamElbowL": Const(0.1),
+                    "ParamCrouch": Mul("cd", 0.3125),
+                }),
+                (t: 9.6, params: {
+                    "ParamArmR": Const(1.0),
+                    "ParamElbowR": Const(0.25),
+                    "ParamArmL": Add("g", 0.05),
+                    "ParamElbowL": Const(0.55),
+                    "ParamCrouch": Mul("cd", 0.75),
+                }),
+                (t: 10.0, params: {
+                    "ParamArmR": Const(1.0),
+                    "ParamElbowR": Const(0.25),
+                    "ParamArmL": Add("g", 0.05),
+                    "ParamElbowL": Const(0.55),
+                    "ParamCrouch": Mul("cd", 0.75),
+                }),
+                (t: 11.0, params: {}),
+                (t: 12.0, params: {}),
+            ],
+            placement: PivotTurn(
+                keys: [
+                    (0.0, 0.0), (5.0, 0.0), (6.5, 26.0), (8.0, 26.0),
+                    (9.6, 0.0), (10.4, 0.0), (12.0, 0.0),
+                ],
+                compensation: Ref("turn_lift"),
+            ),
+        ),
+        (
+            id: "alma",
+            display: "Alma",
+            rig: "alma",
+            pose_track: [
+                (t: 0.0, params: {}),
+                (t: 2.0, params: {}),
+                (t: 3.0, params: {
+                    "ParamKneeL": Const(0.15),
+                    "ParamKneeR": Const(0.15),
+                }),
+                (t: 3.9, params: {
+                    "ParamKneeL": Const(0.15),
+                    "ParamKneeR": Const(0.15),
+                }),
+                (t: 5.0, params: {
+                    "ParamKneeL": Const(0.9),
+                    "ParamKneeR": Const(0.9),
+                    "ParamArmL": Const(-0.2),
+                    "ParamArmR": Const(-0.2),
+                }),
+                (t: 8.6, params: {
+                    "ParamKneeL": Const(0.9),
+                    "ParamKneeR": Const(0.9),
+                    "ParamArmL": Const(-0.2),
+                    "ParamArmR": Const(-0.2),
+                }),
+                (t: 9.6, params: {
+                    "ParamKneeL": Const(0.2),
+                    "ParamKneeR": Const(0.2),
+                }),
+                (t: 10.0, params: {
+                    "ParamKneeL": Const(0.2),
+                    "ParamKneeR": Const(0.2),
+                }),
+                (t: 11.0, params: {}),
+                (t: 12.0, params: {}),
+            ],
+            placement: StepInOut(
+                base_x: Ref("b_x"),
+                step_in: 90.0,
+                step_in_window: (0.0, 2.0),
+                step_back: 70.0,
+                step_back_window: (10.0, 11.0),
+            ),
+        ),
+    ],
+    contacts: [
+        (
+            id: "c_hand_l",
+            a_actor: 0, a_part: "HandL",
+            b_actor: 1, b_part: "Body",
+            driven_actor: 1,
+            active_from: 2.0, active_to: 10.0,
+        ),
+        (
+            id: "c_hand_r",
+            a_actor: 0, a_part: "HandR",
+            b_actor: 1, b_part: "Body",
+            driven_actor: 1,
+            active_from: 2.0, active_to: 10.0,
+        ),
+    ],
+    roots: ["SkirtFull", "SkirtFull"],
+    canvas: (width: 1100, height: 1050, scale: 2.0),
+    key_frames: [
+        (step: 60, label: "approach-t1.0"),
+        (step: 120, label: "grasp-t2.0"),
+        (step: 240, label: "lift-t4.0"),
+        (step: 390, label: "turn-t6.5"),
+        (step: 570, label: "setdown-t9.5"),
+        (step: 660, label: "release-t11.0"),
+    ],
+    tune: Some((
+        band_actor: 1,
+        band_part: "Body",
+        hand_actor: 0,
+        hand_parts: ("HandL", "HandR"),
+        band_near: 0.62,
+        band_far: 0.78,
+        g_candidates: [0.25, 0.4, 0.55, 0.7, 0.85],
+        clearance_bar: 70.0,
+        engage_min: -8.0,
+        crouch_drop_cap: 30.0,
+        default_crouch: 0.8,
+        family: (
+            grasp: {
+                "ParamArmR": Const(0.9),
+                "ParamElbowR": Const(0.2),
+                "ParamArmL": Ref("g"),
+                "ParamElbowL": Const(0.5),
+            },
+            crouch: {
+                "ParamArmR": Const(1.0),
+                "ParamElbowR": Const(0.25),
+                "ParamArmL": Add("g", 0.05),
+                "ParamElbowL": Const(0.55),
+                "ParamCrouch": Ref("cd"),
+            },
+            lift: {
+                "ParamArmR": Const(1.0),
+                "ParamElbowR": Const(0.1),
+                "ParamArmL": Const(1.0),
+                "ParamElbowL": Const(0.1),
+                "ParamCrouch": Mul("cd", 0.3125),
+            },
+            setdown: {
+                "ParamArmR": Const(1.0),
+                "ParamElbowR": Const(0.25),
+                "ParamArmL": Add("g", 0.05),
+                "ParamElbowL": Const(0.55),
+                "ParamCrouch": Mul("cd", 0.75),
+            },
+            grasp_at: 2.0,
+            crouch_at: 3.0,
+            lift_at: 5.0,
+            setdown_at: 9.6,
+        ),
+        expected: (
+            b_x: 0.0,
+            target_row_y: -49.41439880371095,
+            target_left: (-63.599998474121094, -49.41439880371095),
+            target_right: (63.599998474121094, -49.41439880371095),
+            predicted_slip: 0.33800482554031674,
+            pre_solve_slip: (14.22002691910047, 19.818431657381254),
+            grasp_arm_l: 0.699999988079071,
+            crouch_depth: 0.800000011920929,
+            turn_lift: 24.548784220188338,
+            crouch_drop: 5.199995994567871,
+            hand_rise: 3.3000030517578125,
+            predicted_clearance: 20.31440032958986,
+            waist_band: (-63.599998474121094, -49.41439880371095, 63.599998474121094, -21.17759948730469),
+            contact_offsets: (
+                (-63.599998474121094, -49.41439880371095),
+                (63.599998474121094, -49.41439880371095),
+            ),
+        ),
+    )),
+    // Runtime probes stepped alongside the scene: a short
+    // exchange at the grasp, the D-892 keeper's shift-snap
+    // shape as an effect timeline (Burst kind; the flash
+    // count is zero — no strobe keys), and audio bindings
+    // at the lift's beats. Evaluation only: no playback.
+    dialogue: Some((
+        start_step: 120,
+        chars_per_step: 2,
+        hold_steps: 30,
+        lines: [
+            (speaker: "Prima", text: "I've got you."),
+            (speaker: "Alma", text: "Okay — lifting."),
+        ],
+    )),
+    effects: [
+        (
+            id: "shift-snap-probe",
+            start_step: 240,
+            life_steps: 24,
+            keys: [
+                (at_step: 0, kind: Burst, x: 0.0, y: 0.2, count: 24, seed: 101, strobe: false),
+                (at_step: 120, kind: Burst, x: 0.35, y: 0.2, count: 24, seed: 102, strobe: false),
+                (at_step: 240, kind: Burst, x: 0.2, y: 0.2, count: 24, seed: 103, strobe: false),
+            ],
+        ),
+    ],
+    audio: [
+        (
+            id: "lift-strain",
+            cue: "lift.strain",
+            bus: "sfx",
+            gain_db: -3.0,
+            at_step: Some(300),
+            window: None,
+        ),
+        (
+            id: "turn-whoosh",
+            cue: "turn.whoosh",
+            bus: "sfx",
+            gain_db: -6.0,
+            at_step: Some(390),
+            window: None,
+        ),
+        (
+            id: "settle-bed",
+            cue: "room.tone",
+            bus: "music",
+            gain_db: -24.0,
+            at_step: None,
+            window: Some((0, 719, 240)),
+        ),
+    ],
+)
