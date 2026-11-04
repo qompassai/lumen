@@ -365,7 +365,7 @@ evidence, each with its own section in PIPELINES-REPORT.md.
    references it by version + hash once that commission fixes
    them.
 4. **D-859 acceptance scene** — the full-rigs build's Stage 4
-   ( Prima lifting Alma in the evaluator) is that commission's
+   (Prima lifting Alma in the evaluator) is that commission's
    gate, in flight at this writing; Stage 1 here depends only on
    the evaluator + authoring machinery, which is landed and
    evidenced (see PIPELINES-REPORT.md, dependency disposition).
