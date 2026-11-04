@@ -1,0 +1,187 @@
+// ActLab Tool 2 (D-943) calibration probe spec: the
+// Prima -> Alma lift of the D-875 scene protocol,
+// reconstructed as probe data against the D-942 landed
+// records (template v1.2). The pose tracks are the
+// scene's tracks with the D-942 tune outcome substituted
+// as literals (grasp_arm_l g = 0.4, crouch_depth cd =
+// 0.8, b_x = -6.599998474121094, turn compensation
+// 24.548784220188338 — ARM-RAISE-REPORT S4 /
+// evidence/d942-scene-summary.json). Contact targets
+// and the waist band are the tune's, unchanged by
+// D-942: row -49.41439880371095, targets
+// (+/-63.599998474121094, -49.41439880371095), band
+// fractions 0.62..0.78 of Alma's Body height.
+(
+    version: 1,
+    id: "lift-calibration",
+    steps: 720,
+    rate: 60,
+    settle_steps: 30,
+    rigs: [
+        (
+            id: "prima",
+            inx: "prima-full.inx",
+            sha256: "ce0f95de7c1ea300b6af1051c396482b7c1c38fdb496c6ec67c3cb650504c228",
+            pose_track: [
+                (t: 0.0, params: {}),
+                (t: 2.0, params: {
+                    "ParamArmR": 0.9,
+                    "ParamElbowR": 0.2,
+                    "ParamArmL": 0.4,
+                    "ParamElbowL": 0.5,
+                }),
+                (t: 3.0, params: {
+                    "ParamArmR": 1.0,
+                    "ParamElbowR": 0.25,
+                    "ParamArmL": 0.45,
+                    "ParamElbowL": 0.55,
+                    "ParamCrouch": 0.8,
+                }),
+                (t: 3.9, params: {
+                    "ParamArmR": 1.0,
+                    "ParamElbowR": 0.25,
+                    "ParamArmL": 0.45,
+                    "ParamElbowL": 0.55,
+                    "ParamCrouch": 0.8,
+                }),
+                (t: 5.0, params: {
+                    "ParamArmR": 1.0,
+                    "ParamElbowR": 0.1,
+                    "ParamArmL": 1.0,
+                    "ParamElbowL": 0.1,
+                    "ParamCrouch": 0.25,
+                }),
+                (t: 8.6, params: {
+                    "ParamArmR": 1.0,
+                    "ParamElbowR": 0.1,
+                    "ParamArmL": 1.0,
+                    "ParamElbowL": 0.1,
+                    "ParamCrouch": 0.25,
+                }),
+                (t: 9.6, params: {
+                    "ParamArmR": 1.0,
+                    "ParamElbowR": 0.25,
+                    "ParamArmL": 0.45,
+                    "ParamElbowL": 0.55,
+                    "ParamCrouch": 0.6,
+                }),
+                (t: 10.0, params: {
+                    "ParamArmR": 1.0,
+                    "ParamElbowR": 0.25,
+                    "ParamArmL": 0.45,
+                    "ParamElbowL": 0.55,
+                    "ParamCrouch": 0.6,
+                }),
+                (t: 11.0, params: {}),
+                (t: 12.0, params: {}),
+            ],
+            placement: PivotTurn(
+                keys: [
+                    (0.0, 0.0), (5.0, 0.0), (6.5, 26.0), (8.0, 26.0),
+                    (9.6, 0.0), (10.4, 0.0), (12.0, 0.0),
+                ],
+                compensation: 24.548784220188338,
+            ),
+        ),
+        (
+            id: "alma",
+            inx: "alma-full.inx",
+            sha256: "e0f6aceb4f6423dd5bf92f49ddd2781a9236e2bf1f69b635125369e68cd062c2",
+            pose_track: [
+                (t: 0.0, params: {}),
+                (t: 2.0, params: {}),
+                (t: 3.0, params: {
+                    "ParamKneeL": 0.15,
+                    "ParamKneeR": 0.15,
+                }),
+                (t: 3.9, params: {
+                    "ParamKneeL": 0.15,
+                    "ParamKneeR": 0.15,
+                }),
+                (t: 5.0, params: {
+                    "ParamKneeL": 0.9,
+                    "ParamKneeR": 0.9,
+                    "ParamArmL": -0.2,
+                    "ParamArmR": -0.2,
+                }),
+                (t: 8.6, params: {
+                    "ParamKneeL": 0.9,
+                    "ParamKneeR": 0.9,
+                    "ParamArmL": -0.2,
+                    "ParamArmR": -0.2,
+                }),
+                (t: 9.6, params: {
+                    "ParamKneeL": 0.2,
+                    "ParamKneeR": 0.2,
+                }),
+                (t: 10.0, params: {
+                    "ParamKneeL": 0.2,
+                    "ParamKneeR": 0.2,
+                }),
+                (t: 11.0, params: {}),
+                (t: 12.0, params: {}),
+            ],
+            placement: StepInOut(
+                base_x: -6.599998474121094,
+                step_in: 90.0,
+                step_in_window: (0.0, 2.0),
+                step_back: 70.0,
+                step_back_window: (10.0, 11.0),
+            ),
+        ),
+    ],
+    roots: ["SkirtFull", "SkirtFull"],
+    contacts: [
+        (
+            id: "c_hand_l",
+            a: (rig: 0, selector: PartCentroid(part: "HandL")),
+            b: (rig: 1, selector: PartCentroid(part: "Body")),
+            driven_rig: 1,
+            target: (-63.599998474121094, -49.41439880371095),
+            active_from: 2.0,
+            active_to: 10.0,
+        ),
+        (
+            id: "c_hand_r",
+            a: (rig: 0, selector: PartCentroid(part: "HandR")),
+            b: (rig: 1, selector: PartCentroid(part: "Body")),
+            driven_rig: 1,
+            target: (63.599998474121094, -49.41439880371095),
+            active_from: 2.0,
+            active_to: 10.0,
+        ),
+    ],
+    pairs: [
+        (
+            id: "hand-l-to-waist",
+            a: (rig: 0, selector: PartCentroid(part: "HandL")),
+            a_offset: (0.0, 0.0),
+            b: (rig: 1, selector: PartCentroid(part: "Body")),
+            contact: Some("c_hand_l"),
+            band: Some((rig: 1, part: "Body", near: 0.62, far: 0.78)),
+            penetration_part: Some("Body"),
+            engaged_from: 2.0,
+            engaged_to: 10.0,
+        ),
+        (
+            id: "hand-r-to-waist",
+            a: (rig: 0, selector: PartCentroid(part: "HandR")),
+            a_offset: (0.0, 0.0),
+            b: (rig: 1, selector: PartCentroid(part: "Body")),
+            contact: Some("c_hand_r"),
+            band: Some((rig: 1, part: "Body", near: 0.62, far: 0.78)),
+            penetration_part: Some("Body"),
+            engaged_from: 2.0,
+            engaged_to: 10.0,
+        ),
+    ],
+    clearance_rig: Some(1),
+    checkpoints: [
+        (step: 120, label: "grasp"),
+        (step: 180, label: "crouch"),
+        (step: 300, label: "hold"),
+        (step: 390, label: "turn"),
+        (step: 570, label: "setdown"),
+        (step: 660, label: "release"),
+    ],
+)

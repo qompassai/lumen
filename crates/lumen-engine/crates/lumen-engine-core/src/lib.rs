@@ -27,6 +27,7 @@ pub mod dialogue;
 pub mod effect;
 pub mod error;
 pub mod expr;
+pub mod probe;
 pub mod record;
 pub mod runtime;
 pub mod state;
@@ -43,6 +44,12 @@ pub use dialogue::{DialogueEvent, DialogueRuntime};
 pub use effect::{particle_position, splitmix64, EffectEvent, EffectPlayer, FLASH_MAX_PER_SECOND};
 pub use error::EngineError;
 pub use expr::{NameSource, ValueExpr};
+pub use probe::{
+    band_box, box_distance, is_sha256_hex, AnchorSelector, BandSpec, MeasureAggregate,
+    PairAccumulator, ProbeAnchor, ProbeCheckpoint, ProbeCheckpointRead, ProbeContact, ProbePair,
+    ProbePlacement, ProbePoseKey, ProbeRefusal, ProbeReport, ProbeRig, ProbeRigReport, ProbeSpec,
+    ProbeStepRead, RigParameterTable,
+};
 pub use record::{
     ActorRecord, AudioBindingRecord, CanvasRecord, ContactRecord, DialogueLineRecord,
     DialogueRecord, EffectKeyRecord, EffectKind, EffectRecord, KeyFrameRecord, PlacementTrack,

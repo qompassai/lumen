@@ -18,6 +18,7 @@
 //! the evaluator exactly as the games do (DP-8).
 
 pub mod instruments;
+pub mod probe;
 pub mod render;
 pub mod staging;
 

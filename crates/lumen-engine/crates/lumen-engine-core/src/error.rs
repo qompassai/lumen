@@ -36,6 +36,10 @@ pub enum EngineError {
     StateMismatch(String),
     /// LE-109: the fixed clock refused its rate.
     Clock(String),
+    /// LE-110: a probe spec or probe validation was
+    /// refused (shape, hash form, or timeline legality
+    /// against the rigs' own parameter tables).
+    Probe(String),
 }
 
 impl EngineError {
@@ -51,6 +55,7 @@ impl EngineError {
             EngineError::Audio(_) => "LE-107",
             EngineError::StateMismatch(_) => "LE-108",
             EngineError::Clock(_) => "LE-109",
+            EngineError::Probe(_) => "LE-110",
         }
     }
 }
@@ -85,6 +90,9 @@ impl fmt::Display for EngineError {
             }
             EngineError::Clock(message) => {
                 write!(f, "{code}: clock refused: {message}")
+            }
+            EngineError::Probe(message) => {
+                write!(f, "{code}: probe refused: {message}")
             }
         }
     }
