@@ -11,19 +11,27 @@
 //! tried first and is geometrically impossible for a rigid
 //! two-hand grasp: Aka's minimum hand separation (1,806
 //! units) exceeds every graspable width on Midori (~1,550).
-//! With roles swapped, Midori's minimum separation (1,408 at
-//! the grasp pose) matches Aka's skirt-flare silhouette
-//! (1,413 at the chosen row) to ~34 units of residual slip.
 //!
 //! Staging: front-facing puppets cannot do Stage 1's
 //! profile grasp, so B stands nearly concentric in FRONT of
-//! A (the lifter-behind staging this art supports), A's
-//! hands come to B's skirt-flare flanks, the crouch is A's
-//! Body pitch (the legs are root-parented and stay planted;
-//! a placement dip would sink the feet), and the lift is
-//! the pitch recovery (~100 units — the largest rigid
-//! hand-pair rise these rigs own; their arm swings are
-//! non-rigid and would cost ~350 units of slip).
+//! A (the lifter-behind staging this art supports). Run 4
+//! (D-857) bound A's hands to B's skirt-flare flanks: the
+//! rigs owned no adduction, no leg articulation, and no
+//! root channel, so the waist was unreachable and the lift
+//! was a ~100-unit Body-pitch recovery.
+//!
+//! This run (D-858 re-rig) uses re-rigged imports whose
+//! records add the missing articulation, art unchanged:
+//! `Arm:: *:: Adduct` channels (raise and adduction now
+//! compose, so the hands can both reach B's waist height
+//! and close to its width), a bidirectional `Crouch` root
+//! channel (+1 crouches 288 units on a leg fold, -1 rises
+//! 200 on stretched legs, feet planted at both ends), and
+//! a `Held` channel posing B's legs dangling while carried.
+//! The contacts bind to B's WAIST (a Body-silhouette row),
+//! the grasp pose (raise, adduction, crouch) is solved by
+//! the tune below, and the lift spends the reserved rise:
+//! grasp below max reach, hold at full raise + full rise.
 //!
 //! Usage: twobody_chars_scene <midori-import-dir> <aka-import-dir> <output-dir>
 //!
@@ -50,10 +58,6 @@ use lumen_rig_core::{PuppetEval, RgbaImage as TexImage, parse_model, parse_puppe
 
 const STEPS: u64 = 720;
 const DT: f32 = 1.0 / 60.0;
-/// The grasp pitch: Body_Yaw-Pitch y at the crouch/grasp
-/// pose (measured: -1 lowers the hands ~100 units and the
-/// body centroid ~75, legs planted).
-const GRASP_PITCH: f32 = -1.0;
 
 /* ---------------------------------------------------------------- */
 /* Loading                                                           */
@@ -223,48 +227,19 @@ fn engage_env(t: f32) -> f32 {
     smoothstep(t, 1.0, 2.0) * (1.0 - smoothstep(t, 10.0, 11.0))
 }
 
-/// A's arm envelope: defaults -> grasp values over
-/// [0.8, 2.0], back over [10.0, 10.8].
-fn arm_env(t: f32) -> f32 {
-    smoothstep(t, 0.8, 2.0) * (1.0 - smoothstep(t, 10.0, 10.8))
-}
-
-/// A's Body pitch track: bend to the grasp over [0.8, 2.0],
-/// hold the crouch to 3.9, straighten (the lift) over
-/// [3.9, 5.0], hold, bend again for set-down over
-/// [8.6, 9.6], release the bend over [10.0, 10.8].
-fn pitch_at(t: f32) -> f32 {
-    const KEYS: [(f32, f32); 10] = [
-        (0.0, 0.0),
-        (0.8, 0.0),
-        (2.0, GRASP_PITCH),
-        (3.9, GRASP_PITCH),
-        (5.0, 0.0),
-        (8.6, 0.0),
-        (9.6, GRASP_PITCH),
-        (10.0, GRASP_PITCH),
-        (10.8, 0.0),
-        (12.0, 0.0),
-    ];
-    for pair in KEYS.windows(2) {
-        let (t0, v0) = pair[0];
-        let (t1, v1) = pair[1];
-        if t <= t1 {
-            let f = if t1 > t0 { (t - t0) / (t1 - t0) } else { 0.0 };
-            let s = f * f * (3.0 - 2.0 * f);
-            return v0 + s * (v1 - v0);
-        }
-    }
-    0.0
-}
-
 fn lerp(a: f32, b: f32, f: f32) -> f32 {
     a + f * (b - a)
 }
 
-/// Tuned grasp: B's authored x, the flank targets on B
-/// (local scene space), the predicted rigid residual, and
-/// the measured gaze sign.
+/// B's carried-pose envelope: `Held` in over the lift
+/// [3.9, 5.0], out over the set-down [8.6, 9.6].
+fn held_env(t: f32) -> f32 {
+    smoothstep(t, 3.9, 5.0) * (1.0 - smoothstep(t, 8.6, 9.6))
+}
+
+/// Tuned grasp: B's authored x, the waist targets on B
+/// (local scene space), the solved grasp/hold dials, the
+/// predicted rigid residual, and the measured gaze sign.
 struct Tune {
     b_x: f64,
     target_left: [f64; 2],
@@ -274,6 +249,12 @@ struct Tune {
     pre_solve_slip: [f64; 2],
     hand_drop: f64,
     yaw_sign: f32,
+    grasp_raise: f32,
+    grasp_adduction: f32,
+    grasp_crouch: f32,
+    hold_adduction: f32,
+    lift_rise: f64,
+    engage_shift: f64,
 }
 
 fn set_pose(eval: &mut PuppetEval, sets: &[(&str, [f32; 2])]) {
@@ -283,32 +264,92 @@ fn set_pose(eval: &mut PuppetEval, sets: &[(&str, [f32; 2])]) {
     }
 }
 
-fn grasp_pose_sets() -> Vec<(&'static str, [f32; 2])> {
+/// A's pose dials at time t: (Arm Left raise, Arm Right
+/// raise, adduction, crouch). Keys: rest -> arrival dip
+/// (crouch +0.55) -> the tuned grasp over [1.4, 2.0], hold
+/// the grasp to 3.9, spend the lift reserve over [3.9, 5.0]
+/// (full raise, full rise at crouch -1, adduction re-solved
+/// for that raise), hold, return to the grasp pose for
+/// set-down over [8.6, 9.6], release to rest over
+/// [10.0, 10.8]. Smoothstep between keys.
+fn dials(t: f32, tune: &Tune, rest_left: [f32; 2]) -> (f32, f32, f32, f32) {
+    let rest = (rest_left[0], 0.0, 0.0, 0.0);
+    let dip = (rest_left[0], 0.0, 0.0, 0.55);
+    let grasp = (
+        tune.grasp_raise,
+        tune.grasp_raise,
+        tune.grasp_adduction,
+        tune.grasp_crouch,
+    );
+    let hold = (1.0, 1.0, tune.hold_adduction, -1.0);
+    let keys: [(f32, (f32, f32, f32, f32)); 11] = [
+        (0.0, rest),
+        (0.8, rest),
+        (1.4, dip),
+        (2.0, grasp),
+        (3.9, grasp),
+        (5.0, hold),
+        (8.6, hold),
+        (9.6, grasp),
+        (10.0, grasp),
+        (10.8, rest),
+        (12.0, rest),
+    ];
+    for pair in keys.windows(2) {
+        let (t0, v0) = pair[0];
+        let (t1, v1) = pair[1];
+        if t <= t1 {
+            let f = if t1 > t0 { (t - t0) / (t1 - t0) } else { 0.0 };
+            let s = f * f * (3.0 - 2.0 * f);
+            return (
+                lerp(v0.0, v1.0, s),
+                lerp(v0.1, v1.1, s),
+                lerp(v0.2, v1.2, s),
+                lerp(v0.3, v1.3, s),
+            );
+        }
+    }
+    rest
+}
+
+/// The full pose set for one (raise, adduction, crouch)
+/// dial state of A (both arms at the same raise/adduction;
+/// the re-rig's adduction channels are symmetric by
+/// construction and the tune solves one value).
+fn a_pose_sets(raise: f32, adduction: f32, crouch: f32) -> Vec<(&'static str, [f32; 2])> {
     vec![
-        ("Arm_Left_Move", [0.0, 0.0]),
-        ("Arm_Right_Move", [0.0, 0.0]),
-        ("Body_Yaw-Pitch", [0.0, GRASP_PITCH]),
+        ("Arm_Left_Move", [raise, 0.0]),
+        ("Arm_Right_Move", [raise, 0.0]),
+        ("Arm_Left_Adduct", [adduction, 0.0]),
+        ("Arm_Right_Adduct", [adduction, 0.0]),
+        ("Crouch", [crouch, 0.0]),
     ]
 }
 
 fn pose_a(t: f32, tune: &Tune, rest_left: [f32; 2]) -> Vec<(&'static str, [f32; 2])> {
-    let g = arm_env(t);
-    vec![
-        ("Arm_Left_Move", [lerp(rest_left[0], 0.0, g), 0.0]),
-        ("Arm_Right_Move", [0.0, 0.0]),
-        ("Body_Yaw-Pitch", [0.0, pitch_at(t)]),
-        (
-            "Head_Yaw-Pitch",
-            [tune.yaw_sign * 0.3 * engage_env(t), 0.0],
-        ),
-    ]
+    let (l, r, a, c) = dials(t, tune, rest_left);
+    let mut sets = vec![
+        ("Arm_Left_Move", [l, 0.0]),
+        ("Arm_Right_Move", [r, 0.0]),
+        ("Arm_Left_Adduct", [a, 0.0]),
+        ("Arm_Right_Adduct", [a, 0.0]),
+        ("Crouch", [c, 0.0]),
+    ];
+    sets.push((
+        "Head_Yaw-Pitch",
+        [tune.yaw_sign * 0.3 * engage_env(t), 0.0],
+    ));
+    sets
 }
 
 fn pose_b(t: f32, tune: &Tune) -> Vec<(&'static str, [f32; 2])> {
-    vec![(
-        "Head_Yaw-Pitch",
-        [-tune.yaw_sign * 0.3 * engage_env(t), 0.0],
-    )]
+    vec![
+        (
+            "Head_Yaw-Pitch",
+            [-tune.yaw_sign * 0.3 * engage_env(t), 0.0],
+        ),
+        ("Held", [held_env(t), 0.0]),
+    ]
 }
 
 /* ---------------------------------------------------------------- */
@@ -317,8 +358,9 @@ fn pose_b(t: f32, tune: &Tune) -> Vec<(&'static str, [f32; 2])> {
 
 /// A's authored placement: ground lift only, plus Stage 1's
 /// rotation keys pivoting about A's ground contact point
-/// (the crouch is the Body pitch, not a placement dip, so
-/// A's feet never leave y = 0).
+/// (the crouch is A's own `Crouch` channel with its leg
+/// fold, not a placement dip, so A's feet never leave
+/// y = 0).
 fn a_placement(t: f64, ground_lift: f64, pivot: [f64; 2]) -> Placement {
     // Stage 1's keys carried an 8-degree residual rotation
     // at set-down; at puppet scale that tilts B's feet ~97
@@ -677,11 +719,79 @@ fn measure_bounds(eval: &mut PuppetEval, model: &Model) -> Bounds {
 }
 
 /* ---------------------------------------------------------------- */
-/* Grasp tune: at the grasp pose (arms 0, pitch GRASP_PITCH),        */
-/* scan silhouette rows on B's Body+Skirt for the flank pair         */
-/* whose separation best matches A's hand-pair separation;           */
-/* the row scan's residual is the predicted rigid slip.              */
+/* Grasp tune (waist-true): scan B's Body silhouette for waist      */
+/* rows; grid-search A's (raise, crouch) dials, solving the          */
+/* adduction by bisection on the signed hand separation so the       */
+/* hand pair matches each row's width exactly; score by              */
+/* predicted hold clearance (engage shift + lift rise) with          */
+/* feasibility gates on the adduction solutions.                     */
 /* ---------------------------------------------------------------- */
+
+/// A's hand centroids (scene space, A-local) at one pose.
+fn measure_hands(
+    eval_a: &mut PuppetEval,
+    model_a: &Model,
+    sets: &[(&str, [f32; 2])],
+) -> ([f64; 2], [f64; 2]) {
+    set_pose(eval_a, sets);
+    eval_a.end_frame(DT).expect("measure frame A");
+    let geo = harvest(eval_a, model_a);
+    (
+        centroid_of(mesh_named(&geo, "Hand_Left")),
+        centroid_of(mesh_named(&geo, "Hand_Right")),
+    )
+}
+
+/// One (raise, crouch) grid cell: hand separation and mean
+/// hand height at adduction 0 and 1 (scene space, A-local).
+/// Separation is SIGNED in x (Hand_Left minus Hand_Right);
+/// adduction decreases it ~linearly.
+#[derive(Clone, Copy)]
+struct GridCell {
+    dx0: f64,
+    dx1: f64,
+    mean_y0: f64,
+    mean_y1: f64,
+}
+
+fn grid_cell(eval_a: &mut PuppetEval, model_a: &Model, raise: f32, crouch: f32) -> GridCell {
+    let (l0, r0) = measure_hands(eval_a, model_a, &a_pose_sets(raise, 0.0, crouch));
+    let (l1, r1) = measure_hands(eval_a, model_a, &a_pose_sets(raise, 1.0, crouch));
+    GridCell {
+        dx0: l0[0] - r0[0],
+        dx1: l1[0] - r1[0],
+        mean_y0: (l0[1] + r0[1]) / 2.0,
+        mean_y1: (l1[1] + r1[1]) / 2.0,
+    }
+}
+
+/// Solve the adduction for one target width at one grid
+/// cell by bisection on the signed separation (24 rounds;
+/// the channel is linear, so this lands at the solver
+/// floor). Returns the adduction and the hand centroids at
+/// the solution.
+fn solve_adduction(
+    eval_a: &mut PuppetEval,
+    model_a: &Model,
+    raise: f32,
+    crouch: f32,
+    width: f64,
+) -> (f32, [f64; 2], [f64; 2]) {
+    let mut lo = 0.0f32;
+    let mut hi = 1.0f32;
+    let mut mid = 0.5f32;
+    let mut hands = ([0.0; 2], [0.0; 2]);
+    for _ in 0..24 {
+        mid = (lo + hi) / 2.0;
+        hands = measure_hands(eval_a, model_a, &a_pose_sets(raise, mid, crouch));
+        if hands.0[0] - hands.1[0] > width {
+            lo = mid;
+        } else {
+            hi = mid;
+        }
+    }
+    (mid, hands.0, hands.1)
+}
 
 fn tune(
     eval_a: &mut PuppetEval,
@@ -697,19 +807,12 @@ fn tune(
         set_pose(eval_b, &[]);
         eval_b.end_frame(DT).expect("settle B");
     }
-    // A's hands at rest (for the pitch hand-drop record) and
-    // at the grasp pose.
+    // A's hands at rest (for the hand-drop record).
     set_pose(eval_a, &[]);
     eval_a.end_frame(DT).expect("rest frame A");
     let geo_rest = harvest(eval_a, model_a);
     let rest_l = centroid_of(mesh_named(&geo_rest, "Hand_Left"));
     let rest_r = centroid_of(mesh_named(&geo_rest, "Hand_Right"));
-    set_pose(eval_a, &grasp_pose_sets());
-    eval_a.end_frame(DT).expect("grasp frame A");
-    let geo_a = harvest(eval_a, model_a);
-    let hand_l = centroid_of(mesh_named(&geo_a, "Hand_Left"));
-    let hand_r = centroid_of(mesh_named(&geo_a, "Hand_Right"));
-    let hand_drop = ((rest_l[1] - hand_l[1]) + (rest_r[1] - hand_r[1])) / 2.0;
     // Gaze sign probe: Head yaw +x moves the Neck centroid
     // toward +x or -x.
     set_pose(eval_a, &[("Head_Yaw-Pitch", [0.5, 0.0])]);
@@ -719,66 +822,111 @@ fn tune(
     let neck_rest = centroid_of(mesh_named(&geo_rest, "Neck"));
     let yaw_sign = if neck_yaw[0] >= neck_rest[0] { 1.0 } else { -1.0 };
 
-    // B at default pose: silhouette row scan. Rows are in
-    // B-local scene coordinates; the hands' heights in that
-    // frame are hand_world_y - bounds_b.foot_y. The scan
-    // scores each row by the TRUE Kabsch residual (the
-    // solver rotates the target pair onto the hand pair, so
-    // only the separation magnitudes mismatch) and by the
-    // predicted hold clearance (pitch rise + engage shift).
-    // Objective: minimum residual among rows whose
-    // predicted clearance is at least 80 units — a grasp
-    // glued to the floor is not a lift, and a floating
-    // grasp is not a contact proof.
+    // B at default pose: waist-row scan over the Body
+    // silhouette alone (run 4 scanned Body+Skirt and landed
+    // on the flare). Rows are in B-local scene coordinates.
+    // A waist row is 250..=620 wide; if no row qualifies,
+    // every Body row competes and the pack discloses it.
     set_pose(eval_b, &[]);
     eval_b.end_frame(DT).expect("frame B");
     let geo_b = harvest(eval_b, model_b);
-    let hand_mid_x = (hand_l[0] + hand_r[0]) / 2.0;
-    let hand_delta = [hand_l[0] - hand_r[0], hand_l[1] - hand_r[1]];
-    let hand_sep = hand_delta[0].hypot(hand_delta[1]);
-    // Pitch-only hand rise (arms fixed): re-measure A at
-    // pitch 0 with grasp arms.
-    set_pose(
-        eval_a,
-        &[
-            ("Arm_Left_Move", [0.0, 0.0]),
-            ("Arm_Right_Move", [0.0, 0.0]),
-            ("Body_Yaw-Pitch", [0.0, 0.0]),
-        ],
-    );
-    eval_a.end_frame(DT).expect("pitch-zero frame A");
-    let geo_p0 = harvest(eval_a, model_a);
-    let p0_l = centroid_of(mesh_named(&geo_p0, "Hand_Left"));
-    let p0_r = centroid_of(mesh_named(&geo_p0, "Hand_Right"));
-    let pitch_rise = ((p0_l[1] - hand_l[1]) + (p0_r[1] - hand_r[1])) / 2.0;
-    let mut best: Option<(f64, f64, [f64; 2], [f64; 2])> = None;
-    let mut best_any: Option<(f64, f64, [f64; 2], [f64; 2])> = None;
-    let mut row = -280.0f64;
-    while row <= -60.0 {
-        if let Some((lo, hi)) = silhouette_at(model_b, &geo_b, &["Body", "Skirt"], row) {
-            // A's Hand_Left sits at +x, Hand_Right at -x.
-            let target_l = [hi, row];
-            let target_r = [lo, row];
-            let target_sep = target_l[0] - target_r[0];
-            let predicted = (hand_sep - target_sep).abs() / 2.0;
-            // Engage shift: solver aligns centroids, so B
-            // moves by (hand centroid - target centroid) in
-            // world y; clearance at hold = pitch rise + that.
-            let target_world_y = row + bounds_b.foot_y;
-            let hand_centre_world_y =
-                (hand_l[1] + hand_r[1]) / 2.0 + bounds_a.foot_y;
-            let clearance = pitch_rise + (hand_centre_world_y - target_world_y);
-            if best_any.is_none_or(|b| predicted < b.0) {
-                best_any = Some((predicted, row, target_l, target_r));
-            }
-            if clearance >= 80.0 && best.is_none_or(|b| predicted < b.0) {
-                best = Some((predicted, row, target_l, target_r));
-            }
+    let mut rows: Vec<(f64, f64, f64)> = Vec::new();
+    let mut row = 200.0f64;
+    while row <= 1350.0 {
+        if let Some((lo, hi)) = silhouette_at(model_b, &geo_b, &["Body"], row) {
+            rows.push((row, lo, hi));
         }
         row += 2.0;
     }
-    let (predicted_slip, target_row_y, target_left, target_right) =
-        best.or(best_any).expect("silhouette row found");
+    let waist: Vec<(f64, f64, f64)> = rows
+        .iter()
+        .copied()
+        .filter(|&(_, lo, hi)| (250.0..=620.0).contains(&(hi - lo)))
+        .collect();
+    let candidates = if waist.is_empty() { &rows } else { &waist };
+    assert!(!candidates.is_empty(), "Body silhouette rows found");
+
+    // The (raise, crouch) grid. The hold anchor (raise 1,
+    // crouch -1) is one of the cells.
+    let raises = [0.3f32, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0];
+    let crouches = [0.0f32, -0.25, -0.5, -0.75, -1.0];
+    let mut grid: Vec<(f32, f32, GridCell)> = Vec::new();
+    for &r in &raises {
+        for &c in &crouches {
+            let cell = grid_cell(eval_a, model_a, r, c);
+            grid.push((r, c, cell));
+        }
+    }
+    let hold_cell = grid
+        .iter()
+        .find(|&&(r, c, _)| r == 1.0 && c == -1.0)
+        .map(|&(_, _, cell)| cell)
+        .expect("hold anchor measured");
+
+    // Score every (row, cell): solve the adduction
+    // analytically from the cell endpoints (linear), gate
+    // feasibility, predict the hold clearance (the engage
+    // shift B takes at grasp + the hand rise grasp -> hold,
+    // both measured, never assumed).
+    type Scored = ((i64, i64, i64), (f64, f64, f64, f32, f32), f64);
+    let mut best: Option<Scored> = None;
+    let mut best_any: Option<Scored> = None;
+    for &(row_y, lo, hi) in candidates {
+        let width = hi - lo;
+        let a_hold_lin = (hold_cell.dx0 - width) / (hold_cell.dx0 - hold_cell.dx1);
+        let hold_ok = (0.02..=1.0).contains(&a_hold_lin);
+        let hold_mean_y = hold_cell.mean_y0 + (hold_cell.mean_y1 - hold_cell.mean_y0) * a_hold_lin;
+        for &(r, c, cell) in &grid {
+            let rate = cell.dx0 - cell.dx1;
+            if rate <= 0.0 {
+                continue;
+            }
+            let a_star = (cell.dx0 - width) / rate;
+            let grasp_mean_y = cell.mean_y0 + (cell.mean_y1 - cell.mean_y0) * a_star;
+            let engage = (grasp_mean_y + bounds_a.foot_y) - (row_y + bounds_b.foot_y);
+            let clearance = engage + (hold_mean_y - grasp_mean_y);
+            let feasible = (0.05..=0.98).contains(&a_star) && hold_ok && engage >= -40.0;
+            // Primary: among feasible, clearance in the
+            // strong band (>= 120) first, then max
+            // clearance, then min |engage|.
+            let key = if feasible {
+                (
+                    2 + i64::from(clearance >= 120.0),
+                    clearance as i64,
+                    -(engage.abs() as i64),
+                )
+            } else {
+                let slip_pred = (cell.dx0 - rate * a_star.clamp(0.0, 1.0) - width).abs() / 2.0;
+                (0, -(slip_pred as i64), -(engage.abs() as i64))
+            };
+            let entry = (row_y, lo, hi, r, c);
+            if best_any.as_ref().is_none_or(|b| key > b.0) {
+                best_any = Some((key, entry, clearance));
+            }
+            if feasible && best.as_ref().is_none_or(|b| key > b.0) {
+                best = Some((key, entry, clearance));
+            }
+        }
+    }
+    let (_, (target_row_y, tlo, thi, grasp_raise, grasp_crouch), _) =
+        best.or(best_any).expect("grasp candidate found");
+    let width = thi - tlo;
+    // A's Hand_Left sits at +x, Hand_Right at -x.
+    let target_left = [thi, target_row_y];
+    let target_right = [tlo, target_row_y];
+
+    // Exact solutions by bisection at the winning cell and
+    // at the hold anchor.
+    let (grasp_adduction, hand_l, hand_r) =
+        solve_adduction(eval_a, model_a, grasp_raise, grasp_crouch, width);
+    let (hold_adduction, hold_l, hold_r) = solve_adduction(eval_a, model_a, 1.0, -1.0, width);
+    let grasp_mean_y = (hand_l[1] + hand_r[1]) / 2.0;
+    let hold_mean_y = (hold_l[1] + hold_r[1]) / 2.0;
+    let lift_rise = hold_mean_y - grasp_mean_y;
+    let engage_shift = (grasp_mean_y + bounds_a.foot_y) - (target_row_y + bounds_b.foot_y);
+    let predicted_slip = ((hand_l[0] - hand_r[0]) - width).abs() / 2.0;
+    let hand_drop = ((rest_l[1] - hand_l[1]) + (rest_r[1] - hand_r[1])) / 2.0;
+    let hand_mid_x = (hand_l[0] + hand_r[0]) / 2.0;
     let target_mid_x = (target_left[0] + target_right[0]) / 2.0;
     let b_x = hand_mid_x - target_mid_x;
     // Pre-solve slip at the authored placements (A grounded
@@ -797,6 +945,12 @@ fn tune(
         pre_solve_slip: [slip(hand_l, target_left), slip(hand_r, target_right)],
         hand_drop,
         yaw_sign,
+        grasp_raise,
+        grasp_adduction,
+        grasp_crouch,
+        hold_adduction,
+        lift_rise,
+        engage_shift,
     }
 }
 
@@ -1213,10 +1367,17 @@ fn main() {
                   "height_a_units": bounds_a.height, "height_b_units": bounds_b.height,
                   "foot_y_a": bounds_a.foot_y, "foot_y_b": bounds_b.foot_y},
         "tune": {"b_x": tune.b_x, "target_row_y_b_local": tune.target_row_y,
+                 "target_part": "Body",
                  "targets_b_local": {"left": tune.target_left, "right": tune.target_right},
                  "predicted_slip": tune.predicted_slip,
                  "pre_solve_slip_at_grasp": tune.pre_solve_slip,
-                 "pitch_hand_drop": tune.hand_drop, "yaw_sign": tune.yaw_sign,
+                 "grasp_hand_drop": tune.hand_drop, "yaw_sign": tune.yaw_sign,
+                 "grasp_raise": tune.grasp_raise,
+                 "grasp_adduction": tune.grasp_adduction,
+                 "grasp_crouch": tune.grasp_crouch,
+                 "hold_adduction": tune.hold_adduction,
+                 "lift_rise_units": tune.lift_rise,
+                 "engage_shift_units": tune.engage_shift,
                  "contact_offsets": [contacts[0].offset, contacts[1].offset]},
         "c1_slip_units": {
             "engage_2_4s": {"p95": engage_p95, "max": engage_max},
