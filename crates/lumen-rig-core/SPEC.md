@@ -850,6 +850,372 @@ decision, not an omission.
 
 ---
 
+## 13. The puppet stage (`lumen-rig-puppet`, format v1)
+
+A *puppet* is a 2D articulated figure in the Inochi2D
+tradition: a tree of parts with textured meshes, driven by
+2D-grid parameters through bindings, with pendulum/spring
+physics nodes writing back into parameters. This section
+defines the stage asset that carries a puppet and the
+evaluator that animates and renders it. The semantics are
+reference semantics: where the Inochi2D ecosystem has a
+reference behaviour — the D-language Inochi2D core (the
+reference implementation) and the Rust inox2d runtime (the
+INP1 corpus implementation) — this section adopts it and
+says so; where the two disagree, §13.10 rules.
+
+### 13.1 Two assets, one puppet
+
+An imported production puppet does not fit the §3 model:
+Midori carries 81 textures against `TEXTURES_MAX` 64, and
+meshes, binding grids, and pendulum physics are stage
+semantics, not model semantics. A puppet is therefore
+**two assets**:
+
+- a §3 **model** (`lumen-rig-model`) carrying the puppet's
+  parameters as split scalars (a vec2 parameter `P` becomes
+  scalars `P_x` and `P_y`; a 1D parameter becomes `P_x`
+  only) and its parts as a transformless forest with
+  opacity 1.0 and no meshes, textures, deformers, or
+  physics;
+- a **stage** (`lumen-rig-puppet`, this section) carrying
+  everything else: its own parameter table (vec2/1D,
+  axes, defaults), the node tree with transforms, meshes,
+  textures, bindings, masks, composites, and physics.
+
+The stage is validated *against* its model
+(`parse_puppet(bytes, model)`): the stage's `model` field
+names the model id; every stage node id is a model part
+with a mirrored parent; every stage parameter channel
+names a model scalar whose min, max, and default are
+identical. An imported model alone is **not** a puppet;
+evaluation requires the stage asset.
+
+### 13.2 The puppet plane
+
+The puppet plane is the INP plane: x right, **y down**,
+units are puppet pixels. (This differs from §3's y-up rig
+plane deliberately: the stage's contract is parity with
+the INP reference corpus, and a silent axis flip would
+invalidate every conformance frame. Conversion between
+the planes is a tooling concern, not an asset property.)
+Angles in the asset are **degrees** (the format-wide
+convention); conversion from INP's radians happens at
+import. A renderer's mapping from puppet plane to screen
+is its own documented choice; the conformance driver maps
+`screen = world * scale + (width/2, height/2)`.
+
+### 13.3 Parameters and bindings
+
+A parameter is a vec2 or 1D value with per-channel
+`min`/`max`/`default` and per-channel **axis points in
+value space**, strictly increasing. A **binding** maps one
+parameter to one node with a grid of keyed values,
+`values[x][y]` (outer index = x axis point). Binding
+kinds, and what a sampled value `v` does:
+
+| kind | effect |
+|---|---|
+| `translation_x`, `translation_y` | `translation += v` |
+| `scale_x`, `scale_y` | `scale *= v` |
+| `rotation_x`, `rotation_y`, `rotation_z` | `rotation += v` (degrees) |
+| `z_sort` | `zsort += v` |
+| `opacity` | drawable opacity factor `*= v` (§13.4) |
+| `deform` | per-vertex displacement `+= cell` (cell = one `[dx, dy]` per mesh vertex) |
+
+Sampling is bilinear over the located axis cell (nearest
+under `interpolate: "nearest"`); the axis search clamps at
+both ends, mirroring the reference search. All binding
+kinds commute across parameters (they add or multiply
+independent accumulators), so parameter iteration order
+is immaterial; two bindings with the same
+(parameter, node, kind) are a validation error (LRP-202).
+`interpolate: "cubic"` is **carried and inert**: the INP1
+corpus implementation drops cubic bindings at parse time,
+so the corpus frames exclude them; implementing cubic
+interpolation against the D core and re-proving the
+corpus is a separate commission, never a silent change.
+14 of Midori's 416 bindings are cubic, on the face/body
+master parts — the stage records them, the evaluator
+skips them, and the gap is named here rather than hidden.
+
+### 13.4 Evaluation order
+
+One frame is: `begin_frame` (parameter values reset to
+defaults; physics state persists) → the caller sets
+parameter values (setting clamps to `[min, max]`, like
+the reference) → `end_frame(dt)`:
+
+1. apply parameters (§13.3) onto base node state;
+2. compose transforms (§13.5);
+3. if `dt > 0`, step physics (§13.7) — anchors read the
+   composed transforms — and write physics outputs into
+   parameter values;
+4. apply parameters again;
+5. compose transforms again.
+
+Opacity bindings multiply a per-frame factor that starts
+at 1.0 for every drawable on every apply pass; the
+factor is *recomputed from base state*, never carried
+across passes or frames, so a multiplicative binding
+cannot compound (the vendored inox2d established this
+snapshot/restore semantics after demonstrating the
+compounding defect; the stage adopts it as law).
+`dt` must be finite and non-negative (LRP-306).
+
+### 13.5 Transforms
+
+A node's absolute transform is
+`parent_absolute * (T * R * S)`, composed pre-order, with
+R from Euler XYZ angles; the root's absolute transform is
+its own relative transform. `z_sort` accumulates
+additively down the tree; a `lock_to_root` node inherits
+the root's accumulated z_sort instead of its parent's.
+`enabled` is carried data: the reference evaluator does
+not consult it, and neither does the stage.
+`pixel_snap` is likewise carried and ignored, as in the
+reference.
+
+### 13.6 Rendering semantics
+
+Drawables (parts and composites) are drawn in descending
+accumulated z_sort; ties keep pre-order (a stable sort).
+A part's vertices render at
+`absolute * (vertex - origin + deform)`.
+
+Fragment shading (the reference part shader): a sampled
+texel `(rgb, a)` yields
+`screen = 1 - (1 - rgb) * (1 - screen_tint * a)`, and the
+source pixel is `(screen, a) * (tint, 1) * opacity`.
+The rgb is **not** premultiplied by `a` — a zero-alpha
+texel with nonzero rgb still contributes under the blend
+equations, and no transparent-texel shortcut is legal.
+Blending is the reference factor table (FUNC_ADD unless
+noted): normal `(ONE, ONE_MINUS_SRC_ALPHA)`, multiply
+`(DST_COLOR, ONE_MINUS_SRC_ALPHA)`, color_dodge
+`(DST_COLOR, ONE)`, linear_dodge `(ONE, ONE)`, screen
+`(ONE, ONE_MINUS_SRC_COLOR)`, clip_to_lower
+`(DST_ALPHA, ONE_MINUS_SRC_ALPHA)`, slice_from_lower
+FUNC_SUBTRACT `(ONE_MINUS_DST_ALPHA, ONE_MINUS_SRC_ALPHA)`.
+Textures sample bilinear with a transparent-black border.
+Every framebuffer write — including composite
+offscreen buffers — clamps and **quantizes to 1/255
+steps**, mirroring RGBA8 render targets; this is part of
+the determinism contract, not an optimization.
+
+**Masks.** A masked drawable's coverage is built from its
+mask sources in order with *sequential replacement*
+semantics: a `mask` source writes coverage 1 where its
+sampled albedo alpha exceeds the **masked drawable's**
+`mask_threshold` (default 0.5), a `dodge_mask` source
+writes 0. Sources render with their current deformed
+geometry, albedo alpha only (no opacity factor), and a
+source's own masks apply recursively. Inherited coverage
+(from a masked ancestor drawable) intersects. This is
+the coverage model the corpus exercises (24 mask
+references in Midori, 22 in Aka, all mode `mask`, all
+sources parts); it is a coverage model, not the
+reference's stencil implementation, and the conformance
+frames are its proof.
+
+**Composites.** A composite renders its *direct drawable
+children* into an offscreen buffer (cleared transparent,
+children drawn with the same rules), then draws the
+buffer 1:1 through its own tint/screen/opacity math with
+its blend mode, its opacity clamped to `[0, 1]` at this
+finish step only. Parts nested under a mesh group inside
+a composite are root drawables, not composite children.
+A composite nested inside a composite is evaluated
+recursively — a documented divergence: the reference GL
+renderer panics on it; the corpus contains none.
+
+**Mesh groups.** A mesh group's own mesh is carried as
+`group_mesh` data and never rendered (the reference
+never loads it); transform bindings on the group apply
+normally; deform bindings targeting it are carried and
+inert, as in the reference.
+
+### 13.7 Physics
+
+Physics nodes are the INP SimplePhysics model, a
+different system from §5's Verlet strands: §5 law does
+not apply here, and this section's law does not leak
+back. A physics node integrates a pendulum and writes
+**one scalar channel pair** — its output parameter,
+mapped by `map_mode` (`xy`, `yx`, `angle_length`,
+`length_angle`) from the bob's direction/length relative
+to the node's anchor, scaled by `output_scale`. One
+writer per parameter (LRP-205).
+
+Integration is a formula-for-formula port of the
+reference integrators, in f32, quirks included, because
+the conformance frames are the contract:
+
+- stepping clamps the frame `dt` to at most 10 s and
+  ticks in chunks of at most 0.01 s;
+- RK4 is classic RK4 with a non-finite guard that reverts
+  the whole tick;
+- the rigid pendulum re-derives its angle from the
+  current bob each tick; the spring pendulum's bob
+  **starts at the world origin** (0, 0), not the anchor —
+  the violent first-frames transient this causes is
+  reference behaviour and the corpus's early-physics
+  frame proves it;
+- the spring's damping back-rotation uses the un-damped
+  rotated velocity in its cross terms (a reference
+  quirk, preserved verbatim).
+
+Anchors: `local_only` nodes anchor at their relative
+translation; others at their absolute transform applied
+to the origin. Puppet-global `pixels_per_meter` and
+`gravity` ride in the stage's `physics` record.
+
+### 13.8 Validation order
+
+Stage validation runs in this order (first failure
+wins): header probe (format, version, size, syntax,
+schema) → collection bounds → parameters (ids, ranges,
+axis shape, model-channel cross-checks) → textures →
+nodes (ids, kind/payload discipline, mesh shape) →
+node-set/parent mirroring against the model → tree
+shape (exactly one root, depth) → mask references and
+mask cycles → physics one-writer → bindings (references,
+duplicates, grid shapes against axes and meshes).
+Error codes are the `LRP-` family: 101 too large, 102
+syntax, 103 schema, 105 format/version, 201 invalid id,
+202 duplicate id or binding, 203 dangling reference,
+204 tree or mask shape, 205 physics multiple writers,
+206 stage/model mismatch, 207 kind/payload mismatch,
+208 texture mismatch at evaluation construction, 301
+non-finite number, 302 out of range, 303 grid shape,
+304 axis shape, 305 collection bound, 306 invalid dt.
+Codes are never renumbered (§10 applies).
+
+### 13.9 Arithmetic and determinism
+
+The stage evaluates in **f32**, mirroring the reference
+integrators and grid math operation for operation; §7's
+f64 law governs the §3–§5 model system, a different
+contract. Within the stage, evaluation is a pure
+function of (stage, textures, parameter sets, dt
+sequence): iteration order is fixed (asset order for
+parameters, bindings, nodes, physics), maps are used for
+lookup only and never iterated on evaluation paths, and
+identical inputs produce byte-identical frames across
+runs and processes.
+
+### 13.10 The (0, 0) position
+
+**Ruling: the stage applies every parameter at every
+value, including exactly (0, 0). There is no skip.**
+
+The Rust INP1 runtime's `ParamCtx::apply` skips any
+parameter whose current value is exactly (0, 0), and
+Stage A of the vendoring left that skip in place as a
+pinned known gap. The determination behind this ruling,
+from primary sources:
+
+1. The D-language Inochi2D core — the reference
+   implementation — applies every binding of every
+   active parameter unconditionally; no (0, 0) check
+   exists in it (`Parameter.update`, core v0.8.7).
+2. The Rust runtime's own per-parameter `Param::apply`
+   is likewise unconditional; only the `ParamCtx`
+   aggregation layer skips.
+3. The skip's provenance is an inox2d-local patch:
+   upstream commit c1ade82 ("Dirty zero check patching
+   for an old bug... overflow will happen if value (0, 0)
+   is applied on a param, which is clearly a bug. The
+   actual fix is not in the scope of ECS refactor"),
+   carrying the TODO "a correct implementation should
+   not fail on param value (0, 0)". It is a workaround
+   for an inox2d data-structure bug, not Inochi2D
+   semantics.
+4. The mechanism that makes the skip *visible*: INP
+   binding grids are authored offsets whose value at a
+   parameter's default lattice point is frequently not
+   the identity — artists key real pose data into the
+   default cell, and deform grids hold rest-shape
+   displacements there. Census of the conformance
+   puppets: 69 of Midori's bindings and 43 of Aka's are
+   non-identity at the default corner. The skip therefore
+   redefines the rest pose to raw base state; applying
+   (reference semantics) shifts it by the authored
+   offsets. Physics-output parameters sit at exactly
+   (0, 0) whenever their pendulum output is neutral, so
+   the skip also gates physics-driven bindings at
+   neutral — the entanglement the vendoring flagged is
+   this, and it resolves in favour of applying: the D
+   core's physics writes flow through the same
+   unconditional update.
+
+Measured effect (changed pixels, per-channel max diff
+> 8, conformance renders): removing the skip moves
+Midori's rest frame by 9,247 px and Aka's by 1,808 px —
+the vendoring's GL-route numbers, reproduced
+digit-for-digit by this evaluator's two modes (§13.10's
+proof switch exists in the evaluator for measurement
+only: `set_zero_skip_for_proof`; it is not a semantic
+option and no conforming evaluation enables it).
+
+### 13.11 Bounds (stage)
+
+`PUPPET_PARAMETERS_MAX` 128, `PUPPET_TEXTURES_MAX` 256,
+`PUPPET_NODES_MAX` 1024, `PUPPET_BINDINGS_MAX` 8192
+(`limits.rs`). Per-mesh vertex/index bounds and the
+§11 axis/keyform bounds apply unchanged.
+
+### 13.12 The INP1 importer
+
+The importer (`inp`) is the only component that reads
+INP1; the runtime never parses INP1 (the R5 pattern).
+It reads the container (`TRNSRTS\0` magic, big-endian
+JSON length, payload, `TEX_SECT`, optional `EXT_SECT`),
+converts the payload, and **validates its own output**
+through `parse_model` and `parse_puppet` before
+returning — importer output is always a validated asset
+pair. Conversion law:
+
+- **Axis points are denormalized.** INP1 stores axis
+  points as normalized positions across `[min, max]`
+  (the reference normalizes the value before lookup);
+  the stage stores value-space axes, so the import maps
+  `t -> min + t * (max - min)` per channel. The mapping
+  is affine, so interpolation weights are unchanged.
+- **Rotations convert radians to degrees**, including
+  rotation binding grids.
+- **Ids are sanitized** into the §1 id grammar: trailing
+  NUL padding stripped (the exporter pads names), every
+  maximal run of non-grammar characters collapsed to one
+  `_`, collisions suffixed deterministically. Any id
+  that changed is recorded in the stage's provenance
+  with its original name; the model id is the sanitized
+  meta name, or the caller's fallback when the meta
+  name is empty (Midori's is).
+- **Extra texture slots are counted, not fatal.** INP
+  parts may carry emissive/bump slots the reference
+  renderer never samples; the stage keeps slot 0
+  (albedo) and the import report counts the drop in
+  `dropped_texture_slots` (Midori: 162). Loud, never
+  silent.
+- **EXT_SECT entries are counted, not read.**
+- **Refusals are loud** (`LRI-` codes): 001 bad magic,
+  002 truncated/oversize, 003 bad payload JSON, 004
+  missing `TEX_SECT`, 005 unsupported texture encoding
+  (BC7), 006 unknown enum string (node type, blend
+  mode, interpolate mode, physics model/map mode, mask
+  mode, binding kind — where the reference silently
+  substitutes a default, e.g. unknown blend modes, the
+  importer refuses instead), 007 malformed payload,
+  008 unsupported feature. Wrapped model/stage
+  validation failures surface their LRF/LRP codes.
+- The import report is the round-trip census: node
+  counts by kind, parameters (total and vec2), bindings
+  (total and cubic), mask references, textures, EXT
+  entries, dropped texture slots.
+
+---
+
 ## Appendix A — fathom vocabulary alignment
 
 Used verbatim from `fathom-motion-record/3`, never redefined:
