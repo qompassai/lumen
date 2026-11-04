@@ -22,4 +22,4 @@ serde_json = "1.0"
 # twobody scene examples and integration tests only; the library
 # itself stays serde/serde_json-only. Matches the root
 # workspace's image 0.25 pin.
-image = { version = "0.25", default-features = false, features = ["png", "jpeg", "tga"] }
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "tga", "gif"] }
