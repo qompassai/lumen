@@ -11,9 +11,12 @@
 //! — the iteration counts in the cubic solver are part of the
 //! format, so evaluated frames are byte-stable across repeat
 //! runs and across conforming machines. Physics evaluation
-//! (section 5), expression assets (section 4.5), and rendering
-//! are later stages and are not present here — stubbed
-//! nowhere, simply absent. The VRMC_springBone evaluator
+//! (section 5) and expression assets (section 4.5) are later
+//! stages and are not present here — stubbed nowhere, simply
+//! absent. The puppet stage (section 13) IS present: the
+//! [`puppet`] asset, its [`puppet_eval`] evaluator with a
+//! deterministic CPU rasterizer, and the [`inp`] INP1
+//! importer that produces native assets from INP1 files. The VRMC_springBone evaluator
 //! ([`spring_bone`]) is a separate surface: it implements
 //! the VRM 1.0 spring-chain extension, an external glTF-side
 //! spec, under the same determinism law; it is not the
@@ -40,9 +43,12 @@
 
 pub mod error;
 pub mod evaluate;
+pub mod inp;
 pub mod limits;
 pub mod model;
 pub mod motion;
+pub mod puppet;
+pub mod puppet_eval;
 pub mod spring_bone;
 
 mod raw;
@@ -51,6 +57,7 @@ mod validate_motion;
 
 pub use error::ParseError;
 pub use evaluate::{EvaluatedContribution, MotionPlayer, curve_value_at};
+pub use inp::{ImportError, ImportReport, ImportedPuppet, ImportedTexture, import_inp};
 pub use model::{
     Anchor, AnchorKind, BlendMode, CombinedParameter, CombinedTerm, Deformer, FORMAT_VERSION,
     Lattice, Mesh, MeshForm, Model, Parameter, Part, Particle, PhysicsGroup, PhysicsInput,
@@ -61,6 +68,13 @@ pub use motion::{
     ArcKind, BakedCurveSet, BakedProvenance, Contribution, Curve, FathomArc, FathomBinding,
     FathomPhase, Interpolation, Keyframe, Motion, PhaseProvenance, ProvenanceKind,
 };
+pub use puppet::{
+    PuppetBinding, PuppetBindingKind, PuppetBindingValues, PuppetBlendMode, PuppetDrawable,
+    PuppetError, PuppetInterpolate, PuppetMapMode, PuppetMask, PuppetMaskMode, PuppetMesh,
+    PuppetNode, PuppetNodeKind, PuppetParameter, PuppetPhysics, PuppetPhysicsModel,
+    PuppetPhysicsNode, PuppetProvenance, PuppetStage, PuppetTexture, PuppetTransform, parse_puppet,
+};
+pub use puppet_eval::{PuppetEval, RgbaImage};
 pub use spring_bone::{
     ColliderDef, ColliderShape, Frame, JointDef, JointParams, Quat, SpringChainDef, SpringConfig,
     SpringError, SpringSystem, SpringSystemDef, TimeMode, Vec3,

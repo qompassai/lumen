@@ -37,3 +37,12 @@ pub const ACCEL_MAGNITUDE_MAX: f32 = 1e5;
 /// Draw order range (inclusive both ends).
 pub const DRAW_ORDER_MIN: i32 = -10_000;
 pub const DRAW_ORDER_MAX: i32 = 10_000;
+
+/// Puppet stage bounds (SPEC.md section 13.11). The stage
+/// carries production puppets, whose texture and node counts
+/// exceed the model format's section-11 bounds; that excess
+/// is exactly why puppet meshes live in the stage asset.
+pub const PUPPET_PARAMETERS_MAX: usize = 128;
+pub const PUPPET_TEXTURES_MAX: usize = 256;
+pub const PUPPET_NODES_MAX: usize = 1024;
+pub const PUPPET_BINDINGS_MAX: usize = 8192;
