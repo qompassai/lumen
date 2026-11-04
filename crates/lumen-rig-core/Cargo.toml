@@ -17,6 +17,12 @@ serde = { version = "1.0", features = ["derive"] }
 # canonical form (SPEC.md section 1.2), not an implementation detail.
 serde_json = "1.0"
 
+[features]
+# oracle: read-only evaluated-state accessor for the D-870 GL
+# same-route oracle harness (crates/lumen-gl-oracle). Adds no
+# dependencies and changes no evaluation; off by default.
+oracle = []
+
 [dev-dependencies]
 # image: texture decode + PNG evidence frames for the proof
 # examples and integration tests only; the library stays

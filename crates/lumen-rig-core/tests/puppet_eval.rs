@@ -305,3 +305,59 @@ fn parameter_values_clamp_to_the_grid_edge() {
     assert_eq!(pixel(&frame, 145, 100), [255, 0, 0, 255]);
     assert_eq!(pixel(&frame, 135, 100), [0, 0, 0, 0]);
 }
+
+/// Oracle accessor (D-870): the snapshot reports the state
+/// `render` draws — the (0,0) binding's +30 shift in world
+/// space, the opacity factor, and the root draw order.
+#[cfg(feature = "oracle")]
+#[test]
+fn oracle_state_reports_the_evaluated_frame() {
+    let (stage, textures) = build(&stage_json());
+    let mut eval = PuppetEval::new(&stage, &textures).unwrap();
+    eval.begin_frame();
+    eval.set_param("Fade", [1.0, 0.0]).unwrap();
+    eval.end_frame(0.0).unwrap();
+    let state = eval.oracle_state();
+    assert_eq!(state.nodes.len(), stage.nodes.len());
+    let quad = &state.nodes[1];
+    assert_eq!(quad.world_verts[0], [10.0, -20.0]);
+    assert_eq!(quad.opacity, 0.5);
+    // Equal zsorts: the stable sort keeps pre-order.
+    assert_eq!(state.root_draw_order, vec![1, 2]);
+    // Non-parts carry no geometry; groups are not drawables.
+    assert!(state.nodes[0].world_verts.is_empty());
+    assert_eq!(state.nodes[0].opacity, 1.0);
+}
+
+/// Adversarial: taking snapshots must not perturb evaluation —
+/// a session snapshotted every frame renders byte-identically
+/// to one never snapshotted, and repeated snapshots agree.
+#[cfg(feature = "oracle")]
+#[test]
+fn oracle_state_is_read_only() {
+    let (stage, textures) = build(&stage_json());
+    let run = |snapshot: bool| -> (Vec<u8>, Option<lumen_rig_core::OracleState>) {
+        let mut eval = PuppetEval::new(&stage, &textures).unwrap();
+        let mut last = None;
+        for _ in 0..30 {
+            eval.begin_frame();
+            eval.set_param("Pan", [0.75, -0.5]).unwrap();
+            eval.end_frame(1.0 / 60.0).unwrap();
+            if snapshot {
+                let first = eval.oracle_state();
+                assert_eq!(first, eval.oracle_state());
+                last = Some(first);
+            }
+        }
+        (eval.render(W, H, SCALE), last)
+    };
+    let (plain, _) = run(false);
+    let (observed, state) = run(true);
+    assert_eq!(plain, observed);
+    assert!(
+        state.unwrap().nodes[1]
+            .world_verts
+            .iter()
+            .all(|v| v[0].is_finite())
+    );
+}

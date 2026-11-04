@@ -716,9 +716,16 @@ impl<'a> PuppetEval<'a> {
     /// transparent background (SPEC 13.6).
     pub fn render(&self, width: usize, height: usize, scale: f32) -> Vec<u8> {
         let mut frame = FrameBuf::new(width, height);
-        // Root drawables: drawables whose parent is not a
-        // composite, in pre-order, drawn highest zsort first
-        // (stable: ties keep traversal order).
+        for ni in self.root_draw_list() {
+            self.draw_drawable(&mut frame, ni, scale, None);
+        }
+        frame.to_rgba8()
+    }
+
+    /// Root drawables: drawables whose parent is not a
+    /// composite, in pre-order, drawn highest zsort first
+    /// (stable: ties keep traversal order).
+    fn root_draw_list(&self) -> Vec<usize> {
         let mut draw_list: Vec<usize> = Vec::new();
         for &ni in &self.preorder {
             if ni == self.root {
@@ -740,10 +747,19 @@ impl<'a> PuppetEval<'a> {
             }
         }
         draw_list.sort_by(|&a, &b| self.zsort_abs[b].total_cmp(&self.zsort_abs[a]));
-        for ni in draw_list {
-            self.draw_drawable(&mut frame, ni, scale, None);
-        }
-        frame.to_rgba8()
+        draw_list
+    }
+
+    /// A composite's direct drawable children (the
+    /// reference's grouping rule), zsort descending.
+    fn composite_children(&self, ni: usize) -> Vec<usize> {
+        let mut kids: Vec<usize> = self.children[ni]
+            .iter()
+            .copied()
+            .filter(|&c| self.stage.nodes[c].drawable.is_some())
+            .collect();
+        kids.sort_by(|&a, &b| self.zsort_abs[b].total_cmp(&self.zsort_abs[a]));
+        kids
     }
 
     /// A node's world-space vertices (parts only): the node's
@@ -809,17 +825,10 @@ impl<'a> PuppetEval<'a> {
                 self.rasterize_part(frame, ni, scale, coverage, false);
             }
             PuppetNodeKind::Composite => {
-                // Direct drawable children only (the
-                // reference's grouping rule), zsort descending.
-                let mut kids: Vec<usize> = self.children[ni]
-                    .iter()
-                    .copied()
-                    .filter(|&c| self.stage.nodes[c].drawable.is_some())
-                    .collect();
+                let kids = self.composite_children(ni);
                 if kids.is_empty() {
                     return;
                 }
-                kids.sort_by(|&a, &b| self.zsort_abs[b].total_cmp(&self.zsort_abs[a]));
                 let mut off = FrameBuf::new(frame.width, frame.height);
                 for kid in kids {
                     self.draw_drawable(&mut off, kid, scale, None);
@@ -969,6 +978,74 @@ impl<'a> PuppetEval<'a> {
                 }
             },
         );
+    }
+}
+
+/* ------------------------------------------------------------------ */
+/* Oracle surface (D-870 GL same-route oracle; feature `oracle`)       */
+/* ------------------------------------------------------------------ */
+
+/// One node's evaluated frame state, as [`PuppetEval::render`]
+/// consumes it. Read-only harness output: nothing here feeds
+/// back into evaluation.
+#[cfg(feature = "oracle")]
+#[derive(Clone, Debug, PartialEq)]
+pub struct OracleNodeState {
+    /// Composites only: direct drawable children in draw
+    /// order (zsort descending). Empty for other kinds.
+    pub composite_children: Vec<usize>,
+    /// Drawables only: authored opacity times the frame's
+    /// opacity factor (unclamped). 1.0 for non-drawables.
+    pub opacity: f32,
+    /// Parts only: world-space vertices (absolute transform
+    /// applied to `vertex - origin + deform`). Empty otherwise.
+    pub world_verts: Vec<[f32; 2]>,
+    /// Accumulated (absolute) zsort.
+    pub zsort: f32,
+}
+
+/// The whole evaluated frame: per-node state in stage node
+/// order, plus the root draw order [`PuppetEval::render`] uses.
+#[cfg(feature = "oracle")]
+#[derive(Clone, Debug, PartialEq)]
+pub struct OracleState {
+    pub nodes: Vec<OracleNodeState>,
+    /// Stage node indices of the root drawables, in draw order.
+    pub root_draw_order: Vec<usize>,
+}
+
+#[cfg(feature = "oracle")]
+impl PuppetEval<'_> {
+    /// Snapshot the evaluated state of the current frame
+    /// (valid after [`end_frame`](PuppetEval::end_frame)).
+    pub fn oracle_state(&self) -> OracleState {
+        let nodes = self
+            .stage
+            .nodes
+            .iter()
+            .enumerate()
+            .map(|(ni, node)| OracleNodeState {
+                composite_children: if node.kind == PuppetNodeKind::Composite {
+                    self.composite_children(ni)
+                } else {
+                    Vec::new()
+                },
+                opacity: node
+                    .drawable
+                    .as_ref()
+                    .map_or(1.0, |d| d.opacity * self.opacity_factor[ni]),
+                world_verts: if node.kind == PuppetNodeKind::Part && node.mesh.is_some() {
+                    self.world_verts(ni)
+                } else {
+                    Vec::new()
+                },
+                zsort: self.zsort_abs[ni],
+            })
+            .collect();
+        OracleState {
+            nodes,
+            root_draw_order: self.root_draw_list(),
+        }
     }
 }
 

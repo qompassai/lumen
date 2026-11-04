@@ -74,6 +74,8 @@ pub use puppet::{
     PuppetNode, PuppetNodeKind, PuppetParameter, PuppetPhysics, PuppetPhysicsModel,
     PuppetPhysicsNode, PuppetProvenance, PuppetStage, PuppetTexture, PuppetTransform, parse_puppet,
 };
+#[cfg(feature = "oracle")]
+pub use puppet_eval::{OracleNodeState, OracleState};
 pub use puppet_eval::{PuppetEval, RgbaImage};
 pub use spring_bone::{
     ColliderDef, ColliderShape, Frame, JointDef, JointParams, Quat, SpringChainDef, SpringConfig,
