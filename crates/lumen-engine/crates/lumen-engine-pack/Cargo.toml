@@ -1,0 +1,11 @@
+[package]
+name = "lumen-engine-pack"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "Packaging backends for the lumen engine experiment (SPEC section 4.1): deterministic release assembly — collect a release tree, emit a byte-reproducible .tar.gz, emit the release record, and verify an archive against its record by read-back. No GUI, no network, no wall clock: identical input trees produce identical archives."
+
+[dependencies]
+flate2 = "1"
+serde = { version = "1.0", features = ["derive"] }
+sha2 = "0.10"
