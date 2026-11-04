@@ -50,6 +50,7 @@ pub mod motion;
 pub mod puppet;
 pub mod puppet_eval;
 pub mod spring_bone;
+pub mod twobody;
 
 mod raw;
 mod validate;
@@ -78,6 +79,10 @@ pub use puppet_eval::{PuppetEval, RgbaImage};
 pub use spring_bone::{
     ColliderDef, ColliderShape, Frame, JointDef, JointParams, Quat, SpringChainDef, SpringConfig,
     SpringError, SpringSystem, SpringSystemDef, TimeMode, Vec3,
+};
+pub use twobody::{
+    ContactDef, ContactEndpoint, ContactRead, EvaluatedMesh, FrameInput, FrameRead, Placement,
+    ProbeDef, Scene, TwoBodyError, evaluate_frame, evaluate_model, resolve_parameters,
 };
 pub use validate::parse_model;
 pub use validate_motion::parse_motion;

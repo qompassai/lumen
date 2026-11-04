@@ -18,7 +18,8 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 
 [dev-dependencies]
-# image: texture decode + PNG evidence frames for the proof
-# examples and integration tests only; the library stays
-# serde-only.
+# image: texture decode + PNG evidence frames for the proof and
+# twobody scene examples and integration tests only; the library
+# itself stays serde/serde_json-only. Matches the root
+# workspace's image 0.25 pin.
 image = { version = "0.25", default-features = false, features = ["png", "jpeg", "tga"] }
