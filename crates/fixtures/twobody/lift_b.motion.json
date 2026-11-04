@@ -1,0 +1,255 @@
+{
+ "curves": [
+  {
+   "keyframes": [
+    {
+     "interpolation": "cubic",
+     "time": 0,
+     "value": 6
+    },
+    {
+     "interpolation": "cubic",
+     "time": 1.8,
+     "value": -2
+    },
+    {
+     "interpolation": "cubic",
+     "time": 2.0,
+     "value": -26
+    },
+    {
+     "interpolation": "cubic",
+     "time": 5.0,
+     "value": -30
+    },
+    {
+     "interpolation": "cubic",
+     "time": 10.2,
+     "value": -26
+    },
+    {
+     "interpolation": "cubic",
+     "time": 11.2,
+     "value": -6
+    },
+    {
+     "interpolation": "cubic",
+     "time": 12.0,
+     "value": 6
+    }
+   ],
+   "parameter": "shoulder_swing"
+  },
+  {
+   "keyframes": [
+    {
+     "interpolation": "cubic",
+     "time": 0,
+     "value": -8
+    },
+    {
+     "interpolation": "cubic",
+     "time": 1.8,
+     "value": -18
+    },
+    {
+     "interpolation": "cubic",
+     "time": 2.0,
+     "value": -42
+    },
+    {
+     "interpolation": "cubic",
+     "time": 10.2,
+     "value": -42
+    },
+    {
+     "interpolation": "cubic",
+     "time": 11.2,
+     "value": -16
+    },
+    {
+     "interpolation": "cubic",
+     "time": 12.0,
+     "value": -8
+    }
+   ],
+   "parameter": "elbow_bend"
+  },
+  {
+   "keyframes": [
+    {
+     "interpolation": "cubic",
+     "time": 0,
+     "value": 0
+    },
+    {
+     "interpolation": "cubic",
+     "time": 3.6,
+     "value": 0
+    },
+    {
+     "interpolation": "cubic",
+     "time": 5.0,
+     "value": 4
+    },
+    {
+     "interpolation": "cubic",
+     "time": 10.0,
+     "value": 2
+    },
+    {
+     "interpolation": "cubic",
+     "time": 12.0,
+     "value": 0
+    }
+   ],
+   "parameter": "spine_lean"
+  },
+  {
+   "keyframes": [
+    {
+     "interpolation": "cubic",
+     "time": 0,
+     "value": 0
+    },
+    {
+     "interpolation": "cubic",
+     "time": 3.4,
+     "value": 0
+    },
+    {
+     "interpolation": "cubic",
+     "time": 4.2,
+     "value": 10
+    },
+    {
+     "interpolation": "cubic",
+     "time": 5.2,
+     "value": 16
+    },
+    {
+     "interpolation": "cubic",
+     "time": 8.0,
+     "value": 16
+    },
+    {
+     "interpolation": "cubic",
+     "time": 9.4,
+     "value": 6
+    },
+    {
+     "interpolation": "cubic",
+     "time": 10.2,
+     "value": 0
+    },
+    {
+     "interpolation": "cubic",
+     "time": 12.0,
+     "value": 0
+    }
+   ],
+   "parameter": "hip_swing"
+  },
+  {
+   "keyframes": [
+    {
+     "interpolation": "cubic",
+     "time": 0,
+     "value": 0
+    },
+    {
+     "interpolation": "cubic",
+     "time": 3.4,
+     "value": 0
+    },
+    {
+     "interpolation": "cubic",
+     "time": 4.4,
+     "value": 38
+    },
+    {
+     "interpolation": "cubic",
+     "time": 5.4,
+     "value": 52
+    },
+    {
+     "interpolation": "cubic",
+     "time": 8.6,
+     "value": 52
+    },
+    {
+     "interpolation": "cubic",
+     "time": 9.6,
+     "value": 14
+    },
+    {
+     "interpolation": "cubic",
+     "time": 10.2,
+     "value": 0
+    },
+    {
+     "interpolation": "cubic",
+     "time": 12.0,
+     "value": 0
+    }
+   ],
+   "parameter": "knee_bend"
+  },
+  {
+   "keyframes": [
+    {
+     "interpolation": "cubic",
+     "time": 0,
+     "value": 0
+    },
+    {
+     "interpolation": "cubic",
+     "time": 1.6,
+     "value": -5
+    },
+    {
+     "interpolation": "cubic",
+     "time": 2.0,
+     "value": -6
+    },
+    {
+     "interpolation": "cubic",
+     "time": 3.6,
+     "value": 0
+    },
+    {
+     "interpolation": "cubic",
+     "time": 5.0,
+     "value": 4
+    },
+    {
+     "interpolation": "cubic",
+     "time": 9.0,
+     "value": 4
+    },
+    {
+     "interpolation": "cubic",
+     "time": 9.9,
+     "value": -3
+    },
+    {
+     "interpolation": "cubic",
+     "time": 10.4,
+     "value": 0
+    },
+    {
+     "interpolation": "cubic",
+     "time": 12.0,
+     "value": 0
+    }
+   ],
+   "parameter": "head_tilt"
+  }
+ ],
+ "duration_seconds": 12.0,
+ "format": "lumen-rig-motion",
+ "format_version": 1,
+ "frames_per_second": 60,
+ "id": "lift_b",
+ "model": "mannequin_b"
+}
