@@ -1,0 +1,107 @@
+{
+  "format": "r2-consumption-fixtures",
+  "format_version": 1,
+  "generated": "2026-11-04",
+  "commission": "D-937 (D-913 Option B) - the R2 consumption gate re-homed to lumen's tree as data fixtures",
+  "generator": "scratch example r2_fixture_freeze in torogao-cli (uncommitted, discarded after the freeze), run twice over the inputs with byte-identical output (determinism verified by sha256 diff of the two runs)",
+  "source": {
+    "torogao_repo": "NTRanch/Torogao",
+    "torogao_commit": "9db8a9615e43adc9aed702dc7daf22bd08922235",
+    "exporter": "crates/torogao-cli/src/rigexport.rs (RigExporter::run over Walk::build; documents serialized exactly as the bridge writes them - D-JSON + trailing newline)",
+    "inputs": [
+      {
+        "file": "prima-repertoire.inx",
+        "sha256": "35eaf6fda67f653b9a31656b3d5da7d92d8582991fc6c6900714a0900ca7a9e6",
+        "origin": "the TOROGAO_PHASE_F_FIXTURES census set: primo ~/.local/share/pax/paramgaze-20261103/fixtures-orig/"
+      },
+      {
+        "file": "yui-repertoire.inx",
+        "sha256": "9bfac2966b6a59fe791e66f97625fb9ba64707ee58bb6155af215f7c0ebba4a0",
+        "origin": "the TOROGAO_PHASE_F_FIXTURES census set: primo ~/.local/share/pax/paramgaze-20261103/fixtures-orig/"
+      },
+      {
+        "file": "alma-repertoire.inx",
+        "sha256": "f3d856234725620cb25ded63d081d0d2239dbf71a03d757f1f9e5d95ed65fdf9",
+        "origin": "the TOROGAO_PHASE_F_FIXTURES census set: primo ~/.local/share/pax/paramgaze-20261103/fixtures-orig/"
+      }
+    ],
+    "samples": "per motion curve: the torogao engine sampler (torogao-engine AnimationLane::sample, snap=false) on the retired gate grid - frames 0.37, 0.74, ... in f32 steps up to the lane last keyframe; each sample is [time_seconds, engine_value] with time = frame * animation timestep in f32 arithmetic widened to f64, exactly the retired gate comparison inputs"
+  },
+  "files": [
+    {
+      "path": "alma-repertoire.model.json",
+      "sha256": "6a541b36b737629f9600af235bdd34d067ecc6816fbe0e13fa504305fe258aec",
+      "role": "model"
+    },
+    {
+      "path": "alma-repertoire.motion-Daydream.json",
+      "sha256": "1747bee366d94357cc677b333e2bf50a6ec50428674b6b2613422ae8744c033c",
+      "role": "motion"
+    },
+    {
+      "path": "alma-repertoire.motion-Greeting.json",
+      "sha256": "7723411b54c9d7528ddbf8a7b61ceb3ed9b440a50c47970b6ea78820d5a1564d",
+      "role": "motion"
+    },
+    {
+      "path": "alma-repertoire.samples-Daydream.json",
+      "sha256": "063657f9443e43c46b820efe86655cf0aa8cc2309ad049adab2eff128142884b",
+      "role": "samples"
+    },
+    {
+      "path": "alma-repertoire.samples-Greeting.json",
+      "sha256": "42a1687fc5e20c9a19e9afb2a3e3c602943a19c30f681107c0f00ba2c15b39fa",
+      "role": "samples"
+    },
+    {
+      "path": "prima-repertoire.model.json",
+      "sha256": "399162c2a24260d433b93d69fb90896df886a242e12b3281a601a7fd40f4bc2f",
+      "role": "model"
+    },
+    {
+      "path": "prima-repertoire.motion-Daydream.json",
+      "sha256": "d77e9dfb15001ba1e494d15daca104b177eafa7ec1411a63c2686af7d10d80ae",
+      "role": "motion"
+    },
+    {
+      "path": "prima-repertoire.motion-Greeting.json",
+      "sha256": "487c69b66b0125a90684c57502f3e80ef540cefb39bb41491eea541598e8c1fe",
+      "role": "motion"
+    },
+    {
+      "path": "prima-repertoire.samples-Daydream.json",
+      "sha256": "063657f9443e43c46b820efe86655cf0aa8cc2309ad049adab2eff128142884b",
+      "role": "samples"
+    },
+    {
+      "path": "prima-repertoire.samples-Greeting.json",
+      "sha256": "42a1687fc5e20c9a19e9afb2a3e3c602943a19c30f681107c0f00ba2c15b39fa",
+      "role": "samples"
+    },
+    {
+      "path": "yui-repertoire.model.json",
+      "sha256": "9ec1cd36db08b0eeb60e324c451a609c5f621f0e2034f021dbd3f28bff37fb35",
+      "role": "model"
+    },
+    {
+      "path": "yui-repertoire.motion-Daydream.json",
+      "sha256": "98e0347753027315012bc480bcc37174fbd8fe29c8ab38a34fc22697b9bbc947",
+      "role": "motion"
+    },
+    {
+      "path": "yui-repertoire.motion-Greeting.json",
+      "sha256": "97eaa1a92840a5a9ccff7f20afa9b8cf99c185544a032ec731c1720dd9508f92",
+      "role": "motion"
+    },
+    {
+      "path": "yui-repertoire.samples-Daydream.json",
+      "sha256": "063657f9443e43c46b820efe86655cf0aa8cc2309ad049adab2eff128142884b",
+      "role": "samples"
+    },
+    {
+      "path": "yui-repertoire.samples-Greeting.json",
+      "sha256": "42a1687fc5e20c9a19e9afb2a3e3c602943a19c30f681107c0f00ba2c15b39fa",
+      "role": "samples"
+    }
+  ]
+}

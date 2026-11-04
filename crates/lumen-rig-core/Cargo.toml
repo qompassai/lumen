@@ -28,3 +28,8 @@ oracle = []
 # examples and integration tests only; the library stays
 # serde-only.
 image = { version = "0.25", default-features = false, features = ["png", "jpeg", "tga"] }
+# sha2: the re-homed R2 consumption gate verifies the
+# frozen fixtures against their provenance manifest
+# (tests/r2_consumption_gate.rs, D-937) before any check
+# runs. Test-only; the library stays serde-only.
+sha2 = "0.10"
