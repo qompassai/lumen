@@ -1,0 +1,19 @@
+[package]
+name = "lumen-engine-tui"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "The complete-TUI operator surface for the lumen engine (D-895 Stage 2, SPEC section 5): a single operation core over lumen-engine-core/bevy/pack, driven identically by a headless CLI (lumen-engine-cli) and a ratatui view (lumen-engine-tui). The terminal capability/image layer (termcap) is a separable module from day one (D-902)."
+
+[dependencies]
+canon_record = { package = "lumen-canon", path = "../../../lumen-canon" }
+crossterm = "0.28"
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "tga"] }
+lumen-engine-bevy = { path = "../lumen-engine-bevy" }
+lumen-engine-core = { path = "../lumen-engine-core" }
+lumen-engine-pack = { path = "../lumen-engine-pack" }
+lumen-rig-core = { path = "../../../lumen-rig-core" }
+ratatui = "0.29"
+ratatui-image = "9"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = { version = "1.0", features = ["preserve_order"] }

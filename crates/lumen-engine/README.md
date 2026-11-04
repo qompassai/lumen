@@ -22,6 +22,21 @@ evidence pack, DP-6), and the engine never becomes an evaluator
   Bevy App whose Update schedule steps the core; puppet staging,
   C2 instruments, and rasterization bind the evaluator of record
   to the engine's records.
+- `lumen-engine-pack` — the packaging backends (Stage 2):
+  deterministic release assembly — collect a release tree, emit a
+  byte-reproducible `.tar.gz` (pinned tar fields, zeroed gzip
+  mtime), emit the release record, and verify an archive against
+  its record by read-back.
+- `lumen-engine-tui` — the complete-TUI operator surface
+  (Stage 2, SPEC section 5): one operation core covering the six
+  workflows (authoring over the Describe → Propose → Freeze
+  spine, scene staging with evaluator-rendered previews, rig/pose
+  inspection with the standing sweep protocol, playtest control,
+  gate runs, packaging), driven identically by two views — the
+  headless `lumen-engine-cli` and the ratatui
+  `lumen-engine-tui`. The terminal capability/image layer
+  (`termcap`: kitty payloads, halfblock grids, protocol
+  detection) is a separable module (D-902).
 
 ## Scenes
 
@@ -42,3 +57,10 @@ Outputs: `reads.json`, `summary.json` (the verdict-pack shape),
 `evidence.json` (tune check, runtime snapshot/restore probe,
 frame deltas), key + worst frames, `state-at-<step>.ron`,
 `runtime-events.log`.
+
+Operate it from the TUI surface (Stage 2): `lumen-engine-cli
+--help` lists every verb; the same verbs are the panels of
+`lumen-engine-tui`. A scripted end-to-end demonstration (open →
+author → stage → inspect → play → gates → verdict pack →
+package) is the Stage 2 gate artifact; see the experiment's
+STAGE2-REPORT.

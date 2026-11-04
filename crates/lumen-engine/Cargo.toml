@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/lumen-engine-bevy", "crates/lumen-engine-core"]
+members = ["crates/lumen-engine-bevy", "crates/lumen-engine-core", "crates/lumen-engine-pack", "crates/lumen-engine-tui"]
 resolver = "2"
 
 [workspace.package]
