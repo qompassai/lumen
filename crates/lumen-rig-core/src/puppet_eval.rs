@@ -373,6 +373,15 @@ pub struct PuppetEval<'a> {
     /// semantics this stage implements (SPEC 13.4). Never set
     /// outside the parity proof.
     zero_skip: bool,
+    /// Optional scene transform applied to world vertices
+    /// at rasterization time only (rotation in degrees,
+    /// then translation, both in puppet space). Lets a
+    /// caller place the puppet inside a larger scene whose
+    /// placements are solved elsewhere (the two-body seam);
+    /// geometry reads through
+    /// [`node_world_vertices`](Self::node_world_vertices)
+    /// are never transformed.
+    scene_transform: Option<([f32; 2], f32)>,
 }
 
 impl<'a> PuppetEval<'a> {
@@ -487,6 +496,7 @@ impl<'a> PuppetEval<'a> {
             absolute: vec![Mat4::identity(); node_count],
             zsort_abs: vec![0.0; node_count],
             zero_skip: false,
+            scene_transform: None,
         })
     }
 
@@ -762,10 +772,61 @@ impl<'a> PuppetEval<'a> {
         kids
     }
 
+    /// Set the scene transform applied at rasterization
+    /// time: world vertices are rotated by
+    /// `rotation_degrees` about the puppet origin, then
+    /// translated by `translation` (both in puppet space).
+    /// Clear with [`clear_scene_transform`](Self::clear_scene_transform).
+    pub fn set_scene_transform(&mut self, translation: [f32; 2], rotation_degrees: f32) {
+        self.scene_transform = Some((translation, rotation_degrees));
+    }
+
+    /// Remove any scene transform; rasterization returns to
+    /// the puppet's own world space.
+    pub fn clear_scene_transform(&mut self) {
+        self.scene_transform = None;
+    }
+
+    /// A node's evaluated world-space vertices by stage node
+    /// id (parts only): the node's absolute transform applied
+    /// to `vertex - origin + deform`, in puppet space, with
+    /// NO scene transform applied. `None` when the id is
+    /// unknown or the node carries no mesh. This is the
+    /// geometry a caller feeds to an external solver (the
+    /// two-body seam) after [`end_frame`](Self::end_frame).
+    pub fn node_world_vertices(&self, node_id: &str) -> Option<Vec<[f32; 2]>> {
+        let &ni = self.node_index.get(node_id)?;
+        self.stage.nodes[ni].mesh.as_ref()?;
+        Some(self.world_verts_raw(ni))
+    }
+
+    /// A node's world-space vertices (parts only): the node's
+    /// absolute transform applied to `vertex - origin +
+    /// deform`, with the scene transform applied on top when
+    /// one is set. Rasterization paths use this; geometry
+    /// reads use [`world_verts_raw`](Self::world_verts_raw).
+    fn world_verts(&self, ni: usize) -> Vec<[f32; 2]> {
+        let raw = self.world_verts_raw(ni);
+        match self.scene_transform {
+            None => raw,
+            Some((translation, rotation_degrees)) => {
+                let (sin, cos) = rotation_degrees.to_radians().sin_cos();
+                raw.iter()
+                    .map(|v| {
+                        [
+                            cos * v[0] - sin * v[1] + translation[0],
+                            sin * v[0] + cos * v[1] + translation[1],
+                        ]
+                    })
+                    .collect()
+            }
+        }
+    }
+
     /// A node's world-space vertices (parts only): the node's
     /// absolute transform applied to `vertex - origin +
     /// deform`.
-    fn world_verts(&self, ni: usize) -> Vec<[f32; 2]> {
+    fn world_verts_raw(&self, ni: usize) -> Vec<[f32; 2]> {
         let node = &self.stage.nodes[ni];
         let mesh = node.mesh.as_ref().expect("part has a mesh");
         let mat = &self.absolute[ni];
