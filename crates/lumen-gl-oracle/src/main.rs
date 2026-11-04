@@ -328,7 +328,9 @@ impl Oracle {
         let gl_strings = gl_window::gl_strings(gl);
         let rgba = gl_window::read_rgba(gl, WIDTH, HEIGHT);
         let opaque = rgba
-            .chunks_exact(4)
+            .as_chunks::<4>()
+            .0
+            .iter()
             .filter(|p| p.iter().any(|&c| c != 0))
             .count();
         image::RgbaImage::from_raw(WIDTH, HEIGHT, rgba)
