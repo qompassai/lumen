@@ -425,3 +425,24 @@ census (`~/workspace/danbooru-reference-20261103/`). The matching
 Keeper Lessons pack is `sfw/expression-mechanics` v1.0.0. Records
 authored after this amendment cite the vocabulary version in
 their run record, per the curriculum's pinning rule.
+
+---
+
+## Amendment 2026-11-03 (D-878) — Media-capture emit tool
+
+**`tools/media_capture_emit.py` v1.0.0** (lane sfw) turns a
+`media-observation/1` record — produced by fathom's
+`observe_captured_media` over a D-555-screened, quarantined
+capture — into pipe records: `motion-curve/1`,
+`expression-timeline/1` (channels projected to the SFW face-state
+field `{name, brow, lid_band, gaze}` only), `object-template/1`
+candidate JSON records, and `audio-descriptor/1`. It accepts
+only observations stamped lane sfw + content label sfw, with a
+CLEARED screen verdict and a recomputing record digest; every
+refusal is typed (`record_digest_mismatch`, `screen_not_cleared`,
+`lane_unclassified`, `lane_mismatch`) and lands before any write.
+Emission is deterministic (two runs byte-identical) and the
+suite `tools/test_media_capture_emit.py` (3 validation +
+3 adversarial cases) must pass on any change. Media never enters
+this lane — records only, per the D-878 quarantine law. Full
+record: `~/workspace/media-capture-20261103/CAPTURE-REPORT.md`.
