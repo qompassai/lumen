@@ -1147,7 +1147,10 @@ fn kabsch_step(
 /// then fixed separation passes), and read everything back.
 /// Placements in the input for driven rigs are seeds; rigs no
 /// contact drives keep their authored placement exactly.
-pub fn evaluate_frame(scene: &Scene, input: &FrameInput) -> Result<FrameRead, TwoBodyError> {
+/// Shape and finiteness checks shared by both frame entry
+/// points. The length asserts are programmer-error guards;
+/// non-finite placements are a data refusal (`LTB-104`).
+fn check_frame_input(scene: &Scene, input: &FrameInput) -> Result<(), TwoBodyError> {
     let rigs = scene.models.len();
     assert_eq!(input.driven.len(), rigs, "one driven set per rig");
     assert_eq!(input.placements.len(), rigs, "one placement per rig");
@@ -1166,13 +1169,94 @@ pub fn evaluate_frame(scene: &Scene, input: &FrameInput) -> Result<FrameRead, Tw
             ));
         }
     }
-    let mut evaluated: Vec<Vec<EvaluatedMesh>> = Vec::with_capacity(rigs);
+    Ok(())
+}
+
+/// Evaluate one frame from the scene models' own geometry:
+/// parameters resolve from `input.driven`, geometry comes
+/// from [`evaluate_model`], placements solve in the core.
+pub fn evaluate_frame(scene: &Scene, input: &FrameInput) -> Result<FrameRead, TwoBodyError> {
+    check_frame_input(scene, input)?;
+    let mut evaluated: Vec<Vec<EvaluatedMesh>> = Vec::with_capacity(scene.models.len());
     let mut resolved: Vec<BTreeMap<String, f64>> = Vec::with_capacity(scene.models.len());
     for (model, driven) in scene.models.iter().zip(input.driven.iter()) {
         let params = resolve_parameters(model, driven)?;
         evaluated.push(evaluate_model(model, &params));
         resolved.push(params);
     }
+    Ok(solve_with_geometry(scene, input, &evaluated, &resolved))
+}
+
+/// Evaluate one frame from geometry supplied by the caller
+/// (the external-evaluator seam): `evaluated` carries one
+/// mesh set per rig, in the scene models' mesh order, with
+/// mesh ids and vertex counts matching the models exactly
+/// (refusals: `LTB-101` on an id or count mismatch,
+/// `LTB-106` on a rig-count mismatch). The caller has
+/// already folded every driven parameter value into the
+/// supplied geometry; `input.driven` is not consulted.
+/// Parameter resolution for contact-offset frames uses the
+/// models' defaults, which is exact for deformer-free
+/// models (the offset frame rotation is then zero) and a
+/// documented approximation otherwise.
+pub fn evaluate_frame_with_geometry(
+    scene: &Scene,
+    input: &FrameInput,
+    evaluated: &[Vec<EvaluatedMesh>],
+) -> Result<FrameRead, TwoBodyError> {
+    check_frame_input(scene, input)?;
+    if evaluated.len() != scene.models.len() {
+        return Err(TwoBodyError::new(
+            "LTB-106",
+            format!(
+                "supplied geometry covers {} rigs for {} models",
+                evaluated.len(),
+                scene.models.len()
+            ),
+        ));
+    }
+    let mut resolved: Vec<BTreeMap<String, f64>> = Vec::with_capacity(scene.models.len());
+    for (rig, (model, meshes)) in scene.models.iter().zip(evaluated.iter()).enumerate() {
+        if meshes.len() != model.meshes.len() {
+            return Err(TwoBodyError::new(
+                "LTB-101",
+                format!(
+                    "rig {rig} supplies {} meshes for {} model meshes",
+                    meshes.len(),
+                    model.meshes.len()
+                ),
+            ));
+        }
+        for (supplied, declared) in meshes.iter().zip(model.meshes.iter()) {
+            if supplied.id != declared.id || supplied.vertices.len() != declared.vertices.len() {
+                return Err(TwoBodyError::new(
+                    "LTB-101",
+                    format!(
+                        "rig {rig} mesh {} ({} vertices) does not match model mesh {} ({} vertices)",
+                        supplied.id,
+                        supplied.vertices.len(),
+                        declared.id,
+                        declared.vertices.len()
+                    ),
+                ));
+            }
+        }
+        resolved.push(resolve_parameters(model, &BTreeMap::new())?);
+    }
+    Ok(solve_with_geometry(scene, input, evaluated, &resolved))
+}
+
+/// The solve core shared by both entry points: pre-solve
+/// slip, per-rig contact sweeps + separation passes + polish
+/// step, and the final reads, over geometry already
+/// evaluated (by [`evaluate_model`] or supplied through the
+/// seam).
+fn solve_with_geometry(
+    scene: &Scene,
+    input: &FrameInput,
+    evaluated: &[Vec<EvaluatedMesh>],
+    resolved: &[BTreeMap<String, f64>],
+) -> FrameRead {
     // World anchor of a contact endpoint under a placement set.
     // Pre-solve slip, against the authored placements.
     let mut placements = input.placements.clone();
@@ -1180,8 +1264,8 @@ pub fn evaluate_frame(scene: &Scene, input: &FrameInput) -> Result<FrameRead, Tw
         .contacts
         .iter()
         .map(|contact| {
-            let a = anchor(&evaluated, &placements, contact.a_rig, &contact.a);
-            let fixed = offset_point(scene, &resolved, &evaluated, &placements, contact);
+            let a = anchor(evaluated, &placements, contact.a_rig, &contact.a);
+            let fixed = offset_point(scene, resolved, evaluated, &placements, contact);
             (a[0] - fixed[0]).hypot(a[1] - fixed[1])
         })
         .collect();
@@ -1204,7 +1288,7 @@ pub fn evaluate_frame(scene: &Scene, input: &FrameInput) -> Result<FrameRead, Tw
             continue;
         }
         for _sweep in 0..SOLVER_SWEEPS {
-            kabsch_step(scene, &resolved, &evaluated, &mut placements, rig, &mine);
+            kabsch_step(scene, resolved, evaluated, &mut placements, rig, &mine);
         }
         // Separation passes: push this rig out of the worst
         // penetration it takes part in, a fixed number of
@@ -1215,7 +1299,7 @@ pub fn evaluate_frame(scene: &Scene, input: &FrameInput) -> Result<FrameRead, Tw
                 if probe.rig != rig && probe.against_rig != rig {
                     continue;
                 }
-                let (margin, direction) = probe_read(&evaluated, &placements, probe);
+                let (margin, direction) = probe_read(evaluated, &placements, probe);
                 if margin < 0.0 && worst.as_ref().is_none_or(|(m, _, _)| margin < *m) {
                     //  moves the probe point out of
                     // the polygon. If the point is ours, move
@@ -1233,7 +1317,7 @@ pub fn evaluate_frame(scene: &Scene, input: &FrameInput) -> Result<FrameRead, Tw
                 }
             }
         }
-        kabsch_step(scene, &resolved, &evaluated, &mut placements, rig, &mine);
+        kabsch_step(scene, resolved, evaluated, &mut placements, rig, &mine);
     }
 
     // Final reads.
@@ -1242,13 +1326,13 @@ pub fn evaluate_frame(scene: &Scene, input: &FrameInput) -> Result<FrameRead, Tw
         .iter()
         .enumerate()
         .map(|(index, contact)| {
-            let a = anchor(&evaluated, &placements, contact.a_rig, &contact.a);
+            let a = anchor(evaluated, &placements, contact.a_rig, &contact.a);
             ContactRead {
                 engaged: input.active[index],
                 id: contact.id.clone(),
                 pre_solve_slip: pre_solve_slip[index],
                 slip: {
-                    let fixed = offset_point(scene, &resolved, &evaluated, &placements, contact);
+                    let fixed = offset_point(scene, resolved, evaluated, &placements, contact);
                     (a[0] - fixed[0]).hypot(a[1] - fixed[1])
                 },
             }
@@ -1257,7 +1341,7 @@ pub fn evaluate_frame(scene: &Scene, input: &FrameInput) -> Result<FrameRead, Tw
     let mut min_margin: Option<f64> = None;
     let mut min_margin_probe: Option<String> = None;
     for probe in &scene.probes {
-        let (margin, _) = probe_read(&evaluated, &placements, probe);
+        let (margin, _) = probe_read(evaluated, &placements, probe);
         if min_margin.is_none_or(|m| margin < m) {
             min_margin = Some(margin);
             min_margin_probe = Some(probe.id.clone());
@@ -1273,7 +1357,7 @@ pub fn evaluate_frame(scene: &Scene, input: &FrameInput) -> Result<FrameRead, Tw
         .iter()
         .all(|read| !read.engaged || read.slip <= SLIP_CONVERGED_MAX)
         && min_margin.is_none_or(|m| m >= 0.0);
-    Ok(FrameRead {
+    FrameRead {
         contacts,
         converged,
         min_margin,
@@ -1282,5 +1366,5 @@ pub fn evaluate_frame(scene: &Scene, input: &FrameInput) -> Result<FrameRead, Tw
         roots,
         step: input.step,
         time_seconds: input.time_seconds,
-    })
+    }
 }

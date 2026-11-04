@@ -82,7 +82,8 @@ pub use spring_bone::{
 };
 pub use twobody::{
     ContactDef, ContactEndpoint, ContactRead, EvaluatedMesh, FrameInput, FrameRead, Placement,
-    ProbeDef, Scene, TwoBodyError, evaluate_frame, evaluate_model, resolve_parameters,
+    ProbeDef, Scene, TwoBodyError, evaluate_frame, evaluate_frame_with_geometry,
+    evaluate_model, resolve_parameters,
 };
 pub use validate::parse_model;
 pub use validate_motion::parse_motion;
