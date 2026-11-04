@@ -35,6 +35,98 @@ FLASH_PER_SECOND_MAX = 3.0
 SAMPLE_HZ = 120
 MASK64 = (1 << 64) - 1
 
+# Bounded work (mcp-codify 2026-11-03): the simulation cost is
+# duration_steps x sum(emitter counts), and before these bounds
+# a record could name 1e12 particle-steps and be accepted, or
+# crash the evaluator with a raw ZeroDivisionError/KeyError on
+# malformed fields. Malformed is a typed refusal here, never a
+# traceback; oversized is refused, never run.
+MAX_DURATION_STEPS = 216000      # 60 steps/s for one hour
+MAX_EMITTERS = 64
+MAX_COUNT_PER_EMITTER = 4096
+MAX_PARTICLE_STEPS = 200000000
+SEGMENT_KINDS = ("hold", "sine", "linear", "smoothstep")
+
+
+def _is_int(v):
+    return isinstance(v, int) and not isinstance(v, bool)
+
+
+def validate_fx_record(record):
+    """Structural validation before any simulation. Returns a
+    (code, detail) refusal tuple or None."""
+    def bad(detail):
+        return ("fx_record_invalid", detail)
+    if not isinstance(record.get("id"), str) or not record["id"]:
+        return bad("id must be a non-empty string")
+    if not _is_int(record.get("seed")):
+        return bad("seed must be an integer")
+    step_hz = record.get("step_hz")
+    if not _is_int(step_hz) or not 1 <= step_hz <= 240:
+        return bad("step_hz must be an integer in 1..=240")
+    duration = record.get("duration_steps")
+    if not _is_int(duration) or not 1 <= duration <= MAX_DURATION_STEPS:
+        return ("fx_unbounded",
+                "duration_steps must be an integer in 1..=%d, got %r"
+                % (MAX_DURATION_STEPS, duration))
+    track = record.get("intensity")
+    if not isinstance(track, dict):
+        return bad("intensity must be an object")
+    segments = track.get("segments")
+    if not isinstance(segments, list) or not segments:
+        return bad("intensity.segments must be a non-empty list")
+    for seg in segments:
+        if not isinstance(seg, dict):
+            return bad("each intensity segment must be an object")
+        kind = seg.get("kind")
+        if kind not in SEGMENT_KINDS:
+            return bad("unknown segment kind %r" % (kind,))
+        if not _is_int(seg.get("duration_ms")) or seg["duration_ms"] < 0:
+            return bad("segment duration_ms must be a non-negative integer")
+        if kind == "hold":
+            if not _is_int(seg.get("value")):
+                return bad("hold segment needs an integer value")
+        elif kind == "sine":
+            if not _is_int(seg.get("period_ms")) or seg["period_ms"] < 1:
+                return bad("sine segment period_ms must be an integer >= 1")
+            if not _is_int(seg.get("base")) or not _is_int(seg.get("amp")):
+                return bad("sine segment needs integer base and amp")
+        else:
+            if not _is_int(seg.get("from")) or not _is_int(seg.get("to")):
+                return bad("%s segment needs integer from and to" % kind)
+    emitters = record.get("emitters", [])
+    if not isinstance(emitters, list) or len(emitters) > MAX_EMITTERS:
+        return ("fx_unbounded",
+                "emitters must be a list of at most %d" % MAX_EMITTERS)
+    total_count = 0
+    for em in emitters:
+        if not isinstance(em, dict):
+            return bad("each emitter must be an object")
+        count = em.get("count")
+        if not _is_int(count) or not 0 <= count <= MAX_COUNT_PER_EMITTER:
+            return ("fx_unbounded",
+                    "emitter count must be an integer in 0..=%d, got %r"
+                    % (MAX_COUNT_PER_EMITTER, count))
+        total_count += count
+        if not _is_int(em.get("life_steps")) or em["life_steps"] < 1:
+            return bad("emitter life_steps must be an integer >= 1")
+        for field in ("spread_x", "vel_x_jitter"):
+            if not _is_int(em.get(field)) or em[field] < 0:
+                return bad("emitter %s must be a non-negative integer"
+                           % field)
+        for field in ("vel_y", "gravity_y"):
+            if not _is_int(em.get(field)):
+                return bad("emitter %s must be an integer" % field)
+        origin = em.get("origin")
+        if (not isinstance(origin, list) or len(origin) != 2
+                or any(not _is_int(v) for v in origin)):
+            return bad("emitter origin must be [int, int]")
+    if duration * total_count > MAX_PARTICLE_STEPS:
+        return ("fx_unbounded",
+                "particle-steps %d exceed the bound %d"
+                % (duration * total_count, MAX_PARTICLE_STEPS))
+    return None
+
 # Integer sine table, one quadrant (0..90 deg in 17 steps of
 # 5.625 deg), milli-units. Literal so no platform libm is ever
 # consulted: the format's determinism is integer-only.
@@ -182,7 +274,11 @@ def main(argv):
     ap.add_argument("--record-out", required=True)
     a = ap.parse_args(argv[1:])
 
-    record = json.loads(Path(a.fx).read_bytes())
+    try:
+        record = json.loads(Path(a.fx).read_bytes())
+    except Exception as ex:
+        return refuse("fx_unreadable",
+                      "effect record unreadable: %s" % ex)
     refusal = check_lane(record)
     if refusal is not None:
         write_run_record(a.record_out, pipe_id="art-production",
@@ -203,6 +299,14 @@ def main(argv):
                          refusals=["flash_gate_inversion"])
         return refuse("flash_gate_inversion",
                       "uses_inversion must be declared false")
+    refusal = validate_fx_record(record)
+    if refusal is not None:
+        write_run_record(a.record_out, pipe_id="art-production",
+                         pipe_version="1.0", gate_id="lumen-fx",
+                         gate_version="1.0", inputs={"effect": a.fx},
+                         outputs={}, verdict="refused",
+                         refusals=[refusal[0]])
+        return refuse(refusal[0], refusal[1])
 
     run1 = simulate(record)
     run2 = simulate(record)

@@ -370,5 +370,43 @@ evidence, each with its own section in PIPELINES-REPORT.md.
    the evaluator + authoring machinery, which is landed and
    evidenced (see PIPELINES-REPORT.md, dependency disposition).
 
+## 11. Codified checks (D-872, mcp-codify 2026-11-03)
+
+Added by the MCP validation + codification pass, from
+adversarial probes against the Stage 0–3 machinery. The shared
+practice text lives in the tiger-style-mcp skill,
+`references/CORPUS-GENERATION.md`; this section is the pipes'
+own binding summary.
+
+- **Asset records (new gate script).**
+  `scripts/pipes/asset_record_check.py` enforces the D-865
+  metadata law (`stamp`: status born candidate with auditable
+  history, keeper only with its gate ref, made_by in the
+  roster in all three layers — an unnamed model is refused —
+  plus seed, pipe run, frozen record hash, lane stamp, and
+  the versioned `lessons` field when a D-871 pack was loaded)
+  and keeper-chain completeness (`chain`, art bible §1.1,
+  with `--asset` byte verification). Exit 0 pass, 3 typed
+  refusal.
+- **Malformed input is a typed refusal, never a traceback.**
+  `enemy_genesis.py` validates family structure before
+  generating (`genesis_family_invalid`, `genesis_unreadable`);
+  `fx_eval.py` validates effect records before simulating
+  (`fx_record_invalid`, `fx_unbounded`, `fx_unreadable`).
+  Zero weights, missing seeds, float seeds, zero periods or
+  lifetimes, and unknown segment kinds are refusals with
+  stable codes.
+- **Bounded work.** Variant counts (≤ 4096), fx duration
+  steps (≤ 216,000), emitter counts (≤ 64 records / 4096 per
+  emitter), and total particle-steps (≤ 2×10⁸) carry named
+  caps; oversized is refused, never run.
+- **Refusals are pre-mutation, including checks.** The
+  genesis pin is compared before the variant table is
+  written; a mismatched pin leaves no table behind.
+- **The verifier never crashes.** `run_record.py verify`
+  returns REVIEW with reasons on structural anomalies
+  (non-object records, non-object entries, missing paths) —
+  unverifiable is a state, not an exception (D-713).
+
 *PIPES.md ends. Companion: PIPELINES-REPORT.md (stage gates,
 evidence, deviations) in this directory.*

@@ -33,6 +33,68 @@ from run_record import (REFUSAL_EXIT, canonical_bytes, check_lane,
 
 MASK64 = (1 << 64) - 1
 
+# A family table is a bounded artifact: 4,096 variants is far
+# past any floor's needs, and an unbounded count turns a data
+# file into a memory exhaustion attack on the pipe host
+# (mcp-codify 2026-11-03; Tiger Style bounded work).
+MAX_VARIANTS = 4096
+
+
+def _is_int(v):
+    return isinstance(v, int) and not isinstance(v, bool)
+
+
+def validate_family(family):
+    """Structural validation before any generation. Returns a
+    (code, detail) refusal tuple or None. Every malformed shape
+    is a typed refusal here, never a traceback downstream:
+    zero/empty weights divided by zero, a missing seed raised
+    KeyError, and a float seed was silently truncated -- all
+    found by adversarial probe (mcp-codify 2026-11-03)."""
+    def bad(detail):
+        return ("genesis_family_invalid", detail)
+    if not isinstance(family.get("id"), str) or not family["id"]:
+        return bad("id must be a non-empty string")
+    if not _is_int(family.get("seed")):
+        return bad("seed must be an integer, got %r" % (family.get("seed"),))
+    count = family.get("variant_count")
+    if not _is_int(count) or not 1 <= count <= MAX_VARIANTS:
+        return bad("variant_count must be an integer in 1..=%d, got %r"
+                   % (MAX_VARIANTS, count))
+    base = family.get("base")
+    if not isinstance(base, dict) or not isinstance(base.get("stat_block"), dict):
+        return bad("base.stat_block must be an object")
+    for stat in ("vigour", "guard"):
+        if not _is_int(base["stat_block"].get(stat)):
+            return bad("base.stat_block.%s must be an integer" % stat)
+    derived = family.get("derived", {})
+    if not isinstance(derived, dict):
+        return bad("derived must be an object")
+    for key, val in derived.items():
+        if not _is_int(val):
+            return bad("derived.%s must be an integer" % key)
+    axes = family.get("variant_axes")
+    if not isinstance(axes, list) or not axes:
+        return bad("variant_axes must be a non-empty list")
+    for axis in axes:
+        if not isinstance(axis, dict) or not isinstance(axis.get("name"), str):
+            return bad("each variant axis needs a string name")
+        values, weights = axis.get("values"), axis.get("weights")
+        if not isinstance(values, list) or not values:
+            return bad("axis %s: values must be a non-empty list" % axis["name"])
+        if (not isinstance(weights, list) or len(weights) != len(values)
+                or any(not _is_int(w) or w < 0 for w in weights)):
+            return bad("axis %s: weights must be non-negative integers "
+                       "matching values in length" % axis["name"])
+        if sum(weights) <= 0:
+            return bad("axis %s: weights must sum to more than zero"
+                       % axis["name"])
+        if axis["name"] in ("hoard_depth", "chart_promises") \
+                and any(not _is_int(v) for v in values):
+            return bad("axis %s feeds stat derivation: values must "
+                       "be integers" % axis["name"])
+    return None
+
 
 def pick_weighted(draw, values, weights):
     total = sum(weights)
@@ -83,14 +145,23 @@ def main(argv):
     ap.add_argument("--check-pin")
     a = ap.parse_args(argv[1:])
 
-    family = json.loads(Path(a.family).read_bytes())
+    try:
+        family = json.loads(Path(a.family).read_bytes())
+    except Exception as ex:
+        return refuse("genesis_unreadable",
+                      "family record unreadable: %s" % ex)
     refusal = check_lane(family)
     if refusal is not None:
         return refuse(refusal[0], refusal[1])
-    if family.get("format") != "lumen-genesis-family/1":
+    if not isinstance(family, dict) \
+            or family.get("format") != "lumen-genesis-family/1":
         return refuse("lane_unclassified",
                       "not a lumen-genesis-family/1 record (format %r)"
-                      % (family.get("format"),))
+                      % (family.get("format") if isinstance(family, dict)
+                         else None,))
+    refusal = validate_family(family)
+    if refusal is not None:
+        return refuse(refusal[0], refusal[1])
 
     variants = generate(family)
     variants2 = generate(family)
@@ -99,30 +170,46 @@ def main(argv):
         return refuse("double_bake_mismatch",
                       "genesis unstable: %s vs %s" % (h1, h2))
 
+    # The pin is checked BEFORE the table is written: a refusal
+    # is pre-mutation, so a mismatched pin leaves no table
+    # behind for a downstream step to consume by mistake
+    # (mcp-codify 2026-11-03).
+    refusals = []
+    if a.check_pin:
+        try:
+            pin = json.loads(Path(a.check_pin).read_bytes())
+        except Exception as ex:
+            return refuse("genesis_unreadable",
+                          "pin record unreadable: %s" % ex)
+        if not isinstance(pin, dict) or pin.get("genesis_hash") != h1:
+            refusals.append("genesis_mismatch")
+    if refusals:
+        write_run_record(a.record_out, pipe_id="content",
+                         pipe_version="1.0",
+                         gate_id="enemy-genesis", gate_version="1.0",
+                         inputs={"family": a.family},
+                         outputs={},
+                         verdict="refused",
+                         refusals=refusals)
+        return refuse(refusals[0],
+                      "genesis hash %s does not match the pin" % h1)
+
     table = {"family": family["id"], "seed": family["seed"],
              "genesis_hash": h1, "variants": variants}
     Path(a.out).write_bytes(canonical_bytes(table) + b"\n")
 
-    refusals = []
     if a.pin:
         pin = {"family": family["id"], "genesis_hash": h1}
         Path(a.pin).write_bytes(canonical_bytes(pin) + b"\n")
-    if a.check_pin:
-        pin = json.loads(Path(a.check_pin).read_bytes())
-        if pin.get("genesis_hash") != h1:
-            refusals.append("genesis_mismatch")
     write_run_record(a.record_out, pipe_id="content", pipe_version="1.0",
                      gate_id="enemy-genesis", gate_version="1.0",
                      inputs={"family": a.family},
                      outputs={"table": a.out},
-                     verdict="genesis-stable" if not refusals else "refused",
-                     refusals=refusals)
+                     verdict="genesis-stable",
+                     refusals=[])
     print(json.dumps({"family": family["id"], "genesis_hash": h1,
                       "variants": len(variants),
-                      "pin_match": not refusals}, indent=1, sort_keys=True))
-    if refusals:
-        return refuse(refusals[0],
-                      "genesis hash %s does not match the pin" % h1)
+                      "pin_match": True}, indent=1, sort_keys=True))
     return 0
 
 

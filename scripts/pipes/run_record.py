@@ -114,13 +114,21 @@ def write_run_record(path, *, pipe_id, pipe_version, gate_id,
 
 def verify_run_record(path):
     """Recompute a run record's evidence. Returns a verdict
-    dict: CONFORMS, or REVIEW with the reasons."""
+    dict: CONFORMS, or REVIEW with the reasons.
+
+    Structural anomalies are REVIEW reasons, never exceptions:
+    a verifier that crashes on a malformed record turns an
+    unverifiable record into an unhandled error, and D-713
+    routes unverifiable to REVIEW (mcp-codify 2026-11-03)."""
     reasons = []
     try:
         record = json.loads(Path(path).read_bytes())
     except Exception as ex:
         return {"verdict": "REVIEW",
                 "reasons": ["run record unreadable: %s" % ex]}
+    if not isinstance(record, dict):
+        return {"verdict": "REVIEW",
+                "reasons": ["run record is not a JSON object"]}
     for field in ("record", "lane", "origin_lane", "content_label",
                   "pipe", "gate", "inputs", "outputs", "verdict"):
         if field not in record:
@@ -132,8 +140,20 @@ def verify_run_record(path):
             reasons.append("lane stamp %s is %r, want %r"
                            % (key, record.get(key), want))
     for section in ("inputs", "outputs"):
-        for name, entry in sorted(record.get(section, {}).items()):
+        entries = record.get(section, {})
+        if not isinstance(entries, dict):
+            reasons.append("%s is not an object" % section)
+            continue
+        for name, entry in sorted(entries.items()):
+            if not isinstance(entry, dict):
+                reasons.append("%s %s: entry is not an object"
+                               % (section, name))
+                continue
             p = entry.get("path", "")
+            if not isinstance(p, str) or not p:
+                reasons.append("%s %s: entry has no path"
+                               % (section, name))
+                continue
             if not Path(p).exists():
                 reasons.append("%s %s: artifact missing: %s"
                                % (section, name, p))
