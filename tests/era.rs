@@ -43,6 +43,7 @@ impl RawServer {
             .env_remove("LUMEN_ALLOW_REMOTE_BRP")
             // The folded generation lane reads a default config from
             // $HOME; keep stdio spawns hermetic (atelier fold, D-143).
+            .env_remove("LUMEN_CONFIG")
             .env_remove("ATELIER_CONFIG")
             .env("HOME", project)
             .env("LUMEN_PROJECT_ROOT", project)

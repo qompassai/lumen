@@ -24,11 +24,25 @@ fn resolve_path_prefers_env() {
 
 #[test]
 fn resolve_path_defaults_under_home() {
+    // Neither config present: the current (lumen) default is named.
     let path = resolve_path(None, Some("/home/u")).expect("path");
     assert_eq!(
         path,
-        std::path::PathBuf::from("/home/u/.config/atelier/atelier.toml")
+        std::path::PathBuf::from("/home/u/.config/lumen/lumen.toml")
     );
+    // D-1041 fallback: a home carrying only the pre-rename config
+    // resolves to it; once the lumen config exists, it wins.
+    let tree = Tree::new();
+    let home = tree.path("home");
+    let legacy = home.join(".config/atelier/atelier.toml");
+    std::fs::create_dir_all(legacy.parent().expect("parent")).expect("mkdir legacy");
+    std::fs::write(&legacy, b"").expect("write legacy");
+    let home_str = home.to_str().expect("home utf8");
+    assert_eq!(resolve_path(None, Some(home_str)).expect("path"), legacy);
+    let current = home.join(".config/lumen/lumen.toml");
+    std::fs::create_dir_all(current.parent().expect("parent")).expect("mkdir current");
+    std::fs::write(&current, b"").expect("write current");
+    assert_eq!(resolve_path(None, Some(home_str)).expect("path"), current);
 }
 
 #[test]
@@ -165,7 +179,7 @@ fn decode_reports_dimensions_and_blank_measure() {
 
 #[test]
 fn comfy_style_output_names_accepted() {
-    for name in ["atelier-j1_00001_.png", "ComfyUI_00042_.png", "a b (1).png"] {
+    for name in ["lumen-j1_00001_.png", "ComfyUI_00042_.png", "a b (1).png"] {
         assert_eq!(safe_output_name(name, "").expect("ok"), name);
     }
 }

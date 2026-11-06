@@ -197,3 +197,12 @@ prepared and held — publication is Owner-gated and has not happened;
 the install path is the public GitHub release. §3 and §8 do not
 apply: the MCP surface is stdio-only (lumen's HTTP surface is an
 A2A agent endpoint, not an MCP transport).
+
+## Addendum — 2026-11-05 (D-1041)
+
+The fold record above stands as the 2026-10-27 history. Under
+D-1041 the four folded tools were renamed `atelier_*` → `lumen_*`
+(server 2.0.0): names and the description references to them
+changed; the tools' input schemas remain byte-identical to the
+standalone atelier baseline, and the parity test now applies
+exactly the sanctioned rename to the fixture's expected objects.

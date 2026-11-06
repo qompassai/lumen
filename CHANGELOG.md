@@ -1,5 +1,25 @@
 # Changelog — lumen
 
+## 2.0.0 — 2026-11-05
+
+- **Generation lane renamed to lumen terminology (D-1041, breaking).**
+  The four generation tools served since the atelier fold (D-143) are
+  renamed: `atelier_status` → `lumen_status`, `atelier_models` →
+  `lumen_models`, `atelier_txt2img` → `lumen_txt2img`,
+  `atelier_img2img` → `lumen_img2img`. Input schemas, annotations,
+  and behaviour are unchanged. Served values follow: the status
+  payload's `server.name` and `lifecycle_owner` now read `lumen`,
+  output filename prefixes are `lumen-<job_id>`, and the lane's log
+  files are `lumen-<profile>.jsonl`. Client registrations
+  (rose, Diver) were updated names-only in the same programme.
+- **Config path migrated.** The lane reads `$LUMEN_CONFIG`, else
+  `~/.config/lumen/lumen.toml`. The pre-rename `$ATELIER_CONFIG` and
+  `~/.config/atelier/atelier.toml` are honoured as fallbacks (the
+  legacy default only when the lumen default is absent), so an
+  unmigrated install keeps working.
+- `server.json` still records the published 1.0.0 release package;
+  the registry record is updated at the next release cut (D-646).
+
 ## 1.0.0 — 2026-10-29
 
 The fleet-to-1.0 close-out (roadmap R-604..R-608).

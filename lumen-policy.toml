@@ -130,19 +130,19 @@ sink = "brp"
 # profile's roots (the lane's own admission rules bound it); an
 # absolute path argument labels `restricted`, which A4 covers for the
 # trusted sink.
-[tools.atelier_status]
+[tools.lumen_status]
 reads = ["low"]
 sink = "trusted"
 
-[tools.atelier_models]
+[tools.lumen_models]
 reads = ["low"]
 sink = "trusted"
 
-[tools.atelier_txt2img]
+[tools.lumen_txt2img]
 reads = ["low"]
 sink = "trusted"
 
-[tools.atelier_img2img]
+[tools.lumen_img2img]
 reads = ["low"]
 sink = "trusted"
 

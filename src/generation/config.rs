@@ -1,7 +1,7 @@
 //! Fail-closed TOML configuration.
 //!
-//! Contract: the file named by `$ATELIER_CONFIG`, else
-//! `~/.config/atelier/atelier.toml`, must exist, be at most
+//! Contract: the file named by `$LUMEN_CONFIG`, else
+//! `~/.config/lumen/lumen.toml`, must exist, be at most
 //! [`CONFIG_BYTES_MAX`] bytes, parse with no unknown keys, and validate
 //! completely. There is no built-in default configuration and no profile
 //! default: `profile` is required and both profile blocks must be present so
@@ -28,7 +28,10 @@ use crate::generation::error::{AtelierError, ErrorCode, Result, err};
 /// Largest config file accepted, in bytes.
 pub const CONFIG_BYTES_MAX: u64 = 64 * 1024;
 /// Environment variable naming an explicit config file.
-pub const CONFIG_ENV: &str = "ATELIER_CONFIG";
+pub const CONFIG_ENV: &str = "LUMEN_CONFIG";
+/// Pre-rename (D-1041) environment variable, honoured as a fallback
+/// when [`CONFIG_ENV`] is unset or empty.
+pub const LEGACY_CONFIG_ENV: &str = "ATELIER_CONFIG";
 /// Most allowed source roots one profile may name.
 pub const SOURCE_ROOT_COUNT_MAX: usize = 16;
 /// Hard ceilings the config's own limits may not exceed.
@@ -95,7 +98,7 @@ impl ProfileRoots {
     /// Path of this profile's append-only log file.
     pub fn log_file(&self, profile: Profile) -> PathBuf {
         self.log_root
-            .join(format!("atelier-{}.jsonl", profile.as_str()))
+            .join(format!("lumen-{}.jsonl", profile.as_str()))
     }
 }
 
@@ -409,7 +412,7 @@ fn validate_engine(raw: &RawEngine) -> Result<EngineConfig> {
     if !host.is_loopback() {
         return err(
             ErrorCode::EngineAddressNotLoopback,
-            format!("engine.host {host} is not loopback; atelier refuses non-loopback engines"),
+            format!("engine.host {host} is not loopback; lumen refuses non-loopback engines"),
         );
     }
     if raw.port == 0 {
@@ -674,7 +677,7 @@ impl Config {
                 return err(
                     ErrorCode::ConfigMissing,
                     format!(
-                        "config {} does not exist; atelier has no default",
+                        "config {} does not exist; lumen has no default",
                         path.display()
                     ),
                 );
@@ -708,16 +711,43 @@ impl Config {
     }
 }
 
-/// Resolve the config path: `$ATELIER_CONFIG` if set, else the home default.
+/// The default config path under a home directory (D-1041).
+pub fn default_path(home: &Path) -> PathBuf {
+    home.join(".config/lumen/lumen.toml")
+}
+
+/// The pre-rename (D-1041) default config path, honoured as a
+/// fallback so an unmigrated install keeps working.
+pub fn legacy_default_path(home: &Path) -> PathBuf {
+    home.join(".config/atelier/atelier.toml")
+}
+
+/// Resolve the config path: the env-named file if set, else the home
+/// default. The current default ([`default_path`]) wins when it
+/// exists; the legacy default ([`legacy_default_path`]) is used when
+/// it is the only one present. When neither exists the current
+/// default is returned, so the caller can name it as the path a
+/// config is expected at.
 pub fn resolve_path(env_value: Option<&str>, home: Option<&str>) -> Result<PathBuf> {
     if let Some(value) = env_value.filter(|value| !value.is_empty()) {
         return Ok(PathBuf::from(value));
     }
     match home.filter(|value| !value.is_empty()) {
-        Some(home) => Ok(Path::new(home).join(".config/atelier/atelier.toml")),
+        Some(home) => {
+            let home = Path::new(home);
+            let current = default_path(home);
+            if current.exists() {
+                return Ok(current);
+            }
+            let legacy = legacy_default_path(home);
+            if legacy.exists() {
+                return Ok(legacy);
+            }
+            Ok(current)
+        }
         None => err(
             ErrorCode::ConfigMissing,
-            "no $ATELIER_CONFIG and no $HOME for the default config path",
+            "no $LUMEN_CONFIG and no $HOME for the default config path",
         ),
     }
 }

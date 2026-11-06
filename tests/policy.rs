@@ -18,15 +18,15 @@ use lumen::policy::{
 use serde_json::{Map, Value, json};
 
 const REGISTERED: &[&str] = &[
-    "atelier_img2img",
-    "atelier_models",
-    "atelier_status",
-    "atelier_txt2img",
     "bevy_discover",
     "canon_convert",
     "canon_gate",
     "canon_generate",
     "canon_resolve",
+    "lumen_img2img",
+    "lumen_models",
+    "lumen_status",
+    "lumen_txt2img",
     "sprite_info",
     "style_apply",
     "style_list",
@@ -110,6 +110,7 @@ fn stdio_session(project: &std::path::Path, calls: &[(&str, Value)]) -> Vec<Valu
         .env_remove("LUMEN_ALLOW_REMOTE_BRP")
         // The folded generation lane reads a default config from
         // $HOME; keep stdio spawns hermetic (atelier fold, D-143).
+        .env_remove("LUMEN_CONFIG")
         .env_remove("ATELIER_CONFIG")
         .env("HOME", project)
         .env("LUMEN_PROJECT_ROOT", project)

@@ -1,11 +1,12 @@
 //! Engine lifecycle: on-demand start, ownership, and verified stop.
 //!
 //! Contract:
-//! - atelier starts the engine only for a generation job, only when nothing
-//!   already listens on the configured loopback port (an engine atelier did
-//!   not start is `engine_unowned_present`: never attached, never stopped);
+//! - the lane starts the engine only for a generation job, only when
+//!   nothing already listens on the configured loopback port (an engine
+//!   the lane did not start is `engine_unowned_present`: never attached,
+//!   never stopped);
 //! - starting requires the host-wide lease (`state_root/engine.lease`,
-//!   an exclusive file lock), so two atelier instances under different
+//!   an exclusive file lock), so two lane instances under different
 //!   profiles cannot both own engines;
 //! - before launch, free VRAM on the configured GPU index is checked against
 //!   `vram_free_mib_min` and the GPU name against `expected_gpu_name`;
@@ -235,7 +236,7 @@ impl<L: Launcher, G: GpuProbe> Lifecycle<L, G> {
             }
             Err(_) => err(
                 ErrorCode::LeaseHeld,
-                "another atelier instance holds the host-wide engine lease",
+                "another lumen instance holds the host-wide engine lease",
             ),
         }
     }
@@ -253,7 +254,7 @@ impl<L: Launcher, G: GpuProbe> Lifecycle<L, G> {
         if port_listening(self.address()).await {
             return err(
                 ErrorCode::EngineUnownedPresent,
-                format!("an engine atelier did not start is on {}", self.address()),
+                format!("an engine lumen did not start is on {}", self.address()),
             );
         }
         let gpu = self.gpu.snapshot(self.engine.gpu_index).await?;
@@ -346,7 +347,7 @@ impl<L: Launcher, G: GpuProbe> Lifecycle<L, G> {
     }
 
     /// Stop the owned child (if any), wait, and verify. Never touches an
-    /// engine atelier did not start.
+    /// engine the lane did not start.
     pub async fn stop(&mut self) -> CleanupResult {
         let Some(mut child) = self.child.take() else {
             return CleanupResult {

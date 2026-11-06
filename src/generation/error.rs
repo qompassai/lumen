@@ -1,6 +1,6 @@
 //! Structured errors with stable machine-readable codes.
 //!
-//! Contract: every refusal atelier returns carries a `code` from the fixed
+//! Contract: every refusal the lane returns carries a `code` from the fixed
 //! set below and a `class` naming which boundary failed (configuration,
 //! profile, model admission, source path, engine lifecycle, workflow
 //! validation, execution, output, cleanup, or tool arguments). Codes are

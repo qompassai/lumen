@@ -1,4 +1,4 @@
-//! The atelier service: tool semantics independent of MCP transport.
+//! The generation service: tool semantics independent of MCP transport.
 //!
 //! Contract for a generation job, in order: validate arguments and select
 //! the model (pure: the requested id, else the configured default for the
@@ -86,7 +86,7 @@ pub fn style_negative(negative: &str) -> String {
     out.join(", ")
 }
 
-/// `atelier_txt2img` arguments. Unknown fields (e.g. `profile`) are refused.
+/// `lumen_txt2img` arguments. Unknown fields (e.g. `profile`) are refused.
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct Txt2ImgRequest {
@@ -105,7 +105,7 @@ pub struct Txt2ImgRequest {
     pub scheduler: Option<String>,
 }
 
-/// `atelier_img2img` arguments. Unknown fields are refused.
+/// `lumen_img2img` arguments. Unknown fields are refused.
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct Img2ImgRequest {
@@ -127,7 +127,7 @@ pub struct Img2ImgRequest {
     pub scheduler: Option<String>,
 }
 
-/// `atelier_models` arguments.
+/// `lumen_models` arguments.
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct ModelsRequest {
@@ -368,7 +368,7 @@ pub fn build_graph(
         ("sampler_name", json!(params.sampler_name)),
         ("scheduler", json!(params.scheduler)),
         ("denoise", json!(params.denoise)),
-        ("filename_prefix", json!(format!("atelier-{job_id}"))),
+        ("filename_prefix", json!(format!("lumen-{job_id}"))),
     ];
     match (template.kind, uploaded_image) {
         (TemplateKind::Img2Img, Some(name)) => values.push(("image", json!(name))),
@@ -536,7 +536,7 @@ impl<B: MediaBackend, L: Launcher, G: GpuProbe> Atelier<B, L, G> {
         )
     }
 
-    /// `atelier_status`. Never starts the engine.
+    /// `lumen_status`. Never starts the engine.
     pub async fn status(&self) -> Value {
         let (engine_state, owned, degraded, gpu) = {
             let lifecycle = self.lifecycle.lock().await;
@@ -552,12 +552,12 @@ impl<B: MediaBackend, L: Launcher, G: GpuProbe> Atelier<B, L, G> {
         json!({
             "profile": self.config.profile.as_str(),
             "content_class": self.config.profile.content_class(),
-            "server": {"name": "atelier", "version": env!("CARGO_PKG_VERSION")},
+            "server": {"name": "lumen", "version": env!("CARGO_PKG_VERSION")},
             "config": {"status": "valid", "state_root": self.config.state_root},
             "backend": self.backend.kind(),
             "engine": {
                 "state": engine_state,
-                "lifecycle_owner": if owned { "atelier" } else { "none" },
+                "lifecycle_owner": if owned { "lumen" } else { "none" },
                 "degraded_reason": degraded,
                 "address": self.config.engine.base_url(),
             },
@@ -580,7 +580,7 @@ impl<B: MediaBackend, L: Launcher, G: GpuProbe> Atelier<B, L, G> {
         })
     }
 
-    /// `atelier_models`. Lists every registered model (admitted ones under
+    /// `lumen_models`. Lists every registered model (admitted ones under
     /// `models`, the rest under `not_admitted`) with its modality and
     /// availability (checkpoint file present now). Never starts the engine.
     pub fn models(&self, request: &ModelsRequest) -> Result<Value> {
@@ -675,7 +675,7 @@ impl<B: MediaBackend, L: Launcher, G: GpuProbe> Atelier<B, L, G> {
         source: Option<AdmittedSource>,
     ) -> Result<GenerationResult> {
         let Ok(_slot) = self.queue.try_acquire() else {
-            return err(ErrorCode::EngineBusy, "atelier job queue is full");
+            return err(ErrorCode::EngineBusy, "lumen job queue is full");
         };
         let mut lifecycle = self.lifecycle.lock().await;
         let job_id = self.next_job_id();
@@ -785,7 +785,7 @@ impl<B: MediaBackend, L: Launcher, G: GpuProbe> Atelier<B, L, G> {
             )?;
             let upload = self
                 .backend
-                .upload_image(&format!("atelier-{job_id}.png"), source.bytes.clone())
+                .upload_image(&format!("lumen-{job_id}.png"), source.bytes.clone())
                 .await?;
             if !upload.subfolder.is_empty() || upload.kind != "input" {
                 return err(

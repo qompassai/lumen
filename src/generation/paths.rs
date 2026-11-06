@@ -23,7 +23,7 @@ use crate::generation::error::{AtelierError, ErrorCode, Result, err};
 pub const PNG_MAGIC: [u8; 8] = [0x89, b'P', b'N', b'G', 0x0d, 0x0a, 0x1a, 0x0a];
 /// Longest output filename accepted from the backend, in bytes.
 pub const OUTPUT_FILENAME_BYTES_MAX: usize = 128;
-/// Largest PNG atelier will decode, in decoded bytes.
+/// Largest PNG the lane will decode, in decoded bytes.
 pub const DECODED_BYTES_MAX: usize = 256 * 1024 * 1024;
 
 /// A validated source image, read once.

@@ -18,7 +18,7 @@ use sha2::{Digest, Sha256};
 use crate::generation::config::{Config, ModelConfig};
 use crate::generation::error::{AtelierError, ErrorCode, Result, err};
 
-/// Largest checkpoint atelier will hash, in bytes.
+/// Largest checkpoint the lane will hash, in bytes.
 pub const CHECKPOINT_BYTES_MAX: u64 = 32 * 1024 * 1024 * 1024;
 const HASH_CHUNK_BYTES: usize = 4 * 1024 * 1024;
 

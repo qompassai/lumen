@@ -3,20 +3,23 @@
 //! convergence the atelier program planned from 2026-10-20: "the
 //! profile system survives intact inside lumen's generation module").
 //!
-//! Scope of the fold (D-144/D-145): atelier is **images only**. The
-//! four S1 tools — `atelier_status`, `atelier_models`,
-//! `atelier_txt2img`, `atelier_img2img` — are ported with their
-//! names, schemas, and behavior against atelier's measured baseline
-//! (primo `~/atelier` @ `11f027a`, branch `pax/atelier-s1`). Atelier
+//! Scope of the fold (D-144/D-145): the lane is **images only**. The
+//! four S1 tools are ported with their schemas and behavior against
+//! atelier's measured baseline (primo `~/atelier` @ `11f027a`,
+//! branch `pax/atelier-s1`); since D-1041 they are served under
+//! lumen names — `lumen_status`, `lumen_models`, `lumen_txt2img`,
+//! `lumen_img2img`. Atelier
 //! never shipped video or music tools: `vera`/`aria` exist only as
-//! unimplemented roster names inside `atelier_models` output, and
+//! unimplemented roster names inside `lumen_models` output, and
 //! they are carried as data, unchanged. Audio belongs to torori
 //! (finishing/delivery) and the composition lane (music authoring);
 //! nothing of it is ported here.
 //!
-//! The lane keeps atelier's contracts verbatim: fail-closed TOML
-//! configuration (`$ATELIER_CONFIG`, else
-//! `~/.config/atelier/atelier.toml`), the two config-selected lane
+//! The lane keeps the fold's contracts verbatim: fail-closed TOML
+//! configuration (`$LUMEN_CONFIG`, else
+//! `~/.config/lumen/lumen.toml`; the pre-rename `$ATELIER_CONFIG`
+//! and `~/.config/atelier/atelier.toml` are honoured as fallbacks,
+//! D-1041), the two config-selected lane
 //! profiles (`qompass` / `ntranch`) with disjoint roots and
 //! profile-stamped logs and manifests, model admission by pinned
 //! SHA-256, versioned workflow templates, the owned-engine lifecycle
@@ -27,9 +30,9 @@
 //! atelier served nothing else, so a missing config was a startup
 //! failure. The folded server also carries lumen's own surface, so
 //! an *absent default* config leaves the lane registered but
-//! unconfigured — its tools answer with atelier's typed
+//! unconfigured — its tools answer with the lane's typed
 //! `config_missing` refusal — while a config that is *named*
-//! (`$ATELIER_CONFIG` set) or *present* but invalid refuses startup,
+//! (`$LUMEN_CONFIG` set) or *present* but invalid refuses startup,
 //! exactly as both parents fail closed on a named, broken config
 //! (mirroring `LUMEN_POLICY` handling in the binary).
 
@@ -56,7 +59,7 @@ use error::{AtelierError, ErrorCode};
 use lifecycle::{CommandLauncher, NvidiaSmi};
 use service::Atelier;
 
-/// Fixed path of the GPU probe (no PATH lookup) — atelier's rule, kept.
+/// Fixed path of the GPU probe (no PATH lookup) — the fold's rule, kept.
 pub const NVIDIA_SMI: &str = "/usr/bin/nvidia-smi";
 
 /// The concrete generation core the folded server runs.
@@ -78,7 +81,7 @@ impl GenerationLane {
         self.core.config.profile.as_str()
     }
 
-    /// Atelier's refusal wire shape for a failed generation call: the
+    /// The lane's refusal wire shape for a failed generation call: the
     /// error object plus the active profile stamp.
     pub fn refusal(&self, error: &AtelierError) -> String {
         let mut value = error.to_json();
@@ -104,11 +107,14 @@ pub enum GenerationSetup {
     Unconfigured { expected_path: PathBuf },
 }
 
-/// Resolve and (when present) load the atelier configuration,
+/// Resolve and (when present) load the generation configuration,
 /// following the startup posture in the module docs. A present but
 /// invalid config is an error, never a silent fallback.
 pub fn setup() -> Result<GenerationSetup, AtelierError> {
-    let env_path = std::env::var(config::CONFIG_ENV).ok();
+    let env_path = std::env::var(config::CONFIG_ENV)
+        .ok()
+        .filter(|value| !value.is_empty())
+        .or_else(|| std::env::var(config::LEGACY_CONFIG_ENV).ok());
     let named = env_path.as_deref().is_some_and(|value| !value.is_empty());
     let home = std::env::var("HOME").ok();
     let path = config::resolve_path(env_path.as_deref(), home.as_deref())?;
@@ -129,7 +135,7 @@ pub fn setup() -> Result<GenerationSetup, AtelierError> {
     }))
 }
 
-/// Serialize a tool result exactly as standalone atelier did
+/// Serialize a tool result exactly as the standalone server did
 /// (pretty JSON; a serialization failure becomes an
 /// `output_write_failed` error object rather than a panic).
 pub fn to_json<T: serde::Serialize>(value: &T) -> String {
@@ -141,13 +147,13 @@ pub fn to_json<T: serde::Serialize>(value: &T) -> String {
 }
 
 /// The per-call refusal served by every generation tool while the
-/// lane is unconfigured: atelier's error shape with `config_missing`.
+/// lane is unconfigured: the lane's error shape with `config_missing`.
 pub fn unconfigured_refusal(expected_path: &std::path::Path) -> String {
     let error = AtelierError::new(
         ErrorCode::ConfigMissing,
         format!(
             "generation lane is not configured: no config at {} \
-             (set $ATELIER_CONFIG or write the default config; there is no built-in default)",
+             (set $LUMEN_CONFIG or write the default config; there is no built-in default)",
             expected_path.display()
         ),
     );

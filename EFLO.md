@@ -54,3 +54,13 @@ canon (1,017) or atelier (986) as an on-demand group brings
 the always-on surface to ~1,800 — as a 1.1 item, not a silent
 description shrink at 1.0.0. No tool was removed and no
 description was edited to chase the number in this close-out.
+
+## Addendum — 2026-11-05 (D-1041)
+
+The measurements above are the 1.0.0 record, taken under the tool
+names then served. Under D-1041 the four generation tools were
+renamed `atelier_*` → `lumen_*` (`atelier_txt2img` is now
+`lumen_txt2img`, and likewise for img2img, models, and status) and
+the "atelier fold" group above is the generation lane. Counts were
+not re-measured in the rename programme; descriptions changed only
+where they carried the old names.

@@ -56,7 +56,7 @@ impl Default for Behavior {
             missing_class: None,
             submit_validation_error: false,
             history: HistoryMode::Success {
-                filename: "atelier_00001_.png".into(),
+                filename: "lumen_00001_.png".into(),
                 subfolder: String::new(),
                 kind: "output".into(),
             },

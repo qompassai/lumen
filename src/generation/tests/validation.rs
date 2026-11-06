@@ -41,7 +41,7 @@ fn config_loads_for_ntranch() {
 #[test]
 fn config_load_reads_file() {
     let tree = Tree::new();
-    let path = tree.path("atelier.toml");
+    let path = tree.path("lumen.toml");
     std::fs::write(&path, tree.toml("qompass")).expect("write");
     assert_eq!(Config::load(&path).expect("load").profile, Profile::Qompass);
 }
@@ -119,7 +119,7 @@ fn txt2img_patches_only_named_inputs_and_keeps_links() {
     assert_eq!(graph["3"]["inputs"]["model"], json!(["4", 0]));
     assert_eq!(graph["3"]["inputs"]["latent_image"], json!(["5", 0]));
     assert_eq!(graph["8"]["inputs"]["vae"], json!(["4", 2]));
-    assert_eq!(graph["9"]["inputs"]["filename_prefix"], "atelier-j1");
+    assert_eq!(graph["9"]["inputs"]["filename_prefix"], "lumen-j1");
     // Defaults come from the template and are echoed.
     assert_eq!(params.steps, 30);
     assert_eq!(params.sampler_name, "dpmpp_2m");
@@ -179,15 +179,15 @@ fn history_success_yields_descriptors() {
 #[test]
 fn safe_output_name_accepts_plain_component() {
     assert_eq!(
-        crate::generation::paths::safe_output_name("atelier-j1_00001_.png", "").expect("ok"),
-        "atelier-j1_00001_.png"
+        crate::generation::paths::safe_output_name("lumen-j1_00001_.png", "").expect("ok"),
+        "lumen-j1_00001_.png"
     );
 }
 
 #[test]
 fn log_lines_carry_profile_and_fields() {
     let tree = Tree::new();
-    let path = tree.path("ntranch/log/atelier-ntranch.jsonl");
+    let path = tree.path("ntranch/log/lumen-ntranch.jsonl");
     let log = crate::generation::log::EventLog::open(path.clone(), Profile::Ntranch);
     log.event(
         "info",
@@ -225,7 +225,7 @@ async fn status_and_models_do_not_start_engine() {
     let status = core.status().await;
     assert_eq!(status["profile"], "qompass");
     assert_eq!(status["engine"]["state"], json!(EngineState::Stopped));
-    assert_eq!(status["server"]["name"], "atelier");
+    assert_eq!(status["server"]["name"], "lumen");
     core.models(&ModelsRequest {
         lane: Some("image".into()),
     })
@@ -257,7 +257,7 @@ async fn txt2img_end_to_end_through_fake_comfy() {
         (64, 48)
     );
     assert!(result.output.image.pixel_stddev > 1.0);
-    assert!(seen.saw("GET /view?filename=atelier_00001_.png"));
+    assert!(seen.saw("GET /view?filename=lumen_00001_.png"));
     assert!(seen.saw("GET /history/fake-prompt-1"));
     assert!(result.cleanup.ok, "{:?}", result.cleanup);
     let manifest: serde_json::Value =
@@ -311,7 +311,7 @@ async fn img2img_records_server_upload_name_and_source_hash() {
         prompts[0]["prompt"]["10"]["inputs"]["image"],
         "uploaded-by-server (1).png"
     );
-    assert!(seen.uploads.lock().expect("u")[0].contains("name=\"image\"; filename=\"atelier-"));
+    assert!(seen.uploads.lock().expect("u")[0].contains("name=\"image\"; filename=\"lumen-"));
     let manifest: serde_json::Value =
         serde_json::from_slice(&std::fs::read(&result.manifest_path).expect("m")).expect("json");
     assert_eq!(manifest["profile"], "ntranch");
@@ -366,8 +366,7 @@ async fn log_file_is_profile_scoped() {
         FakeGpu::default(),
     );
     core.txt2img(txt_request()).await.expect("ok");
-    let text =
-        std::fs::read_to_string(tree.path("ntranch/log/atelier-ntranch.jsonl")).expect("log");
+    let text = std::fs::read_to_string(tree.path("ntranch/log/lumen-ntranch.jsonl")).expect("log");
     assert!(text.lines().count() >= 4);
     for line in text.lines() {
         let value: serde_json::Value = serde_json::from_str(line).expect("json line");

@@ -14,12 +14,13 @@
 //! `lumen::guard`) with the typed `-32022` unsupported-version
 //! error. The tools, the policy gate, and the CLI are unchanged.
 //!
-//! As of 0.3.0 the atelier image-generation lane is folded in
-//! (D-143): `atelier_status`, `atelier_models`, `atelier_txt2img`,
-//! and `atelier_img2img` are served from `lumen::generation` with
-//! atelier's names, schemas, and semantics; atelier retires as a
-//! standalone server. Images only (D-144/D-145) — no video or music
-//! tools existed in atelier or are added here.
+//! As of 0.3.0 the standalone atelier image-generation lane is
+//! folded in (D-143), served from `lumen::generation` with its
+//! schemas and semantics; atelier retires as a standalone server.
+//! As of 2.0.0 (D-1041) the lane's tools carry lumen names —
+//! `lumen_status`, `lumen_models`, `lumen_txt2img`, `lumen_img2img`.
+//! Images only (D-144/D-145) — no video or music tools existed in
+//! atelier or are added here.
 
 #![forbid(unsafe_code)]
 
@@ -156,7 +157,7 @@ enum PolicyAction {
     Replay,
 }
 
-/// The generation lane's runtime state: live under a loaded atelier
+/// The generation lane's runtime state: live under a loaded lane
 /// config, or registered-but-unconfigured when no default config
 /// exists (see `lumen::generation` for the startup posture).
 #[derive(Debug, Clone)]
@@ -171,7 +172,7 @@ pub struct Lumen {
     /// Policy check run before every tools/call; shared by clones so the
     /// session's label history is one per server process.
     enforcer: Arc<Enforcer>,
-    /// The folded atelier image lane (D-143).
+    /// The folded generation image lane (D-143; lumen names, D-1041).
     generation: GenerationState,
 }
 
@@ -344,15 +345,16 @@ impl Lumen {
         }
     }
 
-    // Generation lane folded from atelier (D-143): names, descriptions,
-    // annotations, and semantics are atelier's, unchanged; the tool
-    // semantics live in lumen::generation::service. Images only
-    // (D-144/D-145): atelier never shipped video or music tools.
+    // Generation lane folded from atelier (D-143): descriptions,
+    // annotations, and semantics are the fold's, unchanged; the tool
+    // names are lumen's since D-1041. The tool semantics live in
+    // lumen::generation::service. Images only (D-144/D-145): atelier
+    // never shipped video or music tools.
     #[tool(
-        description = "Report atelier's active profile, version, config status, backend, engine state (stopped/owned_running/unowned_present/degraded), lifecycle owner, GPU, current job, queue depth, admitted models, and last job/cleanup result. Never starts the engine.",
+        description = "Report lumen's active profile, version, config status, backend, engine state (stopped/owned_running/unowned_present/degraded), lifecycle owner, GPU, current job, queue depth, admitted models, and last job/cleanup result. Never starts the engine.",
         annotations(read_only_hint = true, open_world_hint = false)
     )]
-    async fn atelier_status(&self) -> Result<String, String> {
+    async fn lumen_status(&self) -> Result<String, String> {
         let lane = self.generation_lane()?;
         Ok(generation::to_json(&lane.core().status().await))
     }
@@ -361,7 +363,7 @@ impl Lumen {
         description = "List every registered model with its modality and availability (checkpoint file present): admitted ones under `models` (backend readiness, pinned-hash result), the rest under `not_admitted` with the refusal; plus the per-tool `defaults` and unimplemented roster names. Optional lane: image, video, or music. Never starts the engine.",
         annotations(read_only_hint = true, open_world_hint = false)
     )]
-    fn atelier_models(
+    fn lumen_models(
         &self,
         Parameters(request): Parameters<ModelsRequest>,
     ) -> Result<String, String> {
@@ -376,7 +378,7 @@ impl Lumen {
         description = "Generate one image from a text prompt with a registered image model (`model` id, e.g. iris or wai; omitted = the configured txt2img default; an unregistered id is refused as model_unknown) through the pinned txt2img template. The server prepends its default anime style tags (anime coloring, cel shading, flat color, sharp lineart, vibrant colors, detailed eyes, shiny hair) to the prompt and merges default style exclusions (painterly, watercolor, soft shading, semi-realistic, muted/dull colors, airbrushed) into the negative prompt, skipping any already present; the parameters used report the effective prompts. Returns job ID, profile, prompt ID, parameters used, output path/SHA-256/size/dimensions, elapsed ms, and manifest path.",
         annotations(read_only_hint = false, open_world_hint = false)
     )]
-    async fn atelier_txt2img(
+    async fn lumen_txt2img(
         &self,
         Parameters(request): Parameters<Txt2ImgRequest>,
     ) -> Result<String, String> {
@@ -389,10 +391,10 @@ impl Lumen {
     }
 
     #[tool(
-        description = "Generate one image with a registered image model (`model` id; omitted = the configured img2img default) from one PNG source under the active profile's allowed source roots, at the requested denoise, through the pinned img2img template. The same default anime style steering as atelier_txt2img is applied to the prompts. Returns the txt2img fields plus the source SHA-256.",
+        description = "Generate one image with a registered image model (`model` id; omitted = the configured img2img default) from one PNG source under the active profile's allowed source roots, at the requested denoise, through the pinned img2img template. The same default anime style steering as lumen_txt2img is applied to the prompts. Returns the txt2img fields plus the source SHA-256.",
         annotations(read_only_hint = false, open_world_hint = false)
     )]
-    async fn atelier_img2img(
+    async fn lumen_img2img(
         &self,
         Parameters(request): Parameters<Img2ImgRequest>,
     ) -> Result<String, String> {
@@ -642,7 +644,7 @@ impl ServerHandler for Lumen {
             .with_server_info(
                 Implementation::new("lumen", env!("CARGO_PKG_VERSION")).with_title("Lumen"),
             )
-            .with_instructions("lumen — Lux in motu. Cross-media conversion engine: deterministic, code-first bridging between 2D art, 3D models and engine formats. Tools: inspect PNGs and validate atlases, list and apply style grade presets, inspect and grade VRM avatars, discover Bevy Remote Protocol endpoints, and drive the character factory (records in, 2D and 3D out). Generation (atelier folded in, D-143): atelier_status, atelier_models, atelier_txt2img, atelier_img2img — image generation under the configured lane profile.")
+            .with_instructions("lumen — Lux in motu. Cross-media conversion engine: deterministic, code-first bridging between 2D art, 3D models and engine formats. Tools: inspect PNGs and validate atlases, list and apply style grade presets, inspect and grade VRM avatars, discover Bevy Remote Protocol endpoints, and drive the character factory (records in, 2D and 3D out). Generation (folded in, D-143; lumen names since D-1041): lumen_status, lumen_models, lumen_txt2img, lumen_img2img — image generation under the configured lane profile.")
     }
 }
 
@@ -829,7 +831,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .into());
     }
     // The generation lane fails closed the same way: a named or
-    // present atelier config that does not validate refuses startup.
+    // present generation config that does not validate refuses startup.
     // Only an absent default config leaves the lane unconfigured.
     let generation = match generation::setup()? {
         GenerationSetup::Ready(lane) => {
@@ -839,7 +841,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         GenerationSetup::Unconfigured { expected_path } => {
             tracing::warn!(
                 path = %expected_path.display(),
-                "no atelier config; generation tools will refuse with config_missing"
+                "no generation config; generation tools will refuse with config_missing"
             );
             GenerationState::Unconfigured { expected_path }
         }

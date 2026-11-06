@@ -1,7 +1,7 @@
 //! The `MediaBackend` boundary and the S1 `ComfyBackend`.
 //!
-//! Contract: the backend owns transport only — every ComfyUI URL atelier
-//! builds is built here. Policy (admission, bounds, paths, lifecycle,
+//! Contract: the backend owns transport only — every ComfyUI URL the
+//! lane builds is built here. Policy (admission, bounds, paths, lifecycle,
 //! manifests) lives above it. Every response body is size-bounded and parsed
 //! defensively; engine-supplied text is truncated into the error message.
 //! Output descriptors are returned as untrusted data for `paths` to judge.

@@ -3,7 +3,7 @@
 //! Every line carries `ts`, `level`, `event`, and `profile`; job events add
 //! `job_id` and (once known) `prompt_id`. Logging is best-effort by design:
 //! a failed log write must not fail a job, but it is counted and reported by
-//! `atelier_status` (`log_write_failures`) rather than silently dropped.
+//! `lumen_status` (`log_write_failures`) rather than silently dropped.
 
 use std::io::Write;
 use std::path::PathBuf;

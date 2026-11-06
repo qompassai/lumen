@@ -1,4 +1,4 @@
-//! Versioned API-format workflow templates and the only patching atelier does.
+//! Versioned API-format workflow templates and the only patching the lane does.
 //!
 //! Contract: a template is a JSON object mapping node IDs to
 //! `{class_type, inputs[, _meta]}`. Validation requires the exact node set
@@ -331,7 +331,7 @@ impl Template {
 
     /// Return a copy of the graph with exactly the named points replaced.
     /// Every name must be a declared patch point (asserted: callers are
-    /// atelier code, not tool input).
+    /// lane code, not tool input).
     pub fn patch(&self, values: &[(&str, Value)]) -> Map<String, Value> {
         let mut graph = self.graph.clone();
         for (name, value) in values {

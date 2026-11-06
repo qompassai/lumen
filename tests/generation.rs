@@ -8,11 +8,14 @@
 //!   (lumen's seven from the migration baseline, atelier's four from
 //!   atelier @ 11f027a) — fixtures in
 //!   `tests/fixtures/generation-baseline-tools.json`, captured by the
-//!   probes in `~/workspace/mcp-atelier-fold-20261027/`.
-//! - Under a fixture atelier config, `atelier_models` /
-//!   `atelier_status` answer with atelier's shapes, the lane profiles
+//!   probes in `~/workspace/mcp-atelier-fold-20261027/`. (D-1041:
+//!   the four generation tools were renamed atelier_* -> lumen_*;
+//!   the baseline comparison applies exactly that rename to the
+//!   fixture's expected objects — schemas and annotations unchanged.)
+//! - Under a fixture lane config, `lumen_models` /
+//!   `lumen_status` answer with the fold's shapes, the lane profiles
 //!   and roster (vera/aria unimplemented) intact.
-//! - Refusals keep atelier's typed error shapes (`model_unknown`,
+//! - Refusals keep the fold's typed error shapes (`model_unknown`,
 //!   `argument_invalid`, the SDK deserialization refusal).
 //! - With no config anywhere, the lane refuses per call with
 //!   `config_missing` while lumen's own tools serve normally.
@@ -218,7 +221,7 @@ fn configured_session(project: &Path, config: &Path, requests: &[(&str, Value)])
     stdio_session(
         &[
             ("LUMEN_PROJECT_ROOT", project.as_os_str()),
-            ("ATELIER_CONFIG", config.as_os_str()),
+            ("LUMEN_CONFIG", config.as_os_str()),
             ("HOME", project.as_os_str()),
         ],
         requests,
@@ -257,21 +260,47 @@ fn fold_tools_list_matches_both_baselines() {
             .expect("baseline fixture parses");
     let expected: Vec<Value> = baseline["tools"].as_array().expect("tools").clone();
     assert_eq!(expected.len(), 11);
+    // D-1041 (2026-11-05): the four generation tools were renamed
+    // atelier_* -> lumen_* by Owner ruling and their descriptions
+    // follow. The fixture is the standalone servers' captured record
+    // and is not rewritten; for those four tools the expected object
+    // is the baseline with exactly the sanctioned rename applied —
+    // the name, and the two description references — so schemas and
+    // annotations still compare byte-for-byte.
+    const RENAMED: [(&str, &str); 4] = [
+        ("atelier_status", "lumen_status"),
+        ("atelier_models", "lumen_models"),
+        ("atelier_txt2img", "lumen_txt2img"),
+        ("atelier_img2img", "lumen_img2img"),
+    ];
     for want in &expected {
+        let mut want = want.clone();
+        if let Some((_, new_name)) = RENAMED
+            .iter()
+            .find(|(old_name, _)| want["name"] == *old_name)
+        {
+            want["name"] = json!(new_name);
+            let description = want["description"]
+                .as_str()
+                .expect("tool description")
+                .replace("atelier_txt2img", "lumen_txt2img")
+                .replace("Report atelier's", "Report lumen's");
+            want["description"] = json!(description);
+        }
         let name = want["name"].as_str().expect("tool name");
         let got = tools
             .iter()
             .find(|t| t["name"] == want["name"])
             .unwrap_or_else(|| panic!("folded server is missing {name}"));
         assert_eq!(
-            got, want,
+            got, &want,
             "tool {name} differs from its standalone baseline"
         );
     }
 }
 
 #[test]
-fn fold_configured_status_and_models_keep_atelier_shape() {
+fn fold_configured_status_and_models_keep_lane_shape() {
     let project = tempfile::tempdir().expect("tempdir");
     let fixture = tempfile::tempdir().expect("tempdir");
     let config = write_atelier_fixture(fixture.path());
@@ -279,15 +308,15 @@ fn fold_configured_status_and_models_keep_atelier_shape() {
         project.path(),
         &config,
         &[
-            call("atelier_status", json!({})),
-            call("atelier_models", json!({})),
+            call("lumen_status", json!({})),
+            call("lumen_models", json!({})),
         ],
     );
     let status: Value =
         serde_json::from_str(&reply_text(&replies[0])).expect("status returns JSON");
     assert_eq!(status["profile"], "qompass");
     assert_eq!(status["content_class"], "sfw");
-    assert_eq!(status["server"]["name"], "atelier");
+    assert_eq!(status["server"]["name"], "lumen");
     assert_eq!(status["admitted_models"], json!(["iris", "wai"]));
     assert_eq!(status["backend"], "comfyui");
 
@@ -329,8 +358,8 @@ fn fold_unconfigured_lane_refuses_but_lumen_serves() {
             ("HOME", home.path().as_os_str()),
         ],
         &[
-            call("atelier_status", json!({})),
-            call("atelier_models", json!({})),
+            call("lumen_status", json!({})),
+            call("lumen_models", json!({})),
             call("style_list", json!({})),
         ],
     );
@@ -353,7 +382,7 @@ fn fold_unconfigured_lane_refuses_but_lumen_serves() {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn fold_txt2img_unknown_model_refused_with_atelier_shape() {
+fn fold_txt2img_unknown_model_refused_with_lane_shape() {
     let project = tempfile::tempdir().expect("tempdir");
     let fixture = tempfile::tempdir().expect("tempdir");
     let config = write_atelier_fixture(fixture.path());
@@ -361,7 +390,7 @@ fn fold_txt2img_unknown_model_refused_with_atelier_shape() {
         project.path(),
         &config,
         &[call(
-            "atelier_txt2img",
+            "lumen_txt2img",
             json!({"model": "nope", "prompt": "a cat"}),
         )],
     );
@@ -380,7 +409,7 @@ fn fold_models_bad_lane_refused() {
     let replies = configured_session(
         project.path(),
         &config,
-        &[call("atelier_models", json!({"lane": "sound"}))],
+        &[call("lumen_models", json!({"lane": "sound"}))],
     );
     assert!(reply_is_error(&replies[0]));
     let body: Value = serde_json::from_str(&reply_text(&replies[0])).expect("refusal is JSON");
@@ -397,7 +426,7 @@ fn fold_txt2img_unknown_field_refused() {
         project.path(),
         &config,
         &[call(
-            "atelier_txt2img",
+            "lumen_txt2img",
             json!({"prompt": "a cat", "profile": "ntranch"}),
         )],
     );
