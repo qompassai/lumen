@@ -3,7 +3,7 @@
   "name": "ai.qompass/lumen",
   "title": "Lumen",
   "description": "Cross-media conversion engine: 2D art, 3D models and engine formats, deterministic over MCP.",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "websiteUrl": "https://qompass.ai/solutions/lumen/",
   "repository": {
     "url": "https://github.com/qompassai/lumen",
@@ -12,8 +12,8 @@
   "packages": [
     {
       "registryType": "mcpb",
-      "identifier": "https://github.com/qompassai/lumen/releases/download/v1.0.0/lumen-mcp-1.0.0-linux-x64.mcpb",
-      "fileSha256": "650aba63b4e7b246f8b865a6dabd658cf771bff8ee731aa55d7ff3ec8ea99a26",
+      "identifier": "https://github.com/qompassai/lumen/releases/download/v2.0.0/lumen-mcp-2.0.0-linux-x64.mcpb",
+      "fileSha256": "f7886a51d6d9554660f9346daaa101e06ed4925353046acc8eeae0c3a2ac2144",
       "transport": {
         "type": "stdio"
       }
