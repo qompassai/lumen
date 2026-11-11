@@ -35,6 +35,7 @@ use lumen::generation::{
     service::{Img2ImgRequest, ModelsRequest, Txt2ImgRequest},
 };
 use lumen::guard;
+use lumen::hf_upload::{self, HfDatasetUploadRequest, HfUploadContext};
 use lumen::policy::{self, DEFAULT_POLICY_TOML, Enforcer, Policy, PolicyError};
 use lumen::style::{StyleApplyReq, StyleListReq, style_apply, style_list};
 use lumen::vrm::{VrmGradeReq, VrmInspectReq, vrm_grade, vrm_inspect};
@@ -610,6 +611,35 @@ impl Lumen {
             Err(e) => canon_err(e),
         }
     }
+
+    // Generated-media backup (src/hf_upload.rs): the estate rule
+    // that finished generated media uploads to Hugging Face
+    // immediately, labelled candidate. Lane-neutral machinery —
+    // dataset, manifest and metadata are all parameters; no content
+    // lives in the tool. MCP surface only (no A2A registration).
+    #[tool(
+        description = "Upload generated media to a Hugging Face dataset from a manifest (manifest_path, or manifest inline): every file's sha256 is asserted before upload, identical remote files are skipped, a different remote hash is a hard stop, metadata rows merge into the dataset's metadata file in the same commit, the upload is verified by LFS sha256 read-back, and pending_flag_path is removed only after verification passes. The token is read from `pass` at runtime (entry named by pass_entry) and never logged or persisted. dry_run returns the validated plan with no token read and no network. All paths are relative to the server working directory. Errors carry a machine-readable `kind` (secret_unavailable = the pass entry could not be read; nothing was attempted).",
+        annotations(
+            read_only_hint = false,
+            destructive_hint = false,
+            idempotent_hint = true,
+            open_world_hint = true
+        )
+    )]
+    async fn hf_dataset_upload(
+        &self,
+        Parameters(req): Parameters<HfDatasetUploadRequest>,
+    ) -> String {
+        let root = match project_root() {
+            Ok(root) => root,
+            Err(e) => return err_json(e),
+        };
+        let ctx = HfUploadContext::production(&req.pass_entry);
+        match hf_upload::hf_dataset_upload(&root, &req, &ctx).await {
+            Ok(report) => ok_json(&report),
+            Err(e) => serde_json::json!({"error": e.to_string(), "kind": e.kind()}).to_string(),
+        }
+    }
 }
 
 #[tool_handler]
@@ -644,7 +674,7 @@ impl ServerHandler for Lumen {
             .with_server_info(
                 Implementation::new("lumen", env!("CARGO_PKG_VERSION")).with_title("Lumen"),
             )
-            .with_instructions("lumen — Lux in motu. Cross-media conversion engine: deterministic, code-first bridging between 2D art, 3D models and engine formats. Tools: inspect PNGs and validate atlases, list and apply style grade presets, inspect and grade VRM avatars, discover Bevy Remote Protocol endpoints, and drive the character factory (records in, 2D and 3D out). Generation (folded in, D-143; lumen names since D-1041): lumen_status, lumen_models, lumen_txt2img, lumen_img2img — image generation under the configured lane profile.")
+            .with_instructions("lumen — Lux in motu. Cross-media conversion engine: deterministic, code-first bridging between 2D art, 3D models and engine formats. Tools: inspect PNGs and validate atlases, list and apply style grade presets, inspect and grade VRM avatars, discover Bevy Remote Protocol endpoints, and drive the character factory (records in, 2D and 3D out). Generation (folded in, D-143; lumen names since D-1041): lumen_status, lumen_models, lumen_txt2img, lumen_img2img — image generation under the configured lane profile. Backup: hf_dataset_upload uploads finished generated media to a Hugging Face dataset from a sha256 manifest (the generated-media backup rule), verified by LFS read-back.")
     }
 }
 

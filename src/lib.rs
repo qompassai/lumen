@@ -22,6 +22,7 @@ pub mod dream;
 pub mod export;
 pub mod generation;
 pub mod guard;
+pub mod hf_upload;
 pub mod inspect;
 pub mod oracle;
 pub mod pack;
