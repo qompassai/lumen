@@ -1,5 +1,18 @@
 # Changelog — lumen
 
+## 2.0.1 — 2026-11-11
+
+- **Union skeleton lands in the factory (D-1282, D-1290; D-1293).**
+  One skeleton contract shared with torogao: 54 articulation skin
+  joints (52 shared plus LeftEye/RightEye) and 13 `*_End` landmark
+  nodes, node-only in the skin. The factory head now builds rigid
+  eyeballs (396 vertices per eye) weighted exactly 1.000 on their
+  eye joints, and hands with palm loft, pre-formed webbing and five
+  12-segment fingers per hand; all 54 articulation joints carry
+  weight and no `*_End` node is skinned. Body, legs and outfits are
+  unchanged from 2.0.0.
+- `server.json` records the published 2.0.1 release package.
+
 ## 2.0.0 — 2026-11-05
 
 - **Generation lane renamed to lumen terminology (D-1041, breaking).**

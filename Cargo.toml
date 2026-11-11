@@ -4,7 +4,7 @@ resolver = "2"
 
 [package]
 name = "lumen-mcp-server"
-version = "2.0.0"
+version = "2.0.1"
 edition = "2024"
 license = "Apache-2.0"
 description = "Lux in motu - cross-platform, cross-media deterministic conversion engine: 2D art, 3D models and engine formats from code-first records"
