@@ -139,6 +139,7 @@ fn stdio_tools_list_includes_style_ops() {
             "canon_gate",
             "canon_generate",
             "canon_resolve",
+            "hf_dataset_upload",
             "lumen_img2img",
             "lumen_models",
             "lumen_status",

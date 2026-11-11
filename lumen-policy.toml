@@ -125,6 +125,17 @@ sink = "trusted"
 reads = ["low"]
 sink = "brp"
 
+# Generated-media backup (src/hf_upload.rs): finished generated media
+# flows OUT to a Hugging Face dataset — the estate's one external
+# sink. The tool's contract keeps every request path relative to the
+# server working directory, so its arguments label `low` (absolute
+# paths would label `restricted` and fail A4, by design); the token
+# comes from `pass` at runtime and is never an argument, so no secret
+# ever becomes a label. R1 still denies any `high` in context.
+[tools.hf_dataset_upload]
+reads = ["low"]
+sink = "external"
+
 # Generation lane folded from atelier (src/generation/): local engine,
 # local files. img2img takes an absolute source path under the active
 # profile's roots (the lane's own admission rules bound it); an
