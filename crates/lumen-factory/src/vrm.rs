@@ -14,9 +14,9 @@
 //!   injecting (or replacing) `extensions.VRMC_vrm`: the humanoid
 //!   mapping for the 15 required VRM 1.0 bones derived from the
 //!   factory's Mixamo joint names (plus the optional `chest`,
-//!   `upperChest`, and `neck` bones where the factory joints exist;
-//!   the factory skeleton has no eye joints, so `leftEye`/`rightEye`
-//!   are omitted), a meta block, and expressions whose
+//!   `upperChest`, `neck`, and — since the union skeleton (D-1282)
+//!   added factory eye joints — `leftEye` / `rightEye` bones), a
+//!   meta block, and expressions whose
 //!   `morphTargetBinds` point at the factory head mesh's morph
 //!   targets, resolved by name through `extras.targetNames` (target
 //!   order is alphabetical, per `blend.rs`). The binary chunk is
@@ -124,6 +124,8 @@ fn bone_mapping() -> Vec<(&'static str, &'static str)> {
     out.push(("chest", "Spine1"));
     out.push(("upperChest", "Spine2"));
     out.push(("neck", "Neck"));
+    out.push(("leftEye", "LeftEye"));
+    out.push(("rightEye", "RightEye"));
     out
 }
 

@@ -2,7 +2,9 @@
 //!
 //! Contract summary:
 //! - Writer: one mesh whose primitives are the base mesh parts, one skin
-//!   whose joints mirror the canonical hierarchy, PBR materials (one per
+//!   whose joints are the canonical hierarchy's articulation joints
+//!   (union skeleton, D-1282: `*_End` landmark nodes are emitted as
+//!   plain nodes and never enter the skin), PBR materials (one per
 //!   part), inverse bind matrices computed with real 4x4 matrix math
 //!   (hierarchy composition, then a general inverse) — no shortcuts.
 //! - Morph targets are supported now: targets carry position deltas for
@@ -24,7 +26,7 @@
 use serde::Serialize;
 use serde_json::{Map, Value};
 
-use crate::base::{BaseMesh, Joint};
+use crate::base::{BaseMesh, Joint, skin_joint_indices};
 use crate::{FactoryError, MAX_GLB_BYTES, MAX_MORPH_TARGETS};
 
 const GLB_MAGIC: u32 = 0x4654_6C67; // "glTF"
@@ -507,6 +509,18 @@ fn write_glb_impl(
         }
     }
 
+    // Union skeleton (D-1282): the skin carries only the
+    // articulation joints; landmark (`*_End`) nodes are emitted as
+    // plain nodes with no skin entry and no bind matrix. Vertex
+    // joint indices (into `mesh.joints`) are remapped to skin
+    // indices below; a vertex that weights a landmark with a
+    // positive weight is a contract violation and fails closed.
+    let skin_nodes = skin_joint_indices(&mesh.joints);
+    let mut skin_of_node: Vec<Option<usize>> = vec![None; mesh.joints.len()];
+    for (skin_idx, &node_idx) in skin_nodes.iter().enumerate() {
+        skin_of_node[node_idx] = Some(skin_idx);
+    }
+
     let mut bin = BinBuilder::new();
     let mut accessors: Vec<Accessor> = Vec::new();
     let mut add_accessor = |bin: &mut BinBuilder,
@@ -591,11 +605,23 @@ fn write_glb_impl(
             None,
             Some(ARRAY_BUFFER),
         );
-        // JOINTS_0 as vec4 u16, WEIGHTS_0 as vec4 f32.
+        // JOINTS_0 as vec4 u16 (skin indices, remapped from joint
+        // table indices), WEIGHTS_0 as vec4 f32.
         let mut joint_bytes = Vec::with_capacity(part.vertices.len() * 8);
         for vertex in &part.vertices {
-            for joint in vertex.joints {
-                joint_bytes.extend_from_slice(&joint.to_le_bytes());
+            for (slot, &joint) in vertex.joints.iter().enumerate() {
+                let skin_idx = match skin_of_node.get(usize::from(joint)).copied().flatten() {
+                    Some(skin_idx) => skin_idx,
+                    None => {
+                        if vertex.weights[slot] > 0.0 {
+                            return Err(FactoryError::MeshInvalid(format!(
+                                "vertex weights landmark or unknown joint {joint} with positive weight",
+                            )));
+                        }
+                        0
+                    }
+                };
+                joint_bytes.extend_from_slice(&(skin_idx as u16).to_le_bytes());
             }
         }
         let joint_acc = add_accessor(
@@ -704,11 +730,12 @@ fn write_glb_impl(
         });
     }
 
-    // Inverse bind matrices via real matrix math.
+    // Inverse bind matrices via real matrix math, for the skin's
+    // articulation joints only (landmark nodes have no bind matrix).
     let globals = global_bind_matrices(&mesh.joints)?;
-    let mut ibm_bytes = Vec::with_capacity(globals.len() * 64);
-    for global in &globals {
-        let inverse = mat4_inverse(global)?;
+    let mut ibm_bytes = Vec::with_capacity(skin_nodes.len() * 64);
+    for &node_idx in &skin_nodes {
+        let inverse = mat4_inverse(&globals[node_idx])?;
         // glTF stores matrices column-major; the array is already
         // laid out [column][row], so plain iteration is that order.
         for column in &inverse {
@@ -721,7 +748,7 @@ fn write_glb_impl(
         &mut bin,
         &ibm_bytes,
         CT_FLOAT,
-        globals.len(),
+        skin_nodes.len(),
         "MAT4",
         None,
         None,
@@ -866,7 +893,7 @@ fn write_glb_impl(
         }],
         skins: vec![SkinDef {
             inverse_bind_matrices: ibm_acc,
-            joints: (0..joint_count).collect(),
+            joints: skin_nodes.clone(),
             name: "Skin".to_string(),
             skeleton: 0,
         }],

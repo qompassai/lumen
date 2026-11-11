@@ -117,8 +117,18 @@ const fn j(name: &'static str, parent: Option<&'static str>, position: [f32; 3])
 
 /// Canonical joint table in hierarchy-friendly (parent-before-child)
 /// construction order. Left side has negative X.
+///
+/// Union skeleton (D-1282): the table carries 67 nodes — the 54
+/// articulation joints of the union set (the 52 joints shared with
+/// the torogao cast skeleton plus `LeftEye` / `RightEye`) and the 13
+/// `*_End` landmark nodes. Landmarks are construction points, not
+/// articulation: they never enter a skin's joint list and never
+/// receive skin weights (see [`is_landmark_joint`] and
+/// [`skin_joint_indices`]); they remain nodes so construction reads
+/// (total height, leg-tube endpoints, fidelity landmarks) keep
+/// working by name.
 pub fn joint_table() -> Vec<Joint> {
-    let mut out: Vec<Joint> = Vec::with_capacity(65);
+    let mut out: Vec<Joint> = Vec::with_capacity(67);
     out.push(j("Hips", None, [0.0, 1.02, 0.0]));
     out.push(j("Spine", Some("Hips"), [0.0, 1.14, 0.0]));
     out.push(j("Spine1", Some("Spine"), [0.0, 1.26, 0.0]));
@@ -126,6 +136,21 @@ pub fn joint_table() -> Vec<Joint> {
     out.push(j("Neck", Some("Spine2"), [0.0, 1.50, 0.0]));
     out.push(j("Head", Some("Neck"), [0.0, 1.58, 0.0]));
     out.push(j("HeadTop_End", Some("Head"), [0.0, 1.78, 0.0]));
+    // Eye joints (union D-1282): centred on the painted-eye centre
+    // the head masks anchor to (`EYE_CENTER_NX` / `EYE_CENTER_NY`
+    // against the default head ellipsoid), at eyeball-centre depth
+    // (0.62 of the front radius from the ellipsoid centre plane).
+    // The X span (±0.031 m) matches the cast skeleton's eye offset
+    // (±0.0325 m from its Head joint) within 1.5 mm.
+    let eye_pos = |sign: f32| {
+        [
+            sign * EYE_CENTER_NX * HEAD_RADII[0],
+            HEAD_CENTER[1] + EYE_CENTER_NY * HEAD_RADII[1],
+            HEAD_CENTER[2] + EYE_DEPTH_FRACTION * HEAD_RADII[2],
+        ]
+    };
+    out.push(j("LeftEye", Some("Head"), eye_pos(-1.0)));
+    out.push(j("RightEye", Some("Head"), eye_pos(1.0)));
     for side in [Side::Left, Side::Right] {
         build_side(&mut out, side);
     }
@@ -361,6 +386,28 @@ pub fn joint_index(joints: &[Joint], name: &str) -> Option<usize> {
     joints.iter().position(|joint| joint.name == name)
 }
 
+/// Landmark joints are the `*_End` terminal nodes of the union
+/// table (D-1282): construction points (total height, tube chain
+/// endpoints, fidelity landmarks), never articulation. A landmark
+/// has no child segment, carries no skin influence, and is excluded
+/// from every skin's joint list; it remains a node so name-based
+/// construction reads keep working.
+pub fn is_landmark_joint(name: &str) -> bool {
+    name.ends_with("_End")
+}
+
+/// Indices (into `joints`) of the skin's joints, in table order:
+/// every non-landmark joint. For the canonical union table this is
+/// the 54 articulation joints.
+pub fn skin_joint_indices(joints: &[Joint]) -> Vec<usize> {
+    joints
+        .iter()
+        .enumerate()
+        .filter(|(_, joint)| !is_landmark_joint(joint.name))
+        .map(|(idx, _)| idx)
+        .collect()
+}
+
 /// Validate the joint table: parents exist, no cycles, finite positions,
 /// count within [`MAX_JOINTS`].
 pub fn validate_joints(joints: &[Joint]) -> Result<(), FactoryError> {
@@ -494,6 +541,8 @@ fn dist_point_segment(p: [f32; 3], a: [f32; 3], b: [f32; 3]) -> f32 {
 
 /// Skin weights for one vertex: inverse-square falloff over bone
 /// segments (parent -> joint), top four influences, normalized.
+/// Landmark joints (`*_End`, see [`is_landmark_joint`]) are never
+/// scored: they carry no skin influence in the union skeleton.
 pub fn compute_skin_weights(
     position: [f32; 3],
     joints: &[Joint],
@@ -502,6 +551,9 @@ pub fn compute_skin_weights(
     // that joint; the root uses distance to its point.
     let mut scored: Vec<(usize, f32)> = Vec::with_capacity(joints.len());
     for (idx, joint) in joints.iter().enumerate() {
+        if is_landmark_joint(joint.name) {
+            continue;
+        }
         let d = match joint.parent.and_then(|p| joint_index(joints, p)) {
             Some(parent_idx) => {
                 dist_point_segment(position, joints[parent_idx].position, joint.position)
@@ -926,6 +978,12 @@ fn build_lathe(
 pub const EYE_CENTER_NX: f32 = 0.36;
 /// Eye deform-region centre, normalized head Y (`ny`).
 pub const EYE_CENTER_NY: f32 = 0.12;
+
+/// Depth of the eye *joint* (eyeball centre) as a fraction of the
+/// head ellipsoid's front radius from its centre plane: between the
+/// centre plane and the front surface at the eye centre. Used only
+/// by [`joint_table`] to place `LeftEye` / `RightEye`.
+pub const EYE_DEPTH_FRACTION: f32 = 0.62;
 
 /// Default head ellipsoid center (meters, world space).
 pub const HEAD_CENTER: [f32; 3] = [0.0, 1.665, 0.005];

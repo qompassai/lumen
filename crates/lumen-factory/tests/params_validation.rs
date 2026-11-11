@@ -86,10 +86,12 @@ fn anchor_seraphine_build_with_derived_params_is_byte_identical() {
     // §9): Phase 2/3 cd7abaca... -> fix 1 (color-segmented head)
     // d41e41ac... -> fix 2 (uniform head scale) 5f93fd6e... -> fix 3
     // (shell offsets + hair tail) 5bcaa972... -> fix 4 (glTF UV
-    // registration + face-scale features + hairline).
+    // registration + face-scale features + hairline) ce45290a... ->
+    // union skeleton (D-1282: 54 articulation skin joints incl.
+    // LeftEye/RightEye; `*_End` landmarks leave the skin).
     assert_eq!(
         sha256_hex(&expected),
-        "ce45290a91875c0fcb201f54d152c31b035f88936bbbd785ec047641e9e1b68c",
+        "60f9c645c352c2623f9f5ffd960d542c4fb12a75e9cddd7c360da6b538a3accb",
         "anchor asset is the projection v2 Séraphine build"
     );
     let via_params = build_character_with_params(
@@ -331,7 +333,8 @@ fn extreme_values_build_is_structurally_clean() {
     )
     .expect("extreme build succeeds");
     let summary = parse_glb(&bytes).expect("extreme build parses back");
-    assert_eq!(summary.joint_count, 65);
+    // Union skeleton (D-1282): 54 articulation skin joints.
+    assert_eq!(summary.joint_count, 54);
     assert!(
         summary.weight_sum_min >= 0.999 && summary.weight_sum_max <= 1.001,
         "weights sum to ~1: [{}, {}]",

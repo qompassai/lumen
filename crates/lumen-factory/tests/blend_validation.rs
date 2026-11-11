@@ -239,7 +239,9 @@ fn blended_glb_round_trips_target_names() {
     let summary = parse_glb(&bytes).expect("parse blended glb");
     let expected_names: Vec<String> = composed.iter().map(|target| target.0.clone()).collect();
     assert_eq!(summary.target_names, expected_names);
-    assert_eq!(summary.joint_count, 65);
+    // Union skeleton (D-1282): the skin carries the 54 articulation
+    // joints; the 13 `*_End` landmark nodes are not skin joints.
+    assert_eq!(summary.joint_count, 54);
 }
 
 #[test]

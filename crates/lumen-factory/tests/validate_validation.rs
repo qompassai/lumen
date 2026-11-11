@@ -31,8 +31,10 @@ fn built_base_glb_passes_validation() {
     let bytes = write_glb(&build_base_mesh().unwrap(), &[]).unwrap();
     let report = validate_bytes(&bytes, "in-test-base.glb");
     assert!(report.pass, "checks: {:?}", report.checks);
-    assert_eq!(report.counts.joints, 65);
-    assert_eq!(report.counts.nodes, 67);
+    // Union skeleton (D-1282): 54 skin joints, 67 skeleton nodes
+    // plus scene + mesh nodes.
+    assert_eq!(report.counts.joints, 54);
+    assert_eq!(report.counts.nodes, 69);
     assert_eq!(report.counts.meshes, 1);
     assert_eq!(report.counts.primitives, 9);
     let bbox = report.bbox.expect("bbox present");
@@ -63,7 +65,9 @@ fn committed_assets_all_pass() {
 fn seraphine_counts_and_targets() {
     let report = validate_bytes(&asset_bytes("seraphine.glb"), "seraphine.glb");
     assert!(report.pass);
-    assert_eq!(report.counts.joints, 65);
+    // Union skeleton (D-1282): the anchor's skin is the 54
+    // articulation joints.
+    assert_eq!(report.counts.joints, 54);
     assert_eq!(report.counts.primitives, 9);
     assert_eq!(report.counts.targets, 28);
     assert_eq!(report.counts.images, 1);

@@ -20,7 +20,9 @@ use lumen_factory::validate::validate_bytes;
 /// -> fix 2 (uniform head scale) 5f93fd6e... -> fix 3 (shell offsets +
 /// hair tail) 5bcaa972... -> fix 4 (glTF UV registration + face-scale
 /// features + hairline).
-const SERAPHINE_ANCHOR: &str = "ce45290a91875c0fcb201f54d152c31b035f88936bbbd785ec047641e9e1b68c";
+// Re-anchored for the union skeleton (D-1282): the build's skin
+// now carries the 54 articulation joints (eyes in, End markers out).
+const SERAPHINE_ANCHOR: &str = "60f9c645c352c2623f9f5ffd960d542c4fb12a75e9cddd7c360da6b538a3accb";
 
 fn manifest_path(parts: &[&str]) -> PathBuf {
     let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
@@ -70,7 +72,8 @@ fn writer_with_toon_writes_mesh_extras() {
     // Morph names and the toon config coexist in the same extras object.
     assert!(validate_bytes(&bytes, "toon.glb").pass);
     let summary = parse_glb(&bytes).unwrap();
-    assert_eq!(summary.joint_count, 65);
+    // Union skeleton (D-1282): 54 articulation skin joints.
+    assert_eq!(summary.joint_count, 54);
 }
 
 #[test]

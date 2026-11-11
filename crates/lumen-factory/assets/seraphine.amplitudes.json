@@ -211,7 +211,7 @@
   ],
   "schema": "lumen.factory-amplitudes",
   "source_glb": "seraphine.glb",
-  "source_glb_sha256": "ce45290a91875c0fcb201f54d152c31b035f88936bbbd785ec047641e9e1b68c",
+  "source_glb_sha256": "60f9c645c352c2623f9f5ffd960d542c4fb12a75e9cddd7c360da6b538a3accb",
   "targets": [
     {
       "max_displacement_m": 0.0064073896991385364,

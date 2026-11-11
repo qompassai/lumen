@@ -33,8 +33,9 @@ fn wrap_inspect_round_trip_bones_expressions_meta() {
     assert_eq!(summary.meta.version.as_deref(), Some("1.0.0"));
     assert_eq!(summary.meta.license_url.as_deref(), Some(VRM_LICENSE_URL));
     assert_eq!(summary.meta.authors, vec!["Lumen Factory".to_string()]);
-    // 15 required bones plus chest / upperChest / neck optionals.
-    assert_eq!(summary.humanoid_bones.len(), 18);
+    // 15 required bones plus chest / upperChest / neck optionals
+    // and the union skeleton's leftEye / rightEye (D-1282).
+    assert_eq!(summary.humanoid_bones.len(), 20);
     for bone in REQUIRED_BONES {
         assert!(
             summary.humanoid_bones.contains_key(*bone),
@@ -47,10 +48,14 @@ fn wrap_inspect_round_trip_bones_expressions_meta() {
             "optional bone {optional} mapped from factory joints"
         );
     }
-    assert!(
-        !summary.humanoid_bones.contains_key("leftEye"),
-        "factory has no eye joints; eyes must be omitted"
-    );
+    // Union skeleton (D-1282): the factory has eye joints now, and
+    // both eye bones must be mapped.
+    for eye in ["leftEye", "rightEye"] {
+        assert!(
+            summary.humanoid_bones.contains_key(eye),
+            "eye bone {eye} mapped from factory joints"
+        );
+    }
     // Bone map points at the nodes carrying the Mixamo joint names.
     let parts = parse_glb_parts(&vrm).expect("parts");
     let node_name = |idx: usize| {
@@ -266,7 +271,8 @@ fn vrm_0x_summary_shape_matches() {
     assert_eq!(summary.meta.name.as_deref(), Some("Séraphine 0.x"));
     assert_eq!(summary.meta.authors, vec!["Lumen Factory".to_string()]);
     assert_eq!(summary.spec_version.as_deref(), Some("UniVRM-0.128.0"));
-    assert_eq!(summary.humanoid_bones.len(), 18);
+    // 20 bones: the union wrap carries leftEye / rightEye (D-1282).
+    assert_eq!(summary.humanoid_bones.len(), 20);
     assert!(summary.humanoid_bones.contains_key("hips"));
     let preset_names: Vec<&str> = summary
         .preset_expressions

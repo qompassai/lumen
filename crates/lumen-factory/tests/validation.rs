@@ -4,8 +4,10 @@ use lumen_factory::base::{build_base_mesh, joint_table, validate_joints};
 use lumen_factory::gltf::{MorphTarget, parse_glb, write_glb};
 
 #[test]
-fn joint_count_is_65() {
-    assert_eq!(joint_table().len(), 65);
+fn joint_count_is_67_union() {
+    // Union skeleton (D-1282): 67 nodes = 54 articulation joints
+    // (incl. LeftEye/RightEye) + 13 `*_End` landmark nodes.
+    assert_eq!(joint_table().len(), 67);
 }
 
 #[test]
@@ -149,10 +151,12 @@ fn glb_round_trip_counts_match() {
     let summary = parse_glb(&bytes).expect("parse glb");
     let vertices: usize = mesh.parts.iter().map(|p| p.vertices.len()).sum();
     let indices: usize = mesh.parts.iter().map(|p| p.indices.len()).sum();
-    assert_eq!(summary.joint_count, 65);
+    // Skin joints are the 54 union articulation joints; nodes are
+    // all 67 skeleton nodes plus scene + mesh (D-1282).
+    assert_eq!(summary.joint_count, 54);
     assert_eq!(summary.primitive_count, mesh.parts.len());
     assert_eq!(summary.mesh_count, 1);
-    assert_eq!(summary.node_count, 65 + 2);
+    assert_eq!(summary.node_count, 67 + 2);
     assert_eq!(summary.vertex_count, vertices);
     assert_eq!(summary.index_count, indices);
     assert!(

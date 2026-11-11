@@ -252,7 +252,9 @@ fn parametric_default_matches_phase1a_base_exactly() {
     let a = write_glb(&default, &[]).expect("glb a");
     let b = write_glb(&parametric, &[]).expect("glb b");
     assert_eq!(a, b, "default parametric build must be byte-identical");
-    assert_eq!(joint_table().len(), 65);
+    // Union skeleton (D-1282): 67 nodes = 54 articulation joints +
+    // 13 `*_End` landmark nodes.
+    assert_eq!(joint_table().len(), 67);
 }
 
 #[test]
@@ -280,7 +282,9 @@ fn build_is_deterministic_and_textured() {
     .expect("build b");
     assert_eq!(a, b, "same record + templates must be byte-identical");
     let summary = parse_glb(&a).expect("built glb parses");
-    assert_eq!(summary.joint_count, 65);
+    // Union skeleton (D-1282): skin joint count is the 54
+    // articulation joints (landmarks are nodes, not skin joints).
+    assert_eq!(summary.joint_count, 54);
     assert!(
         summary.target_names.len() >= 20,
         "targets: {}",

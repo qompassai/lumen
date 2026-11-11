@@ -107,7 +107,8 @@ fn vrm_proportions_drive_a_build() {
     )
     .expect("build from VRM proportions");
     let summary = parse_glb(&bytes).expect("built glb parses");
-    assert_eq!(summary.joint_count, 65);
+    // Union skeleton (D-1282): 54 articulation skin joints.
+    assert_eq!(summary.joint_count, 54);
     let report = validate_bytes(&bytes, "vrm_build.glb");
     assert!(report.pass, "checks: {:?}", report.checks);
 }
