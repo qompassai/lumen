@@ -81,8 +81,8 @@ fn seraphine_first_measurement_is_in_the_recorded_band() {
     assert!(report.landmark_mean_delta < 0.02, "{report:?}");
     assert!(report.landmark_max_delta < 0.03, "{report:?}");
     assert_eq!(report.landmarks.len(), 5);
-    assert_eq!(report.glb_vertices, 1370);
-    assert_eq!(report.glb_triangles, 2618);
+    assert_eq!(report.glb_vertices, 4138);
+    assert_eq!(report.glb_triangles, 7946);
 }
 
 #[test]

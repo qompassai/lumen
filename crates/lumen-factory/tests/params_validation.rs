@@ -88,10 +88,13 @@ fn anchor_seraphine_build_with_derived_params_is_byte_identical() {
     // (shell offsets + hair tail) 5bcaa972... -> fix 4 (glTF UV
     // registration + face-scale features + hairline) ce45290a... ->
     // union skeleton (D-1282: 54 articulation skin joints incl.
-    // LeftEye/RightEye; `*_End` landmarks leave the skin).
+    // LeftEye/RightEye; `*_End` landmarks leave the skin) ->
+    // union fix (D-1290: rigid eyeball geometry at weight 1.000,
+    // formed eye sockets on a doubled head grid, articulated
+    // hands replacing the mitten; 13 parts).
     assert_eq!(
         sha256_hex(&expected),
-        "60f9c645c352c2623f9f5ffd960d542c4fb12a75e9cddd7c360da6b538a3accb",
+        "5ebe68f8abb11620b81b2de942ad7a9d39053ff94db514212aee594e5fb258c8",
         "anchor asset is the projection v2 Séraphine build"
     );
     let via_params = build_character_with_params(

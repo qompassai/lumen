@@ -36,7 +36,7 @@ fn built_base_glb_passes_validation() {
     assert_eq!(report.counts.joints, 54);
     assert_eq!(report.counts.nodes, 69);
     assert_eq!(report.counts.meshes, 1);
-    assert_eq!(report.counts.primitives, 9);
+    assert_eq!(report.counts.primitives, 13);
     let bbox = report.bbox.expect("bbox present");
     assert!((1.0..=2.5).contains(&bbox.height), "height {}", bbox.height);
 }
@@ -68,7 +68,7 @@ fn seraphine_counts_and_targets() {
     // Union skeleton (D-1282): the anchor's skin is the 54
     // articulation joints.
     assert_eq!(report.counts.joints, 54);
-    assert_eq!(report.counts.primitives, 9);
+    assert_eq!(report.counts.primitives, 13);
     assert_eq!(report.counts.targets, 28);
     assert_eq!(report.counts.images, 1);
     assert!(report.vrm.is_none());

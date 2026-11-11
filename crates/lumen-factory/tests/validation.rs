@@ -57,7 +57,7 @@ fn left_right_mirror_in_x() {
 #[test]
 fn mesh_parts_nonempty_and_indices_in_range() {
     let mesh = build_base_mesh().expect("base builds");
-    assert_eq!(mesh.parts.len(), 9);
+    assert_eq!(mesh.parts.len(), 13);
     for part in &mesh.parts {
         assert!(!part.vertices.is_empty(), "{}", part.name);
         assert!(!part.indices.is_empty(), "{}", part.name);

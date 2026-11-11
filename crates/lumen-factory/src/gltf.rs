@@ -554,11 +554,15 @@ fn write_glb_impl(
     // Per-part accessors, in part construction order.
     let mut primitives: Vec<PrimitiveDef> = Vec::new();
     let mut materials: Vec<Material> = Vec::new();
-    let part_colors: [(&str, [f32; 4]); 9] = [
+    let part_colors: [(&str, [f32; 4]); 13] = [
         ("arm_left", [0.96, 0.80, 0.70, 1.0]),
         ("arm_right", [0.96, 0.80, 0.70, 1.0]),
         ("body", [0.96, 0.80, 0.70, 1.0]),
+        ("eye_left", [0.97, 0.95, 0.93, 1.0]),
+        ("eye_right", [0.97, 0.95, 0.93, 1.0]),
         ("hair", [0.25, 0.16, 0.12, 1.0]),
+        ("hand_left", [0.96, 0.80, 0.70, 1.0]),
+        ("hand_right", [0.96, 0.80, 0.70, 1.0]),
         ("head", [0.97, 0.82, 0.72, 1.0]),
         ("leg_left", [0.96, 0.80, 0.70, 1.0]),
         ("leg_right", [0.96, 0.80, 0.70, 1.0]),

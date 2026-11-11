@@ -382,6 +382,7 @@ fn every_part_samples_its_zone_color_under_gltf_uvs() {
     let skin = record.palette.skin.rgb;
     for part in &mesh.parts {
         let expected = match part.name.as_str() {
+            "eye_left" | "eye_right" => lumen_factory::project::SCLERA_RGB,
             "hair" => record.palette.hair.rgb,
             "outfit_torso" => record.palette.outfit[0].rgb,
             "outfit_legs" => record.palette.outfit[1].rgb,

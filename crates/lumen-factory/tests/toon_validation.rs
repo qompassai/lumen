@@ -22,7 +22,7 @@ use lumen_factory::validate::validate_bytes;
 /// features + hairline).
 // Re-anchored for the union skeleton (D-1282): the build's skin
 // now carries the 54 articulation joints (eyes in, End markers out).
-const SERAPHINE_ANCHOR: &str = "60f9c645c352c2623f9f5ffd960d542c4fb12a75e9cddd7c360da6b538a3accb";
+const SERAPHINE_ANCHOR: &str = "5ebe68f8abb11620b81b2de942ad7a9d39053ff94db514212aee594e5fb258c8";
 
 fn manifest_path(parts: &[&str]) -> PathBuf {
     let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));

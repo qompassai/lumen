@@ -7,11 +7,16 @@
 //!   world by the GLB writer.
 //! - Mesh: deterministic procedural generation only (no external assets).
 //!   Parts are separate primitives under one skin: `arm_left`, `arm_right`,
-//!   `body`, `hair`, `head`, `leg_left`, `leg_right`, `outfit_legs`,
-//!   `outfit_torso` (stored in construction order, listed alphabetically
-//!   here).
+//!   `body`, `eye_left`, `eye_right`, `hair`, `hand_left`, `hand_right`,
+//!   `head`, `leg_left`, `leg_right`, `outfit_legs`, `outfit_torso`
+//!   (stored in construction order, listed alphabetically here).
 //! - Skinning: at most four influences per vertex, weights from
-//!   distance-to-bone-segment falloff, normalized to sum to 1.
+//!   distance-to-bone-segment falloff, normalized to sum to 1 — except
+//!   the construction-weighted parts (D-1290): the eyeballs are rigid
+//!   on their eye joint, and the hands carry per-segment ownership
+//!   weights assigned at construction (prima cast census, see
+//!   [`build_hand`]). Head and hair strip eye-joint influence: the
+//!   skull never follows gaze.
 //! - Per-character frame (GAP-11-3 / GAP-11-4): a [`ScaledBuild`]
 //!   may carry per-band width/depth scales (profile rings, limb
 //!   tubes, head radii, joint spans) and a bust delta shaped into
@@ -596,6 +601,76 @@ fn make_vertex(position: [f32; 3], uv: [f32; 2], joints: &[Joint]) -> Vertex {
     }
 }
 
+/// A vertex with construction-assigned weights (D-1290): the
+/// eyeballs and hands do not use distance falloff — their weight
+/// scheme is part of their construction contract. `influences` is
+/// (joint table index, weight) in descending weight order, weights
+/// summing to 1; unused slots repeat the first joint at weight 0.
+fn weighted_vertex(position: [f32; 3], uv: [f32; 2], influences: &[(u16, f32)]) -> Vertex {
+    debug_assert!(!influences.is_empty());
+    debug_assert!(influences.iter().all(|(_, w)| w.is_finite() && *w >= 0.0));
+    let mut joints = [influences.first().map_or(0, |&(idx, _)| idx); MAX_SKIN_INFLUENCES];
+    let mut weights = [0.0f32; MAX_SKIN_INFLUENCES];
+    for (slot, &(idx, w)) in influences.iter().take(MAX_SKIN_INFLUENCES).enumerate() {
+        joints[slot] = idx;
+        weights[slot] = w;
+    }
+    Vertex {
+        joints,
+        normal: [0.0, 1.0, 0.0],
+        position,
+        uv,
+        weights,
+    }
+}
+
+/// Remove the named joints' influence from every vertex and
+/// renormalize what remains (D-1290 skull pinning: head and hair
+/// vertices must not follow the eye joints — gaze moves only the
+/// eyeball parts). A vertex left with no influence at all falls
+/// back to the Head joint at weight 1; for head/hair geometry the
+/// Head segment always scores, so the fallback is defensive only.
+fn strip_joint_influence(vertices: &mut [Vertex], joints: &[Joint], names: &[&str]) {
+    let banned: Vec<u16> = names
+        .iter()
+        .filter_map(|name| joint_index(joints, name))
+        .map(|idx| idx as u16)
+        .collect();
+    if banned.is_empty() {
+        return;
+    }
+    let head_idx = joint_index(joints, "Head").map(|idx| idx as u16);
+    for vertex in vertices.iter_mut() {
+        let mut kept: [(u16, f32); MAX_SKIN_INFLUENCES] = [(0, 0.0); MAX_SKIN_INFLUENCES];
+        let mut kept_len = 0usize;
+        let mut sum = 0.0f32;
+        for slot in 0..MAX_SKIN_INFLUENCES {
+            let (idx, w) = (vertex.joints[slot], vertex.weights[slot]);
+            if w > 0.0 && !banned.contains(&idx) {
+                kept[kept_len] = (idx, w);
+                kept_len += 1;
+                sum += w;
+            }
+        }
+        if kept_len == 0 || sum <= 0.0 {
+            if let Some(head) = head_idx {
+                vertex.joints = [head; MAX_SKIN_INFLUENCES];
+                vertex.weights = [1.0, 0.0, 0.0, 0.0];
+            }
+            continue;
+        }
+        for slot in 0..MAX_SKIN_INFLUENCES {
+            if slot < kept_len {
+                vertex.joints[slot] = kept[slot].0;
+                vertex.weights[slot] = kept[slot].1 / sum;
+            } else {
+                vertex.joints[slot] = kept[0].0;
+                vertex.weights[slot] = 0.0;
+            }
+        }
+    }
+}
+
 fn compute_normals(part: &mut MeshPart) {
     let mut normals = vec![[0.0f32; 3]; part.vertices.len()];
     for tri in part.indices.as_chunks::<3>().0 {
@@ -972,9 +1047,10 @@ fn build_lathe(
 /// render reproduces the 2D band: closing that render-side gap is
 /// the sprite→3D fidelity work (PARITY leg 2c), and renumbering
 /// this anchor to 0.70 would misplace the lid deformation fields
-/// without moving any rendered eye (there is no eye geometry —
-/// the eyes are painted texture, placed by `project.rs` from this
-/// same constant).
+/// without moving any rendered eye. (Since D-1290 the eyeballs
+/// are real geometry pivoting on this same anchor, and
+/// `project.rs` paints from it; the band question above is
+/// unchanged.)
 pub const EYE_CENTER_NX: f32 = 0.36;
 /// Eye deform-region centre, normalized head Y (`ny`).
 pub const EYE_CENTER_NY: f32 = 0.12;
@@ -984,6 +1060,55 @@ pub const EYE_CENTER_NY: f32 = 0.12;
 /// centre plane and the front surface at the eye centre. Used only
 /// by [`joint_table`] to place `LeftEye` / `RightEye`.
 pub const EYE_DEPTH_FRACTION: f32 = 0.62;
+
+/// Eyeball diameter as a fraction of the head ellipsoid's width
+/// (D-1290). The torogao cast's prima.glb measures 0.1514 (ball
+/// diameter 0.0250 m over a 0.1651 m head width; 396 verts per eye,
+/// all at weight 1.000 on the eye joint, ball radius 0.0130 m) —
+/// but the factory's painted eye is larger than prima's: its
+/// sclera spans 0.20 of the head width (`project.rs`'s
+/// EYE_HALF_WIDTH 0.20 of the half-width, each side). A cast-ratio
+/// ball presented a visibly smaller eye than the flat paint it
+/// replaces (Stage B render comparison), so the ball is sized to
+/// the factory's own painted sclera: diameter ratio 0.20, and the
+/// ball's front hemisphere carries the painted eye at flat-face
+/// proportions (see [`build_eyeball`]).
+pub const EYEBALL_WIDTH_RATIO: f32 = 0.20;
+/// Eyeball grid latitude steps (with the longitude steps below this
+/// yields the cast's 396 verts per eye: 18 rows x 22).
+const EYEBALL_LAT_STEPS: usize = 17;
+/// Eyeball grid longitude steps.
+const EYEBALL_LON_STEPS: usize = 22;
+/// Head grid resolution for the hair shell (the original grid).
+const HEAD_LAT_STEPS: usize = 14;
+/// Head grid longitude steps for the hair shell.
+const HEAD_LON_STEPS: usize = 18;
+/// Head grid resolution for the head part itself (D-1290): doubled
+/// so the eye socket can be formed; every coarse-grid vertex is a
+/// strict subset (k/14 = 2k/28, k/18 = 2k/36), so un-displaced head
+/// vertices keep their exact positions.
+const HEAD_FINE_LAT_STEPS: usize = 28;
+/// Head grid longitude steps for the head part itself.
+const HEAD_FINE_LON_STEPS: usize = 36;
+/// Eye-socket opening ellipse half-extents in normalized head
+/// coordinates (nx, ny): between the painted sclera ellipse
+/// (0.20, 0.13) and the lash band (0.22, 0.155) of `project.rs`.
+const SOCKET_ELLIPSE: [f32; 2] = [0.215, 0.150];
+/// Socket displacement reaches full projection at this ellipse
+/// metric and blends out to [`SOCKET_BLEND_OUTER`].
+const SOCKET_BLEND_INNER: f32 = 0.85;
+/// Socket displacement reaches zero at this ellipse metric.
+const SOCKET_BLEND_OUTER: f32 = 1.40;
+/// Radial clearance between the eyeball and its socket wall
+/// (the cast's socket verts sit inside the ball's radius; the
+/// factory keeps a small positive gap instead).
+const SOCKET_CLEARANCE: f32 = 0.0007;
+
+/// Eyeball radius for a head with the given radii: the cast ratio
+/// applied to the head's width.
+fn eyeball_radius(head_radii: [f32; 3]) -> f32 {
+    EYEBALL_WIDTH_RATIO * head_radii[0]
+}
 
 /// Default head ellipsoid center (meters, world space).
 pub const HEAD_CENTER: [f32; 3] = [0.0, 1.665, 0.005];
@@ -1015,7 +1140,65 @@ pub const HAIR_TAIL_TIP_FRACTION: f32 = 0.25;
 /// Ring count of the hair tail's vertical drop (bounded geometry).
 pub const HAIR_TAIL_DROP_RINGS: usize = 4;
 
+/// Displace one head-surface vertex into the eye socket (D-1290).
+///
+/// The factory head is a closed ellipsoid; the cast construction
+/// (prima.glb census) wraps the head surface into a real socket
+/// around the eyeball, with wall verts reaching inside the ball's
+/// radius. The parametric equivalent: vertices inside the socket
+/// ellipse (normalized head coords against [`SOCKET_ELLIPSE`]) are
+/// pulled along their ray from the eye joint onto a sphere of
+/// eyeball radius + [`SOCKET_CLEARANCE`] around the joint, with a
+/// smoothstep blend out to [`SOCKET_BLEND_OUTER`] so the funnel
+/// wall rises back to the untouched surface. Vertices keep their
+/// UVs, so the funnel wall samples the painted sclera/lash through
+/// the head's own mapping — the visible annulus between the ball's
+/// silhouette and the funnel mouth reads as the eye's outer
+/// structure, exactly the role the wall plays in the cast mesh.
+fn socket_displace(pos: [f32; 3], center: [f32; 3], radii: [f32; 3], joints: &[Joint]) -> [f32; 3] {
+    let nx = (pos[0] - center[0]) / radii[0];
+    let ny = (pos[1] - center[1]) / radii[1];
+    let nz = (pos[2] - center[2]) / radii[2];
+    // Front hemisphere only (the flatten gate's region, widened):
+    // the back of the head shares (nx, ny) with the eye region.
+    if nz <= 0.25 {
+        return pos;
+    }
+    let mut out = pos;
+    for (name, sign) in [("LeftEye", -1.0f32), ("RightEye", 1.0f32)] {
+        let dx = (nx - sign * EYE_CENTER_NX) / SOCKET_ELLIPSE[0];
+        let dy = (ny - EYE_CENTER_NY) / SOCKET_ELLIPSE[1];
+        let metric = (dx * dx + dy * dy).sqrt();
+        if metric >= SOCKET_BLEND_OUTER {
+            continue;
+        }
+        let Some(eye) = joint_index(joints, name).map(|idx| joints[idx].position) else {
+            continue;
+        };
+        let ray = sub(out, eye);
+        let dist = length(ray);
+        let wall = eyeball_radius(radii) + SOCKET_CLEARANCE;
+        if dist <= wall || dist <= 1e-9 {
+            continue;
+        }
+        let t = ((SOCKET_BLEND_OUTER - metric) / (SOCKET_BLEND_OUTER - SOCKET_BLEND_INNER))
+            .clamp(0.0, 1.0);
+        let blend = t * t * (3.0 - 2.0 * t);
+        let new_dist = dist + (wall - dist) * blend;
+        let k = new_dist / dist;
+        out = [
+            eye[0] + ray[0] * k,
+            eye[1] + ray[1] * k,
+            eye[2] + ray[2] * k,
+        ];
+    }
+    out
+}
+
 /// Ellipsoid head (also the basis for the hair shell when `hair` is set).
+/// The head part builds on the doubled grid ([`HEAD_FINE_LAT_STEPS`] x
+/// [`HEAD_FINE_LON_STEPS`]) so the eye sockets can be formed; the hair
+/// shell keeps the original grid ([`HEAD_LAT_STEPS`] x [`HEAD_LON_STEPS`]).
 fn build_head(
     name: &str,
     hair: bool,
@@ -1023,9 +1206,9 @@ fn build_head(
     center: [f32; 3],
     radii: [f32; 3],
     jaw_y: f32,
+    grid: (usize, usize),
 ) -> (MeshPart, Vec<HeadRegionWeights>) {
-    let lat_steps = 14usize;
-    let lon_steps = 18usize;
+    let (lat_steps, lon_steps) = grid;
     let scale = if hair { HAIR_SHELL_SCALE } else { 1.0 };
     let mut vertices: Vec<Vertex> = Vec::new();
     let mut indices: Vec<u32> = Vec::new();
@@ -1073,6 +1256,10 @@ fn build_head(
                     let t = ((jaw_y - pos[1]) / taper_span).clamp(0.0, 1.0);
                     pos[0] *= 1.0 - 0.22 * t;
                 }
+                // Form the eye sockets around the eyeball joints
+                // (D-1290); the eyeball parts themselves are built
+                // by `build_eyeball`.
+                pos = socket_displace(pos, center, radii, joints);
             }
             let (zone_u, zone_v) = if hair {
                 (
@@ -1105,6 +1292,11 @@ fn build_head(
             }
         }
     }
+    // Skull pinning (D-1290): neither the head nor the hair shell
+    // follows the eye joints. The union build's interim falloff eye
+    // region on the head surface is replaced by the rigid eyeball
+    // parts; gaze rotation must move nothing else.
+    strip_joint_influence(&mut vertices, joints, &["LeftEye", "RightEye"]);
     let masks = if hair {
         Vec::new()
     } else {
@@ -1121,6 +1313,131 @@ fn build_head(
         },
         masks,
     )
+}
+
+/// The painted sclera's half-extents in normalized head
+/// coordinates (`project.rs`'s `EYE_HALF_WIDTH` / `EYE_HALF_HEIGHT`,
+/// the source of truth; duplicated here because the paint module
+/// builds on this one, not the reverse).
+const PAINT_SCLERA_HALF: [f32; 2] = [0.20, 0.13];
+/// Sine of the eyeball angle at which the ball-local paint chart
+/// reaches the sclera's edge: 1.0, the ball's equator — the front
+/// hemisphere IS the painted eye disc. The chart is linear in the
+/// direction components (a sine chart), so every paint feature
+/// lands at the same fraction of the visible eye as on the flat
+/// face: the iris (0.11 against the sclera's 0.20) edges at
+/// sin 0.55, the pupil (0.05) at sin 0.25.
+const EYEBALL_PAINT_EDGE_SIN: f32 = 1.0;
+
+/// One eyeball (D-1290): a sphere of [`eyeball_radius`] centred
+/// exactly on its eye joint, so the joint is the ball's pivot and
+/// gaze rotation is rigid by construction. 396 verts, matching the
+/// torogao cast's count (prima.glb census: 396 verts per eye, all
+/// at weight 1.000 on the eye joint).
+///
+/// The UV chart is ball-local, not the head's sphere mapping: a
+/// direction-from-head-centre chart has its scale set by the head
+/// radius (~0.10 m) and compresses the painted iris ~6x on a
+/// 0.013 m ball (measured on the first fix build: the iris landed
+/// as a ~3 mm patch, displaced from the ball's front). Instead
+/// each vertex's direction from the joint is expressed in the
+/// eye's frame (forward = joint -> face surface at the eye
+/// centre) and mapped linearly onto paint coordinates around the
+/// eye centre, reaching the sclera's edge at
+/// [`EYEBALL_PAINT_EDGE_SIN`]; the resulting (nx, ny) converts to
+/// UVs through `project.rs`'s `face_point_px` sphere mapping, so
+/// the ball samples the same atlas texels as the face, at ball
+/// scale, and the paint rides the ball when the eye joint rotates.
+fn build_eyeball(
+    name: &str,
+    eye_joint: &str,
+    joints: &[Joint],
+    head_center: [f32; 3],
+    head_radii: [f32; 3],
+) -> MeshPart {
+    let center = joint_pos(joints, eye_joint);
+    let eye_idx = joint_index(joints, eye_joint).map_or(0, |idx| idx as u16);
+    let radius = eyeball_radius(head_radii);
+    // Eye frame: forward from the joint to the face surface at the
+    // eye centre (the generating direction of the painted eye,
+    // scaled by the head radii), side and up completing it.
+    let sign = if center[0] < head_center[0] {
+        -1.0
+    } else {
+        1.0
+    };
+    let gen_z = (1.0 - EYE_CENTER_NX * EYE_CENTER_NX - EYE_CENTER_NY * EYE_CENTER_NY)
+        .max(0.0)
+        .sqrt();
+    let surface = [
+        head_center[0] + sign * EYE_CENTER_NX * head_radii[0],
+        head_center[1] + EYE_CENTER_NY * head_radii[1],
+        head_center[2] + gen_z * head_radii[2],
+    ];
+    let forward = normalize_or(sub(surface, center), [0.0, 0.0, 1.0]);
+    let side = normalize_or(cross([0.0, 1.0, 0.0], forward), [1.0, 0.0, 0.0]);
+    let up = cross(forward, side);
+    let mut vertices: Vec<Vertex> = Vec::new();
+    let mut indices: Vec<u32> = Vec::new();
+    let mut grid: Vec<Vec<Option<u32>>> = Vec::new();
+    for lat in 0..=EYEBALL_LAT_STEPS {
+        let phi = (lat as f32 / EYEBALL_LAT_STEPS as f32) * std::f32::consts::PI;
+        let mut row: Vec<Option<u32>> = Vec::new();
+        for lon in 0..EYEBALL_LON_STEPS {
+            let theta = (lon as f32 / EYEBALL_LON_STEPS as f32) * std::f32::consts::TAU;
+            let dir = [phi.sin() * theta.cos(), phi.cos(), phi.sin() * theta.sin()];
+            let pos = [
+                center[0] + dir[0] * radius,
+                center[1] + dir[1] * radius,
+                center[2] + dir[2] * radius,
+            ];
+            // Ball-local paint chart (see the fn docs), then the
+            // shared sphere mapping of `project.rs::face_point_px`.
+            let mut pnx = sign * EYE_CENTER_NX
+                + dot(dir, side) * (PAINT_SCLERA_HALF[0] / EYEBALL_PAINT_EDGE_SIN);
+            let mut pny =
+                EYE_CENTER_NY + dot(dir, up) * (PAINT_SCLERA_HALF[1] / EYEBALL_PAINT_EDGE_SIN);
+            let disc = pnx * pnx + pny * pny;
+            if disc > 0.998 {
+                let k = 0.999 / disc.sqrt();
+                pnx *= k;
+                pny *= k;
+            }
+            let pnz = (1.0 - pnx * pnx - pny * pny).max(0.0).sqrt();
+            let mut theta_c = pnz.atan2(pnx);
+            if theta_c < 0.0 {
+                theta_c += std::f32::consts::TAU;
+            }
+            let phi_c = pny.clamp(-1.0, 1.0).acos();
+            let uv = [
+                theta_c / std::f32::consts::TAU * 0.25,
+                phi_c / std::f32::consts::PI * 0.25,
+            ];
+            let idx = vertices.len() as u32;
+            vertices.push(weighted_vertex(pos, uv, &[(eye_idx, 1.0)]));
+            row.push(Some(idx));
+        }
+        grid.push(row);
+    }
+    for lat in 0..EYEBALL_LAT_STEPS {
+        for lon in 0..EYEBALL_LON_STEPS {
+            let next = (lon + 1) % EYEBALL_LON_STEPS;
+            let quad = [
+                grid[lat][lon],
+                grid[lat][next],
+                grid[lat + 1][lon],
+                grid[lat + 1][next],
+            ];
+            if let [Some(a), Some(b), Some(c), Some(d)] = quad {
+                indices.extend_from_slice(&[a, c, b, b, c, d]);
+            }
+        }
+    }
+    MeshPart {
+        indices,
+        name: name.to_string(),
+        vertices,
+    }
 }
 
 /// The hair tail (ponytail mass, projection v2): a tapered tube from
@@ -1161,7 +1478,7 @@ fn build_hair_tail(
     let tube_radii: Vec<f32> = (0..points.len())
         .map(|ring| root_radius * (1.0 - (1.0 - HAIR_TAIL_TIP_FRACTION) * ring as f32 / last))
         .collect();
-    Some(build_tube(
+    let mut tail = build_tube(
         "hair",
         &points,
         &tube_radii,
@@ -1169,7 +1486,11 @@ fn build_hair_tail(
         false,
         (0.50, 0.00, 0.75, 0.25),
         joints,
-    ))
+    );
+    // The tail merges into the hair part, so it takes the hair
+    // part's skull pinning too (D-1290): no eye-joint influence.
+    strip_joint_influence(&mut tail.vertices, joints, &["LeftEye", "RightEye"]);
+    Some(tail)
 }
 
 fn gauss(d: f32, sigma: f32) -> f32 {
@@ -1204,7 +1525,7 @@ fn head_region_weights(pos: [f32; 3], center: [f32; 3], radii: [f32; 3]) -> Head
 }
 
 /// Tapered tube along a polyline. `flatten_last` applies a 0.45 Z scale
-/// to the final segment's rings (hands / toe boxes).
+/// to the final segment's rings (toe boxes).
 fn build_tube(
     name: &str,
     points: &[[f32; 3]],
@@ -1298,6 +1619,417 @@ fn joint_pos(joints: &[Joint], name: &str) -> [f32; 3] {
     joint_index(joints, name)
         .map(|idx| joints[idx].position)
         .unwrap_or([0.0, 0.0, 0.0])
+}
+
+/// Finger cross-section vertex count: the adopted hand method's
+/// magic number (D-643 / dossier H-07 — model a hexagon, subdivide
+/// once, and the finger's section has exactly 12 edges; sockets
+/// and bridging all key off that count).
+const FINGER_RADIAL: usize = 12;
+/// Palm loft cross-section vertex count.
+const PALM_SEGMENTS: usize = 20;
+/// Palm cross-section superellipse exponent: a slab with rounded
+/// edges (palm + thumb-base thickness, dossier H-04/H-14).
+const PALM_SUPERELLIPSE_EXP: f32 = 3.5;
+/// Joint flare (dossier H-05/H-21): at a finger ring that sits on
+/// a joint, palm-side (-Y) offsets widen by this factor and the
+/// ring centre shifts [`FINGER_FLARE_SHIFT`] toward the back of
+/// the hand — the rotated loop cut of the modelled method, in
+/// parametric form, so curled fingers do not self-clip.
+const FINGER_FLARE: f32 = 1.18;
+/// Joint flare centre shift toward the back of the hand (+Y).
+const FINGER_FLARE_SHIFT: f32 = 0.0008;
+/// How far a finger tube's root ring sits inside the palm, behind
+/// its first joint (the factory composes parts by overlap; the
+/// modelled method's socket-and-bridge join, dossier H-13/H-26,
+/// is served by rooting the tube inside the palm loft).
+const FINGER_ROOT_DEPTH: f32 = 0.014;
+/// Fingertip cap extension beyond the finger's End landmark.
+const FINGERTIP_EXT: f32 = 0.006;
+
+/// Palm loft stations: (axial distance from the Hand joint along
+/// the Hand->Middle1 axis, half width in Z, half thickness in Y,
+/// centre Y offset, centre Z offset). The front ring reuses the
+/// last station's section with a per-vertex axial offset from
+/// [`PALM_FRONT`].
+const PALM_STATIONS: [(f32, f32, f32, f32, f32); 5] = [
+    (0.000, 0.030, 0.0155, 0.000, 0.000),
+    (0.025, 0.036, 0.0145, 0.001, -0.005),
+    (0.050, 0.044, 0.0135, 0.001, -0.011),
+    (0.070, 0.050, 0.0125, 0.001, -0.015),
+    (0.082, 0.053, 0.0115, 0.000, -0.018),
+];
+
+/// The palm's scalloped front edge — pre-formed webbing (dossier
+/// H-13/H-27): (world Z, axial distance) control points, piecewise
+/// linear, clamped at the ends. The front edge advances at each
+/// finger's base and recedes in the valleys between fingers; on
+/// the thumb side it falls back to the thumb mound, where the palm
+/// wedges toward the thumb's first joint.
+const PALM_FRONT: [(f32, f32); 9] = [
+    (0.058, 0.045),
+    (0.045, 0.088),
+    (0.030, 0.080),
+    (0.015, 0.090),
+    (0.000, 0.082),
+    (-0.015, 0.088),
+    (-0.030, 0.080),
+    (-0.042, 0.084),
+    (-0.055, 0.070),
+];
+
+/// Axial distance of the palm's front edge at world Z `z`.
+fn palm_front_dx(z: f32) -> f32 {
+    if z >= PALM_FRONT[0].0 {
+        return PALM_FRONT[0].1;
+    }
+    for pair in PALM_FRONT.windows(2) {
+        let (z0, d0) = pair[0];
+        let (z1, d1) = pair[1];
+        if z <= z0 && z >= z1 {
+            let t = (z - z0) / (z1 - z0);
+            return d0 + (d1 - d0) * t;
+        }
+    }
+    PALM_FRONT[PALM_FRONT.len() - 1].1
+}
+
+/// (chain name fragment, base radius at the first joint) per
+/// finger, in joint-table order. Base radii are scaled from the
+/// prima cast census: proximal mean radial distances 0.0073–0.0096
+/// at a 0.086 m palm run; the factory's palm run is 0.09 m and the
+/// ring radius sits between the cast's mean and max radial.
+const FINGERS: [(&str, f32); 5] = [
+    ("Thumb", 0.0102),
+    ("Index", 0.0089),
+    ("Middle", 0.0092),
+    ("Ring", 0.0087),
+    ("Pinky", 0.0076),
+];
+
+/// One finger tube (D-1290, hand-build/1 in parametric form): the
+/// dossier's one finished finger — 12-edge sections, taper toward
+/// the tip, joint flare at the bending rings — instantiated per
+/// finger from the joint table's chain.
+///
+/// One ring station of a finger tube: where the ring sits, how
+/// wide it is relative to the finger's base radius, which joints
+/// own it, and whether it flares (rings on joints do).
+struct FingerStation<'a> {
+    /// Ring centre (world space).
+    centre: [f32; 3],
+    /// Whether this ring sits on a joint and takes the flare.
+    flare: bool,
+    /// Construction weights as (joint id, weight), descending.
+    influences: &'a [(u16, f32)],
+    /// Ring radius as a factor of the finger's base radius.
+    radius_factor: f32,
+}
+
+/// Weights are construction weights in the cast's measured scheme
+/// (prima.glb census): a segment is owned by its proximal joint,
+/// the ring on a distal joint blends 50/50 with the next owner,
+/// and the root ring inside the palm is shared with the Hand
+/// joint, whose influence the cast likewise starts inside the
+/// palm. Vertices are appended to the hand part being built.
+#[allow(clippy::too_many_arguments)]
+fn build_finger(
+    vertices: &mut Vec<Vertex>,
+    indices: &mut Vec<u32>,
+    chain: [[f32; 3]; 4],
+    joint_ids: [u16; 4],
+    base_radius: f32,
+    radial_scale: f32,
+) {
+    let (j1, j2, j3, end) = (chain[0], chain[1], chain[2], chain[3]);
+    let (hand_id, j1_id, j2_id, j3_id) = (joint_ids[0], joint_ids[1], joint_ids[2], joint_ids[3]);
+    let dir_a = normalize_or(sub(j2, j1), [1.0, 0.0, 0.0]);
+    let dir_c = normalize_or(sub(end, j3), [1.0, 0.0, 0.0]);
+    let mid = |a: [f32; 3], b: [f32; 3]| {
+        [
+            (a[0] + b[0]) * 0.5,
+            (a[1] + b[1]) * 0.5,
+            (a[2] + b[2]) * 0.5,
+        ]
+    };
+    let root = [
+        j1[0] - dir_a[0] * FINGER_ROOT_DEPTH,
+        j1[1] - dir_a[1] * FINGER_ROOT_DEPTH,
+        j1[2] - dir_a[2] * FINGER_ROOT_DEPTH,
+    ];
+    let w_root: [(u16, f32); 2] = [(j1_id, 0.55), (hand_id, 0.45)];
+    let w_j1: [(u16, f32); 1] = [(j1_id, 1.0)];
+    let w_j12: [(u16, f32); 2] = [(j1_id, 0.5), (j2_id, 0.5)];
+    let w_j2: [(u16, f32); 1] = [(j2_id, 1.0)];
+    let w_j23: [(u16, f32); 2] = [(j2_id, 0.5), (j3_id, 0.5)];
+    let w_j3: [(u16, f32); 1] = [(j3_id, 1.0)];
+    let stations: [FingerStation<'_>; 8] = [
+        FingerStation {
+            centre: root,
+            flare: false,
+            influences: &w_root,
+            radius_factor: 1.06,
+        },
+        FingerStation {
+            centre: j1,
+            flare: true,
+            influences: &w_j1,
+            radius_factor: 1.00,
+        },
+        FingerStation {
+            centre: mid(j1, j2),
+            flare: false,
+            influences: &w_j1,
+            radius_factor: 0.95,
+        },
+        FingerStation {
+            centre: j2,
+            flare: true,
+            influences: &w_j12,
+            radius_factor: 0.93,
+        },
+        FingerStation {
+            centre: mid(j2, j3),
+            flare: false,
+            influences: &w_j2,
+            radius_factor: 0.88,
+        },
+        FingerStation {
+            centre: j3,
+            flare: true,
+            influences: &w_j23,
+            radius_factor: 0.85,
+        },
+        FingerStation {
+            centre: mid(j3, end),
+            flare: false,
+            influences: &w_j3,
+            radius_factor: 0.76,
+        },
+        FingerStation {
+            centre: end,
+            flare: false,
+            influences: &w_j3,
+            radius_factor: 0.60,
+        },
+    ];
+    let base = vertices.len() as u32;
+    let ring_count = stations.len();
+    for (ring, station) in stations.iter().enumerate() {
+        let centre0 = station.centre;
+        let tangent = if ring + 1 < ring_count {
+            sub(stations[ring + 1].centre, centre0)
+        } else {
+            sub(centre0, stations[ring - 1].centre)
+        };
+        let tangent = normalize_or(tangent, [0.0, -1.0, 0.0]);
+        let helper = if tangent[1].abs() > 0.9 {
+            [1.0, 0.0, 0.0]
+        } else {
+            [0.0, 1.0, 0.0]
+        };
+        let n_axis = normalize_or(cross(helper, tangent), [1.0, 0.0, 0.0]);
+        let b_axis = normalize_or(cross(tangent, n_axis), [0.0, 0.0, 1.0]);
+        let mut centre = centre0;
+        if station.flare {
+            centre[1] += FINGER_FLARE_SHIFT;
+        }
+        let radius = base_radius * station.radius_factor * radial_scale;
+        for seg in 0..FINGER_RADIAL {
+            let angle = (seg as f32 / FINGER_RADIAL as f32) * std::f32::consts::TAU;
+            let local = [
+                n_axis[0] * angle.cos() + b_axis[0] * angle.sin(),
+                n_axis[1] * angle.cos() + b_axis[1] * angle.sin(),
+                n_axis[2] * angle.cos() + b_axis[2] * angle.sin(),
+            ];
+            let mut offset = [local[0] * radius, local[1] * radius, local[2] * radius];
+            if station.flare && offset[1] < 0.0 {
+                offset[1] *= FINGER_FLARE;
+            }
+            let pos = [
+                centre[0] + offset[0],
+                centre[1] + offset[1],
+                centre[2] + offset[2],
+            ];
+            let uv = [
+                (seg as f32 / FINGER_RADIAL as f32) * 0.25,
+                0.44 + (ring as f32 / (ring_count - 1) as f32) * 0.06,
+            ];
+            vertices.push(weighted_vertex(pos, uv, station.influences));
+        }
+    }
+    for ring in 0..ring_count - 1 {
+        for seg in 0..FINGER_RADIAL {
+            let next = (seg + 1) % FINGER_RADIAL;
+            let a = base + (ring * FINGER_RADIAL + seg) as u32;
+            let b = base + (ring * FINGER_RADIAL + next) as u32;
+            let c = base + ((ring + 1) * FINGER_RADIAL + seg) as u32;
+            let d = base + ((ring + 1) * FINGER_RADIAL + next) as u32;
+            indices.extend_from_slice(&[a, c, b, b, c, d]);
+        }
+    }
+    // Root cap (inside the palm; kept so the part stays watertight).
+    let root_center = vertices.len() as u32;
+    vertices.push(weighted_vertex(
+        stations[0].centre,
+        [0.125, 0.44],
+        stations[0].influences,
+    ));
+    for seg in 0..FINGER_RADIAL {
+        let next = (seg + 1) % FINGER_RADIAL;
+        indices.extend_from_slice(&[root_center, base + next as u32, base + seg as u32]);
+    }
+    // Fingertip cap.
+    let tip = [
+        end[0] + dir_c[0] * FINGERTIP_EXT,
+        end[1] + dir_c[1] * FINGERTIP_EXT,
+        end[2] + dir_c[2] * FINGERTIP_EXT,
+    ];
+    let tip_center = vertices.len() as u32;
+    vertices.push(weighted_vertex(tip, [0.125, 0.50], &w_j3));
+    let last_ring = base + ((ring_count - 1) * FINGER_RADIAL) as u32;
+    for seg in 0..FINGER_RADIAL {
+        let next = (seg + 1) % FINGER_RADIAL;
+        indices.extend_from_slice(&[tip_center, last_ring + seg as u32, last_ring + next as u32]);
+    }
+}
+
+/// One hand (D-1290): a palm loft with a scalloped front edge and
+/// five finger tubes, replacing the arm tube's mitten segment.
+/// The palm side faces -Y (palm down in the arm-extended rest
+/// pose; the joint table's thumb at +Z is then anatomically
+/// forward, and fingers curl toward -Y, the flare's wide side).
+fn build_hand(prefix: &str, name: &str, joints: &[Joint], radial_scale: f32) -> MeshPart {
+    let mut vertices: Vec<Vertex> = Vec::new();
+    let mut indices: Vec<u32> = Vec::new();
+    let hand_name = format!("{prefix}Hand");
+    let hand_pos = joint_pos(joints, &hand_name);
+    let hand_id = joint_index(joints, &hand_name).map_or(0, |idx| idx as u16);
+    let axis = normalize_or(
+        sub(joint_pos(joints, &format!("{prefix}HandMiddle1")), hand_pos),
+        [1.0, 0.0, 0.0],
+    );
+    let helper = if axis[1].abs() > 0.9 {
+        [1.0, 0.0, 0.0]
+    } else {
+        [0.0, 1.0, 0.0]
+    };
+    let n_axis = normalize_or(cross(helper, axis), [1.0, 0.0, 0.0]);
+    let b_axis = normalize_or(cross(axis, n_axis), [0.0, 0.0, 1.0]);
+    // (base Z, joint id) per finger's first joint, for the palm's
+    // distal blend toward the fingers (the cast starts each first
+    // joint's influence inside the palm).
+    let finger_bases: Vec<(f32, u16)> = FINGERS
+        .iter()
+        .map(|(finger, _)| {
+            let name = format!("{prefix}Hand{finger}1");
+            (
+                joint_pos(joints, &name)[2],
+                joint_index(joints, &name).map_or(0, |idx| idx as u16),
+            )
+        })
+        .collect();
+    let nearest_finger = |z: f32| -> u16 {
+        finger_bases
+            .iter()
+            .min_by(|a, b| (z - a.0).abs().total_cmp(&(z - b.0).abs()))
+            .map_or(hand_id, |&(_, idx)| idx)
+    };
+    // Palm loft: the stations plus the scalloped front ring.
+    let ring_count = PALM_STATIONS.len() + 1;
+    for ring in 0..ring_count {
+        let front = ring == ring_count - 1;
+        let (dx0, half_w, half_t, off_y, off_z) = PALM_STATIONS[ring.min(PALM_STATIONS.len() - 1)];
+        let centre = [
+            hand_pos[0] + axis[0] * dx0,
+            hand_pos[1] + axis[1] * dx0 + off_y,
+            hand_pos[2] + axis[2] * dx0 + off_z,
+        ];
+        for seg in 0..PALM_SEGMENTS {
+            let angle = (seg as f32 / PALM_SEGMENTS as f32) * std::f32::consts::TAU;
+            let shape = |t: f32| t.signum() * t.abs().powf(2.0 / PALM_SUPERELLIPSE_EXP);
+            let off_n = shape(angle.cos()) * half_w * radial_scale;
+            let off_b = shape(angle.sin()) * half_t * radial_scale;
+            let offset = [
+                n_axis[0] * off_n + b_axis[0] * off_b,
+                n_axis[1] * off_n + b_axis[1] * off_b,
+                n_axis[2] * off_n + b_axis[2] * off_b,
+            ];
+            let mut pos = [
+                centre[0] + offset[0],
+                centre[1] + offset[1],
+                centre[2] + offset[2],
+            ];
+            if front {
+                let dx = palm_front_dx(pos[2]);
+                pos = [
+                    pos[0] + axis[0] * (dx - dx0),
+                    pos[1] + axis[1] * (dx - dx0),
+                    pos[2] + axis[2] * (dx - dx0),
+                ];
+            }
+            let w_hand: [(u16, f32); 1] = [(hand_id, 1.0)];
+            let w_blend85: [(u16, f32); 2] = [(hand_id, 0.85), (nearest_finger(pos[2]), 0.15)];
+            let w_blend70: [(u16, f32); 2] = [(hand_id, 0.70), (nearest_finger(pos[2]), 0.30)];
+            let influences: &[(u16, f32)] = if front {
+                &w_blend70
+            } else if ring == PALM_STATIONS.len() - 1 {
+                &w_blend85
+            } else {
+                &w_hand
+            };
+            let uv = [
+                ((pos[2] + 0.055) / 0.113 * 0.25).clamp(0.0, 0.25),
+                0.44 + (ring as f32 / (ring_count - 1) as f32) * 0.06,
+            ];
+            vertices.push(weighted_vertex(pos, uv, influences));
+        }
+    }
+    for ring in 0..ring_count - 1 {
+        for seg in 0..PALM_SEGMENTS {
+            let next = (seg + 1) % PALM_SEGMENTS;
+            let a = (ring * PALM_SEGMENTS + seg) as u32;
+            let b = (ring * PALM_SEGMENTS + next) as u32;
+            let c = ((ring + 1) * PALM_SEGMENTS + seg) as u32;
+            let d = ((ring + 1) * PALM_SEGMENTS + next) as u32;
+            indices.extend_from_slice(&[a, c, b, b, c, d]);
+        }
+    }
+    // Wrist cap (inside the arm tube's end; watertightness).
+    let wrist_center = vertices.len() as u32;
+    vertices.push(weighted_vertex(hand_pos, [0.125, 0.44], &[(hand_id, 1.0)]));
+    for seg in 0..PALM_SEGMENTS {
+        let next = (seg + 1) % PALM_SEGMENTS;
+        indices.extend_from_slice(&[wrist_center, next as u32, seg as u32]);
+    }
+    // Fingers: one tube design per finger, from the joint table.
+    for (finger, base_radius) in FINGERS {
+        let chain = [
+            joint_pos(joints, &format!("{prefix}Hand{finger}1")),
+            joint_pos(joints, &format!("{prefix}Hand{finger}2")),
+            joint_pos(joints, &format!("{prefix}Hand{finger}3")),
+            joint_pos(joints, &format!("{prefix}Hand{finger}_End")),
+        ];
+        let joint_ids = [
+            hand_id,
+            joint_index(joints, &format!("{prefix}Hand{finger}1")).map_or(0, |idx| idx as u16),
+            joint_index(joints, &format!("{prefix}Hand{finger}2")).map_or(0, |idx| idx as u16),
+            joint_index(joints, &format!("{prefix}Hand{finger}3")).map_or(0, |idx| idx as u16),
+        ];
+        build_finger(
+            &mut vertices,
+            &mut indices,
+            chain,
+            joint_ids,
+            base_radius,
+            radial_scale,
+        );
+    }
+    MeshPart {
+        indices,
+        name: name.to_string(),
+        vertices,
+    }
 }
 
 /// Build the base mesh with the default body profile.
@@ -1572,7 +2304,9 @@ pub fn build_base_mesh_parametric(params: &ScaledBuild) -> Result<BaseMesh, Fact
 
     let mut parts: Vec<MeshPart> = Vec::new();
 
-    // Arms (upper arm .045->.038, forearm .038->.030, flattened hand).
+    // Arms (upper arm .045->.038, forearm .038->.030). The tube
+    // ends at the wrist; the hand is its own part (D-1290 replaced
+    // the tube's flattened mitten segment with `build_hand`).
     // The arm tubes take the torso band's width scale.
     let arm_radial = radial * params.band_width_scales[1];
     for (side_name, prefix) in [("left", "Left"), ("right", "Right")] {
@@ -1580,21 +2314,25 @@ pub fn build_base_mesh_parametric(params: &ScaledBuild) -> Result<BaseMesh, Fact
             joint_pos(&joints, &format!("{prefix}Arm")),
             joint_pos(&joints, &format!("{prefix}ForeArm")),
             joint_pos(&joints, &format!("{prefix}Hand")),
-            joint_pos(&joints, &format!("{prefix}HandMiddle1")),
         ];
         parts.push(finish_part(build_tube(
             &format!("arm_{side_name}"),
             &chain,
-            &[
-                0.045 * arm_radial,
-                0.038 * arm_radial,
-                0.030 * arm_radial,
-                0.026 * arm_radial,
-            ],
+            &[0.045 * arm_radial, 0.038 * arm_radial, 0.030 * arm_radial],
             10,
-            true,
+            false,
             (0.0, 0.25, 0.25, 0.50),
             &joints,
+        ))?);
+    }
+
+    // Hands (palm loft + five finger tubes per side, D-1290).
+    for (side_name, prefix) in [("left", "Left"), ("right", "Right")] {
+        parts.push(finish_part(build_hand(
+            prefix,
+            &format!("hand_{side_name}"),
+            &joints,
+            arm_radial,
         ))?);
     }
 
@@ -1619,6 +2357,7 @@ pub fn build_base_mesh_parametric(params: &ScaledBuild) -> Result<BaseMesh, Fact
         params.head_center,
         head_radii,
         params.jaw_y,
+        (HEAD_LAT_STEPS, HEAD_LON_STEPS),
     );
     if let Some(tail) = build_hair_tail(params, &joints, profile, head_radii) {
         let base_idx = hair_part.vertices.len() as u32;
@@ -1635,6 +2374,7 @@ pub fn build_base_mesh_parametric(params: &ScaledBuild) -> Result<BaseMesh, Fact
         params.head_center,
         head_radii,
         params.jaw_y,
+        (HEAD_FINE_LAT_STEPS, HEAD_FINE_LON_STEPS),
     );
     let head_part = finish_part(head_part)?;
 
@@ -1714,6 +2454,22 @@ pub fn build_base_mesh_parametric(params: &ScaledBuild) -> Result<BaseMesh, Fact
     ))?);
 
     parts.push(head_part);
+
+    // Eyeballs (rigid spheres on the eye joints, D-1290).
+    parts.push(finish_part(build_eyeball(
+        "eye_left",
+        "LeftEye",
+        &joints,
+        params.head_center,
+        head_radii,
+    ))?);
+    parts.push(finish_part(build_eyeball(
+        "eye_right",
+        "RightEye",
+        &joints,
+        params.head_center,
+        head_radii,
+    ))?);
 
     Ok(BaseMesh {
         head_masks,
