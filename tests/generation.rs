@@ -249,11 +249,14 @@ fn fold_tools_list_matches_both_baselines() {
     // B2 (D-292/D-312): the canon tools (canon_resolve, canon_gate,
     // canon_generate) are additive on top of the folded surface;
     // 1.0.0 (R-607) adds canon_convert as the fourth canon tool.
+    // hf_dataset_upload (generated-media backup, 2026-11-11) is
+    // additive the same way: a sixteenth tool, lumen-native rather
+    // than folded, so it has no standalone baseline below.
     // The 11 fold-baseline tools below must still match byte-for-byte.
     assert_eq!(
         tools.len(),
-        15,
-        "folded surface 7 + 4, plus 4 canon tools (B2 + R-607)"
+        16,
+        "folded surface 7 + 4, plus 4 canon tools (B2 + R-607), plus hf_dataset_upload"
     );
     let baseline: Value =
         serde_json::from_str(include_str!("fixtures/generation-baseline-tools.json"))
