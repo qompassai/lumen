@@ -32,9 +32,10 @@ use crate::generation::lifecycle::{
 };
 use crate::generation::log::{EventLog, now_ms, rfc3339};
 use crate::generation::paths::{self, AdmittedSource, ImageInfo};
+use crate::generation::regional::{self, MaskImages, Region, RegionSpec, RegionsRecord};
 use crate::generation::template::{
-    CFG_MAX, CFG_MIN, DENOISE_MAX, DENOISE_MIN, IRIS_IMG2IMG, IRIS_TXT2IMG, SAMPLERS, SCHEDULERS,
-    Template, TemplateIdentity, TemplateKind,
+    CFG_MAX, CFG_MIN, DENOISE_MAX, DENOISE_MIN, IRIS_IMG2IMG, IRIS_REGIONAL_IMG2IMG, IRIS_TXT2IMG,
+    REGION_SLOTS, SAMPLERS, SCHEDULERS, Template, TemplateIdentity, TemplateKind,
 };
 
 pub const HISTORY_POLL: Duration = Duration::from_millis(500);
@@ -127,6 +128,40 @@ pub struct Img2ImgRequest {
     pub scheduler: Option<String>,
 }
 
+/// `lumen_img2img_regional` arguments (L7). Unknown fields are refused.
+#[derive(Debug, Clone, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct RegionalImg2ImgRequest {
+    /// Registered image model id; absent selects the configured
+    /// `defaults.img2img`.
+    pub model: Option<String>,
+    /// The global prompt (the whole image).
+    pub prompt: String,
+    pub negative_prompt: Option<String>,
+    /// Absolute path of a PNG under one of the active profile's source roots
+    /// (the composite: body plus pasted elements).
+    pub source_path: String,
+    /// 1-4 regions: box in source pixels, region prompt, hold, strength,
+    /// feather. Output width/height must keep the source aspect.
+    pub regions: Vec<RegionSpec>,
+    /// Global denoise, finite in [0.05, 1.0]; inside a region it is scaled
+    /// by (1 - hold).
+    pub denoise: Option<f64>,
+    pub width: Option<u32>,
+    pub height: Option<u32>,
+    pub seed: Option<u64>,
+    pub steps: Option<u32>,
+    pub cfg: Option<f64>,
+    pub sampler_name: Option<String>,
+    pub scheduler: Option<String>,
+}
+
+/// A validated regional job: its regions and rasterised masks.
+pub struct RegionalJob {
+    pub regions: Vec<Region>,
+    pub masks: MaskImages,
+}
+
 /// `lumen_models` arguments.
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
@@ -203,7 +238,7 @@ pub fn select_model<'a>(
 ) -> Result<&'a str> {
     let id = requested.unwrap_or(match kind {
         TemplateKind::Txt2Img => &config.defaults.txt2img,
-        TemplateKind::Img2Img => &config.defaults.img2img,
+        TemplateKind::Img2Img | TemplateKind::RegionalImg2Img => &config.defaults.img2img,
     });
     let model = config.model(id)?;
     // Config admits only image models; the generation tools serve only them.
@@ -275,7 +310,7 @@ fn resolve_params(config: &Config, template: &Template, args: &Common) -> Result
             assert!(args.denoise.is_none());
             1.0
         }
-        TemplateKind::Img2Img => {
+        TemplateKind::Img2Img | TemplateKind::RegionalImg2Img => {
             let denoise = args.denoise.unwrap_or(default_f64(template, "denoise"));
             if !denoise.is_finite() || !(DENOISE_MIN..=DENOISE_MAX).contains(&denoise) {
                 return Err(bad(format!(
@@ -348,6 +383,85 @@ pub fn img2img_params(
     )
 }
 
+pub fn regional_params(
+    config: &Config,
+    template: &Template,
+    request: &RegionalImg2ImgRequest,
+) -> Result<UsedParams> {
+    resolve_params(
+        config,
+        template,
+        &Common {
+            model: request.model.as_deref(),
+            prompt: &request.prompt,
+            negative_prompt: request.negative_prompt.as_deref(),
+            width: request.width,
+            height: request.height,
+            seed: request.seed,
+            steps: request.steps,
+            cfg: request.cfg,
+            sampler_name: request.sampler_name.as_deref(),
+            scheduler: request.scheduler.as_deref(),
+            denoise: request.denoise,
+        },
+    )
+}
+
+/// Build the patched regional graph: the img2img points plus the two mask
+/// images and the four region slots (unused slots: empty prompt,
+/// strength 0, and an all-zero mask channel from `rasterise`).
+#[allow(clippy::too_many_arguments)]
+pub fn build_regional_graph(
+    template: &Template,
+    params: &UsedParams,
+    checkpoint_name: &str,
+    job_id: &str,
+    source_name: &str,
+    regions: &[Region],
+    regions_name: &str,
+    aux_name: &str,
+) -> serde_json::Map<String, Value> {
+    assert_eq!(template.kind, TemplateKind::RegionalImg2Img);
+    assert!(!regions.is_empty() && regions.len() <= REGION_SLOTS);
+    let mut values: Vec<(&str, Value)> = vec![
+        ("checkpoint", json!(checkpoint_name)),
+        ("positive", json!(params.prompt)),
+        ("negative", json!(params.negative_prompt)),
+        ("width", json!(params.width)),
+        ("height", json!(params.height)),
+        ("seed", json!(params.seed)),
+        ("steps", json!(params.steps)),
+        ("cfg", json!(params.cfg)),
+        ("sampler_name", json!(params.sampler_name)),
+        ("scheduler", json!(params.scheduler)),
+        ("denoise", json!(params.denoise)),
+        ("filename_prefix", json!(format!("lumen-{job_id}"))),
+        ("image", json!(source_name)),
+        ("regions_image", json!(regions_name)),
+        ("aux_image", json!(aux_name)),
+    ];
+    const PROMPTS: [&str; REGION_SLOTS] = [
+        "region_prompt_1",
+        "region_prompt_2",
+        "region_prompt_3",
+        "region_prompt_4",
+    ];
+    const STRENGTHS: [&str; REGION_SLOTS] = [
+        "region_strength_1",
+        "region_strength_2",
+        "region_strength_3",
+        "region_strength_4",
+    ];
+    for slot in 0..REGION_SLOTS {
+        let (text, strength) = regions
+            .get(slot)
+            .map_or((String::new(), 0.0), |r| (r.prompt.clone(), r.strength));
+        values.push((PROMPTS[slot], json!(text)));
+        values.push((STRENGTHS[slot], json!(strength)));
+    }
+    template.patch(&values)
+}
+
 /// Build the patched graph for a job.
 pub fn build_graph(
     template: &Template,
@@ -404,6 +518,9 @@ pub struct SourceRecord {
 #[derive(Debug, Clone, Serialize)]
 pub struct GenerationResult {
     pub job_id: String,
+    /// Regional jobs only (`lumen_img2img_regional`).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub regions: Option<RegionsRecord>,
     pub profile: &'static str,
     pub content_class: &'static str,
     pub prompt_id: String,
@@ -444,6 +561,7 @@ pub struct Atelier<B: MediaBackend, L: Launcher, G: GpuProbe> {
     pub log: EventLog,
     txt2img: Template,
     img2img: Template,
+    regional: Template,
     job_counter: AtomicU64,
 }
 
@@ -479,6 +597,7 @@ impl<B: MediaBackend, L: Launcher, G: GpuProbe> Atelier<B, L, G> {
             log,
             txt2img: Template::embedded(&IRIS_TXT2IMG),
             img2img: Template::embedded(&IRIS_IMG2IMG),
+            regional: Template::embedded(&IRIS_REGIONAL_IMG2IMG),
             job_counter: AtomicU64::new(0),
             config,
         };
@@ -520,6 +639,7 @@ impl<B: MediaBackend, L: Launcher, G: GpuProbe> Atelier<B, L, G> {
         match kind {
             TemplateKind::Txt2Img => &self.txt2img,
             TemplateKind::Img2Img => &self.img2img,
+            TemplateKind::RegionalImg2Img => &self.regional,
         }
     }
 
@@ -647,7 +767,8 @@ impl<B: MediaBackend, L: Launcher, G: GpuProbe> Atelier<B, L, G> {
             request.model.as_deref(),
         )?;
         self.admission(model)?.require()?;
-        self.run(TemplateKind::Txt2Img, model, params, None).await
+        self.run(TemplateKind::Txt2Img, model, params, None, None)
+            .await
     }
 
     pub async fn img2img(&self, request: Img2ImgRequest) -> Result<GenerationResult> {
@@ -663,8 +784,45 @@ impl<B: MediaBackend, L: Launcher, G: GpuProbe> Atelier<B, L, G> {
             &self.config.active_roots().source_roots,
             self.config.limits.source_bytes_max,
         )?;
-        self.run(TemplateKind::Img2Img, model, params, Some(source))
+        self.run(TemplateKind::Img2Img, model, params, Some(source), None)
             .await
+    }
+
+    /// `lumen_img2img_regional` (L7): img2img whose regions keep their own
+    /// prompt and a held share of the denoise, so composited elements
+    /// survive the unify pass.
+    pub async fn img2img_regional(
+        &self,
+        request: RegionalImg2ImgRequest,
+    ) -> Result<GenerationResult> {
+        let params = regional_params(&self.config, &self.regional, &request)?;
+        let model = select_model(
+            &self.config,
+            TemplateKind::RegionalImg2Img,
+            request.model.as_deref(),
+        )?;
+        self.admission(model)?.require()?;
+        let source = paths::admit_source(
+            &request.source_path,
+            &self.config.active_roots().source_roots,
+            self.config.limits.source_bytes_max,
+        )?;
+        let regions = regional::validate(
+            &request.regions,
+            (source.width, source.height),
+            (params.width, params.height),
+            self.config.limits.prompt_bytes_max,
+        )?;
+        let masks = regional::rasterise(&regions, (params.width, params.height))?;
+        let job = RegionalJob { regions, masks };
+        self.run(
+            TemplateKind::RegionalImg2Img,
+            model,
+            params,
+            Some(source),
+            Some(job),
+        )
+        .await
     }
 
     async fn run(
@@ -673,6 +831,7 @@ impl<B: MediaBackend, L: Launcher, G: GpuProbe> Atelier<B, L, G> {
         model: &str,
         params: UsedParams,
         source: Option<AdmittedSource>,
+        regional: Option<RegionalJob>,
     ) -> Result<GenerationResult> {
         let Ok(_slot) = self.queue.try_acquire() else {
             return err(ErrorCode::EngineBusy, "lumen job queue is full");
@@ -695,6 +854,7 @@ impl<B: MediaBackend, L: Launcher, G: GpuProbe> Atelier<B, L, G> {
                 &job_id,
                 &params,
                 source.as_ref(),
+                regional.as_ref(),
             )
             .await;
         let cleanup = lifecycle.stop().await;
@@ -753,11 +913,13 @@ pub struct Collected {
     prompt_id: String,
     output: OutputRecord,
     source: Option<SourceRecord>,
+    regions: Option<RegionsRecord>,
     template: TemplateIdentity,
     job_dir: PathBuf,
 }
 
 impl<B: MediaBackend, L: Launcher, G: GpuProbe> Atelier<B, L, G> {
+    #[allow(clippy::too_many_arguments)]
     async fn execute(
         &self,
         lifecycle: &mut Lifecycle<L, G>,
@@ -766,6 +928,7 @@ impl<B: MediaBackend, L: Launcher, G: GpuProbe> Atelier<B, L, G> {
         job_id: &str,
         params: &UsedParams,
         source: Option<&AdmittedSource>,
+        regional: Option<&RegionalJob>,
     ) -> Result<Collected> {
         let roots = self.config.active_roots();
         let template = self.template(kind);
@@ -806,13 +969,71 @@ impl<B: MediaBackend, L: Launcher, G: GpuProbe> Atelier<B, L, G> {
                 engine_upload: upload,
             });
         }
-        let graph = build_graph(
-            template,
-            params,
-            engine_name,
-            job_id,
-            uploaded_name.as_deref(),
-        );
+        let mut regions_record = None;
+        let graph = if let Some(job) = regional {
+            let source_name = uploaded_name.as_deref();
+            assert!(source_name.is_some(), "a regional job always has a source");
+            let staged_dir = roots.staged_input_root.join(job_id);
+            let mut names = Vec::with_capacity(2);
+            let mut uploads = Vec::with_capacity(2);
+            for (label, bytes) in [
+                ("regions", &job.masks.regions_png),
+                ("aux", &job.masks.aux_png),
+            ] {
+                paths::write_new(
+                    &roots.staged_input_root,
+                    &staged_dir,
+                    &format!("{label}.png"),
+                    bytes,
+                )?;
+                let upload = self
+                    .backend
+                    .upload_image(&format!("lumen-{job_id}-{label}.png"), bytes.clone())
+                    .await?;
+                if !upload.subfolder.is_empty() || upload.kind != "input" {
+                    return err(
+                        ErrorCode::BackendProtocol,
+                        format!("unexpected upload placement {upload:?}"),
+                    );
+                }
+                names.push(upload.name.clone());
+                uploads.push(upload);
+            }
+            self.log.event(
+                "info",
+                "region_masks_uploaded",
+                json!({"job_id": job_id,
+                "regions": job.regions.len(), "engine_names": names}),
+            );
+            let aux_upload = uploads.pop().expect("two uploads pushed");
+            let regions_upload = uploads.pop().expect("two uploads pushed");
+            regions_record = Some(RegionsRecord {
+                regions: job.regions.clone(),
+                regions_image_sha256: regional::digest(&job.masks.regions_png),
+                aux_image_sha256: regional::digest(&job.masks.aux_png),
+                regions_image_upload: regions_upload,
+                aux_image_upload: aux_upload,
+                mask_rule: regional::MASK_RULE,
+            });
+            build_regional_graph(
+                template,
+                params,
+                engine_name,
+                job_id,
+                source_name.unwrap_or_default(),
+                &job.regions,
+                &names[0],
+                &names[1],
+            )
+        } else {
+            build_graph(
+                template,
+                params,
+                engine_name,
+                job_id,
+                uploaded_name.as_deref(),
+            )
+        };
         let prompt_id = self.backend.submit(graph, job_id).await?;
         self.log.event(
             "info",
@@ -844,6 +1065,7 @@ impl<B: MediaBackend, L: Launcher, G: GpuProbe> Atelier<B, L, G> {
             prompt_id,
             output,
             source: source_record,
+            regions: regions_record,
             template: template.identity(),
             job_dir,
         })
@@ -953,6 +1175,7 @@ impl<B: MediaBackend, L: Launcher, G: GpuProbe> Atelier<B, L, G> {
         let elapsed_ms = u64::try_from(clock.elapsed().as_millis()).unwrap_or(u64::MAX);
         let result = GenerationResult {
             job_id: job_id.to_string(),
+            regions: collected.regions,
             profile: self.config.profile.as_str(),
             content_class: self.config.profile.content_class(),
             prompt_id: collected.prompt_id,
@@ -996,6 +1219,11 @@ impl<B: MediaBackend, L: Launcher, G: GpuProbe> Atelier<B, L, G> {
             "elapsed_ms": elapsed_ms,
             "lifecycle": {"cleanup": cleanup, "evidence": evidence},
         });
+        let mut manifest = manifest;
+        if let Some(regions) = &result.regions {
+            // regional jobs only: earlier manifests keep their exact shape
+            manifest["regions"] = json!(regions);
+        }
         let text = serde_json::to_string_pretty(&manifest)
             .map_err(|cause| AtelierError::new(ErrorCode::OutputWriteFailed, cause.to_string()))?;
         paths::write_new(

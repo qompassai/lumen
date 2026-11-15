@@ -157,6 +157,11 @@ sink = "trusted"
 reads = ["low"]
 sink = "trusted"
 
+# L7 (2026-11-15): regional img2img — same reads/sink as lumen_img2img.
+[tools.lumen_img2img_regional]
+reads = ["low"]
+sink = "trusted"
+
 # Bevy bridge (src/bevy.rs).
 [tools.bevy_call]
 reads = ["low"]

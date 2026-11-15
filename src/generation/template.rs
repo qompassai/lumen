@@ -39,6 +39,9 @@ pub const DENOISE_MAX: f64 = 1.0;
 pub enum TemplateKind {
     Txt2Img,
     Img2Img,
+    /// img2img with per-region conditioning and a per-region noise hold
+    /// (`lumen_img2img_regional`, L7).
+    RegionalImg2Img,
 }
 
 /// A named patch point: one literal input of one node.
@@ -113,8 +116,42 @@ const fn img2img_points() -> [PatchPoint; 13] {
     ]
 }
 
+/// Region slots in the regional template (fixed node set; unused slots
+/// carry an empty prompt, strength 0 and an all-zero mask).
+pub const REGION_SLOTS: usize = 4;
+
+const fn regional_points() -> [PatchPoint; 23] {
+    let i = img2img_points();
+    [
+        i[0],
+        i[1],
+        i[2],
+        i[3],
+        i[4],
+        i[5],
+        i[6],
+        i[7],
+        i[8],
+        i[9],
+        i[10],
+        i[11],
+        i[12],
+        point("regions_image", "14", "image"),
+        point("aux_image", "16", "image"),
+        point("region_prompt_1", "21", "text"),
+        point("region_prompt_2", "22", "text"),
+        point("region_prompt_3", "23", "text"),
+        point("region_prompt_4", "24", "text"),
+        point("region_strength_1", "25", "strength"),
+        point("region_strength_2", "26", "strength"),
+        point("region_strength_3", "27", "strength"),
+        point("region_strength_4", "28", "strength"),
+    ]
+}
+
 const TXT2IMG_POINTS: [PatchPoint; 12] = txt2img_points();
 const IMG2IMG_POINTS: [PatchPoint; 13] = img2img_points();
+const REGIONAL_POINTS: [PatchPoint; 23] = regional_points();
 
 pub static IRIS_TXT2IMG: TemplateSpec = TemplateSpec {
     name: "iris_txt2img",
@@ -150,6 +187,51 @@ pub static IRIS_IMG2IMG: TemplateSpec = TemplateSpec {
         ("12", "ImageScale"),
     ],
     patch_points: &IMG2IMG_POINTS,
+};
+
+/// Regional img2img (L7): the img2img graph plus a noise mask
+/// (`SetLatentNoiseMask`, fractional: 1 = full denoise, 0 = held) and four
+/// masked region conditionings (`ConditioningSetMask`) combined with the
+/// global positive. Masks arrive as two lane-rasterised RGB images:
+/// `regions_image` R/G/B = regions 1-3, `aux_image` R = noise mask,
+/// G = region 4. Core ComfyUI nodes only.
+pub static IRIS_REGIONAL_IMG2IMG: TemplateSpec = TemplateSpec {
+    name: "iris_regional_img2img",
+    version: "1",
+    kind: TemplateKind::RegionalImg2Img,
+    text: include_str!("../../assets/workflows/iris_regional_img2img.v1.json"),
+    nodes: &[
+        ("3", "KSampler"),
+        ("4", "CheckpointLoaderSimple"),
+        ("6", "CLIPTextEncode"),
+        ("7", "CLIPTextEncode"),
+        ("8", "VAEDecode"),
+        ("9", "SaveImage"),
+        ("10", "LoadImage"),
+        ("11", "VAEEncode"),
+        ("12", "ImageScale"),
+        ("13", "SetLatentNoiseMask"),
+        ("14", "LoadImage"),
+        ("15", "ImageToMask"),
+        ("16", "LoadImage"),
+        ("17", "ImageToMask"),
+        ("18", "ImageToMask"),
+        ("19", "ImageToMask"),
+        ("20", "ImageToMask"),
+        ("21", "CLIPTextEncode"),
+        ("22", "CLIPTextEncode"),
+        ("23", "CLIPTextEncode"),
+        ("24", "CLIPTextEncode"),
+        ("25", "ConditioningSetMask"),
+        ("26", "ConditioningSetMask"),
+        ("27", "ConditioningSetMask"),
+        ("28", "ConditioningSetMask"),
+        ("29", "ConditioningCombine"),
+        ("30", "ConditioningCombine"),
+        ("31", "ConditioningCombine"),
+        ("32", "ConditioningCombine"),
+    ],
+    patch_points: &REGIONAL_POINTS,
 };
 
 /// A validated template graph plus its identity.

@@ -253,10 +253,12 @@ fn fold_tools_list_matches_both_baselines() {
     // additive the same way: a sixteenth tool, lumen-native rather
     // than folded, so it has no standalone baseline below.
     // The 11 fold-baseline tools below must still match byte-for-byte.
+    // lumen_img2img_regional (L7, 2026-11-15) is additive the same way: a
+    // seventeenth tool, lumen-native, so it has no standalone baseline.
     assert_eq!(
         tools.len(),
-        16,
-        "folded surface 7 + 4, plus 4 canon tools (B2 + R-607), plus hf_dataset_upload"
+        17,
+        "folded surface 7 + 4, plus 4 canon tools (B2 + R-607), plus hf_dataset_upload, plus lumen_img2img_regional"
     );
     let baseline: Value =
         serde_json::from_str(include_str!("fixtures/generation-baseline-tools.json"))

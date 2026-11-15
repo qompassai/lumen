@@ -43,6 +43,7 @@ pub mod error;
 pub mod lifecycle;
 pub mod log;
 pub mod paths;
+pub mod regional;
 pub mod service;
 pub mod template;
 

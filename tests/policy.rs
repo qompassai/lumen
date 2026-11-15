@@ -25,6 +25,7 @@ const REGISTERED: &[&str] = &[
     "canon_resolve",
     "hf_dataset_upload",
     "lumen_img2img",
+    "lumen_img2img_regional",
     "lumen_models",
     "lumen_status",
     "lumen_txt2img",
@@ -358,7 +359,7 @@ fn ok_binary_policy_check_passes() {
     let (code, out) = run_cli("check", None);
     assert_eq!(code, 0, "{out}");
     assert!(out.contains("PASS every required tool is labeled"));
-    assert!(out.contains("registered tools: 16"));
+    assert!(out.contains("registered tools: 17")); // + lumen_img2img_regional (L7)
 }
 
 #[test]

@@ -32,7 +32,7 @@ use clap::{Parser, Subcommand};
 use lumen::cli::{self, CLI_DEFAULT_HEIGHT, CLI_DEFAULT_WIDTH};
 use lumen::generation::{
     self, GenerationLane, GenerationSetup,
-    service::{Img2ImgRequest, ModelsRequest, Txt2ImgRequest},
+    service::{Img2ImgRequest, ModelsRequest, RegionalImg2ImgRequest, Txt2ImgRequest},
 };
 use lumen::guard;
 use lumen::hf_upload::{self, HfDatasetUploadRequest, HfUploadContext};
@@ -407,6 +407,22 @@ impl Lumen {
             .map_err(|error| lane.refusal(&error))
     }
 
+    #[tool(
+        description = "Regional img2img (L7): unify a composite while keeping each composited element in its own region. Takes the img2img fields plus 1-4 `regions` (box [x0,y0,x1,y1] in source pixels, region prompt, `hold` in [0,1] = share of the global denoise withheld inside the region, `strength` in [0,2] of the region prompt, `feather_px`). Each region prompt is applied only inside its mask (ConditioningSetMask combined with the global prompt) and the region is denoised at denoise x (1 - hold) through a fractional SetLatentNoiseMask; masks are rasterised by lumen and recorded (sha256) in the manifest. Output width/height must keep the source aspect. Same model admission, source roots and style steering as lumen_img2img.",
+        annotations(read_only_hint = false, open_world_hint = false)
+    )]
+    async fn lumen_img2img_regional(
+        &self,
+        Parameters(request): Parameters<RegionalImg2ImgRequest>,
+    ) -> Result<String, String> {
+        let lane = self.generation_lane()?;
+        lane.core()
+            .img2img_regional(request)
+            .await
+            .map(|value| generation::to_json(&value))
+            .map_err(|error| lane.refusal(&error))
+    }
+
     // Style ops are exposed on BOTH surfaces by decision (Matt, 2026-10-18):
     // this stdio MCP registry and the A2A registry wrap the same library
     // functions (lumen::style), so the two registrations cannot drift.
@@ -674,7 +690,7 @@ impl ServerHandler for Lumen {
             .with_server_info(
                 Implementation::new("lumen", env!("CARGO_PKG_VERSION")).with_title("Lumen"),
             )
-            .with_instructions("lumen — Lux in motu. Cross-media conversion engine: deterministic, code-first bridging between 2D art, 3D models and engine formats. Tools: inspect PNGs and validate atlases, list and apply style grade presets, inspect and grade VRM avatars, discover Bevy Remote Protocol endpoints, and drive the character factory (records in, 2D and 3D out). Generation (folded in, D-143; lumen names since D-1041): lumen_status, lumen_models, lumen_txt2img, lumen_img2img — image generation under the configured lane profile. Backup: hf_dataset_upload uploads finished generated media to a Hugging Face dataset from a sha256 manifest (the generated-media backup rule), verified by LFS read-back.")
+            .with_instructions("lumen — Lux in motu. Cross-media conversion engine: deterministic, code-first bridging between 2D art, 3D models and engine formats. Tools: inspect PNGs and validate atlases, list and apply style grade presets, inspect and grade VRM avatars, discover Bevy Remote Protocol endpoints, and drive the character factory (records in, 2D and 3D out). Generation (folded in, D-143; lumen names since D-1041): lumen_status, lumen_models, lumen_txt2img, lumen_img2img, lumen_img2img_regional (composites keep their regions through the unify pass) — image generation under the configured lane profile. Backup: hf_dataset_upload uploads finished generated media to a Hugging Face dataset from a sha256 manifest (the generated-media backup rule), verified by LFS read-back.")
     }
 }
 

@@ -141,6 +141,7 @@ fn stdio_tools_list_includes_style_ops() {
             "canon_resolve",
             "hf_dataset_upload",
             "lumen_img2img",
+            "lumen_img2img_regional",
             "lumen_models",
             "lumen_status",
             "lumen_txt2img",
