@@ -1,5 +1,20 @@
 # Changelog — lumen
 
+## 2.0.2 — 2026-11-15
+
+- **Regional img2img + device-preserving face/eye unify (L7).**
+  The generation lane gains the regional workflow
+  (`assets/workflows/iris_regional_img2img.v1.json`, spec in
+  `docs/generation/REGIONAL.md`): unify passes at hold 0.35/0.6 now
+  preserve device regions instead of redrawing them away, with the
+  policy knobs in `lumen-policy.toml`. Proof gate (D-1511): Domi 2
+  IoU 0.937 @0.6, Lush 4 IoU 0.976.
+- **`hf_dataset_upload` tool (D-1323).** Generated-media backup —
+  finished media to a Hugging Face dataset, labelled candidate — as
+  lane-neutral lumen machinery, replacing the per-programme Python
+  uploaders. The manifest is asserted by sha256 locally before any
+  token is read.
+
 ## 2.0.1 — 2026-11-11
 
 - **Union skeleton lands in the factory (D-1282, D-1290; D-1293).**
