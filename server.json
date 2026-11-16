@@ -3,7 +3,7 @@
   "name": "ai.qompass/lumen",
   "title": "Lumen",
   "description": "Cross-media conversion engine: 2D art, 3D models and engine formats, deterministic over MCP.",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "websiteUrl": "https://qompass.ai/solutions/lumen/",
   "repository": {
     "url": "https://github.com/qompassai/lumen",
@@ -33,6 +33,10 @@
         "huggingFace": "https://huggingface.co/qompass",
         "orcid": "https://orcid.org/0000-0002-0302-4812",
         "zenodoCommunity": "https://zenodo.org/communities/qompassai"
+      },
+      "ai.qompass/lumen": {
+        "agentCard": ".well-known/agent-card.json",
+        "versionNote": "Server version of record is 2.0.2: the published lumen-mcp-server crate is 2.0.2 and the installed binary reports 'lumen 2.0.2' (D-1543 check). The packages entry still references the v2.0.1 mcpb asset because the 2.0.2 cut produced no mcpb bundle; no 2.0.2 package is asserted."
       }
     }
   }
