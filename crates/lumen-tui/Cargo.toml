@@ -1,0 +1,31 @@
+[package]
+name = "lumen-tui"
+version = "0.1.0"
+edition = "2024"
+license = "Apache-2.0"
+description = "Fleet-pattern terminal console for lumen (D-1562 rung 1): character factory workflows, generation lane, media ladder rung 1 (kitty passthrough + half-block floor), and the cross-MCP trigger layer."
+
+# Standalone crate, like crates/lumen-factory: it is not a member of the
+# root workspace (whose only member is lumen-canon), so it builds and
+# releases on its own train per DESIGN D1.
+[workspace]
+
+[[bin]]
+name = "lumen-tui"
+path = "src/main.rs"
+
+[dependencies]
+crossterm = "0.29"
+image = { version = "0.25", default-features = false, features = ["png"] }
+ratatui = "0.29"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+thiserror = "2"
+toml = { version = "=0.8.23", default-features = false, features = ["parse"] }
+
+[profile.release]
+overflow-checks = true
+
+[lints.rust]
+unsafe_code = "forbid"

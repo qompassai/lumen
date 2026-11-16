@@ -1,0 +1,39 @@
+# lumen-tui trigger rules (DESIGN D-1562 §D4, worked example 2).
+# Data, not code: the Fleet panel lists exactly these rules; a rule
+# that is not here does not exist. Birth stamps are BLOCH lane law —
+# this member emits origin_lane="qompass", content_label="sfw" only,
+# and the loader refuses any other stamp.
+# Identical content is embedded in the binary as the default when no
+# --triggers file is given.
+
+[[rule]]
+id = "lumen-generation-hf-upload-prep"
+origin_lane = "qompass"
+content_label = "sfw"
+event = "generation.completed"
+mode = "plan"
+consequential = true
+target_mcp = "lumen"
+target_tool = "hf_dataset_upload"
+args_output_field = "output_path"
+max_depth = 1
+
+[[rule.conditions]]
+field = "checks_passed"
+op = "is_true"
+
+[[rule]]
+id = "lumen-generation-bloch-lesson"
+origin_lane = "qompass"
+content_label = "sfw"
+event = "generation.completed"
+mode = "auto"
+consequential = false
+target_mcp = "bloch"
+target_tool = "lesson_candidate"
+args_output_field = "output_path"
+max_depth = 1
+
+[[rule.conditions]]
+field = "checks_passed"
+op = "is_true"
