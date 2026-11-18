@@ -45,7 +45,7 @@ fn modern_meta() -> Value {
 /// modern session: `server/discover`, then each request in order
 /// with `_meta` stamped in. Returns the JSON-RPC replies in order.
 fn stdio_session(env: &[(&str, &std::ffi::OsStr)], requests: &[(&str, Value)]) -> Vec<Value> {
-    let mut command = Command::new(env!("CARGO_BIN_EXE_lumen-mcp-server"));
+    let mut command = Command::new(env!("CARGO_BIN_EXE_lumen"));
     command
         .env_clear()
         .env("PATH", std::env::var("PATH").unwrap_or_default())

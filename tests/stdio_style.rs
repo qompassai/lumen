@@ -35,7 +35,7 @@ fn modern_meta() -> Value {
 /// (method, params) request in order with `_meta` stamped into
 /// its params, returning the JSON-RPC replies in order.
 fn stdio_requests(project: &std::path::Path, requests: &[(&str, Value)]) -> Vec<Value> {
-    let mut child = Command::new(env!("CARGO_BIN_EXE_lumen-mcp-server"))
+    let mut child = Command::new(env!("CARGO_BIN_EXE_lumen"))
         .env_remove("LUMEN_POLICY")
         .env_remove("LUMEN_ALLOW_REMOTE_BRP")
         // The folded generation lane reads a default config from
