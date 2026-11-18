@@ -96,47 +96,33 @@ pub const ERROR_BODY_MAX: usize = 300;
 /// One file entry in an upload manifest.
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
 pub struct HfManifestFile {
-    /// Filesystem path of the local file. Relative paths resolve
-    /// against the manifest file's directory (or the server working
-    /// directory for an inline manifest). When omitted, the staged
-    /// layout applies: `<manifest dir>/files/<dest>`, which is the
-    /// shape the per-programme staging scripts write.
+    /// Local file path. Relative paths resolve against the manifest
+    /// file's directory (server working directory for an inline
+    /// manifest). When omitted, the staged layout applies:
+    /// `<manifest dir>/files/<dest>`.
     #[serde(default)]
     pub source: Option<String>,
-    /// Destination path inside the dataset repo (relative, no
-    /// traversal, at most 1000 characters).
+    /// Destination path inside the dataset repo (relative, no traversal, <= 1000 chars).
     pub dest: String,
-    /// Expected sha256 of the source file, 64 hex characters. The
-    /// source is hashed locally and must match before any upload.
+    /// Expected sha256 (64 hex); the source is hashed locally and must match before upload.
     pub sha256: String,
-    /// Expected size in bytes; asserted against the source when set
-    /// (the staging scripts always record it).
+    /// Expected size in bytes; asserted against the source when set.
     #[serde(default)]
     pub bytes: Option<u64>,
 }
 
-/// An upload manifest: files plus the metadata rows that ride in the
-/// same commit. Matches the staged manifest shape the per-programme
-/// scripts write (extra fields there are ignored).
+/// An upload manifest: files plus the metadata rows that ride in the same commit. Matches the staged manifest shape the staging scripts write (extra fields ignored).
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
 pub struct HfManifest {
-    /// Files to upload, in any order; the tool sorts by destination
-    /// for a deterministic commit.
+    /// Files to upload (any order; sorted by destination for a deterministic commit).
     pub files: Vec<HfManifestFile>,
-    /// Dataset-relative path of the metadata JSONL file the rows
-    /// merge into (e.g. `torogao/metadata.jsonl`). Required when
-    /// `metadata_rows` is set.
+    /// Dataset-relative path of the metadata JSONL file the rows merge into (e.g. `torogao/metadata.jsonl`). Required when `metadata_rows` is set.
     #[serde(default)]
     pub metadata_path: Option<String>,
-    /// Rows appended to the metadata file. Each row must be a JSON
-    /// object with a string `file_name`; rows carry `status:
-    /// candidate` by the caller's construction (the backup rule's
-    /// label), the tool transports them verbatim.
+    /// Rows appended to the metadata file. Each row must be a JSON object with a string `file_name`; rows carry `status: candidate` by the caller's construction (the backup rule's label) and are transported verbatim.
     #[serde(default)]
     pub metadata_rows: Option<Vec<serde_json::Value>>,
-    /// Dataset repo id recorded by a staging script. When set it
-    /// must equal the request's `dataset` — a mismatch fails closed
-    /// rather than silently overriding either side.
+    /// Dataset repo id recorded by a staging script. When set it must equal the request's `dataset`; a mismatch fails closed.
     #[serde(default)]
     pub repo: Option<String>,
 }
@@ -144,32 +130,23 @@ pub struct HfManifest {
 /// Request for the `hf_dataset_upload` tool.
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
 pub struct HfDatasetUploadRequest {
-    /// Dataset repo id, `namespace/name` (e.g.
-    /// `NiceThoughtsRanch/ntranch-game-assets`).
+    /// Dataset repo id, `namespace/name` (e.g. `NiceThoughtsRanch/ntranch-game-assets`).
     pub dataset: String,
-    /// Path to a manifest JSON file, relative to the server working
-    /// directory. Exactly one of `manifest_path` / `manifest`.
+    /// Manifest JSON file path, relative to the server working directory. Exactly one of `manifest_path` / `manifest`.
     #[serde(default)]
     pub manifest_path: Option<String>,
-    /// The manifest, inline. Exactly one of `manifest_path` /
-    /// `manifest`.
+    /// The manifest, inline. Exactly one of `manifest_path` / `manifest`.
     #[serde(default)]
     pub manifest: Option<HfManifest>,
-    /// Name of the primo `pass` entry holding the Hugging Face
-    /// token (e.g. `hf/ntranch`). Read at call time only.
+    /// Primo `pass` entry holding the HF token (e.g. `hf/ntranch`); read at call time only.
     pub pass_entry: String,
-    /// Plan only: validate the manifest and hash every source
-    /// locally, then report what would happen. No token is read and
-    /// no network call is made; the pending flag is never cleared.
+    /// Plan only: validate + hash every source locally and report what would happen. No token read, no network; the pending flag is never cleared.
     #[serde(default)]
     pub dry_run: bool,
-    /// Commit summary line. Defaults to a deterministic generated
-    /// line naming the file count.
+    /// Commit summary line. Default: a generated line naming the file count.
     #[serde(default)]
     pub commit_summary: Option<String>,
-    /// Path of an UPLOAD-PENDING flag file, relative to the server
-    /// working directory. Removed only after the upload verifies;
-    /// never removed on a dry run or a failed call.
+    /// UPLOAD-PENDING flag file path, relative to the server working directory. Removed only after the upload verifies; never on a dry run or a failed call.
     #[serde(default)]
     pub pending_flag_path: Option<String>,
 }

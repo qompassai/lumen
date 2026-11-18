@@ -138,14 +138,11 @@ pub struct RegionalImg2ImgRequest {
     /// The global prompt (the whole image).
     pub prompt: String,
     pub negative_prompt: Option<String>,
-    /// Absolute path of a PNG under one of the active profile's source roots
-    /// (the composite: body plus pasted elements).
+    /// Absolute path of a PNG under an active profile source root (the composite: body plus pasted elements).
     pub source_path: String,
-    /// 1-4 regions: box in source pixels, region prompt, hold, strength,
-    /// feather. Output width/height must keep the source aspect.
+    /// 1-4 regions (box, prompt, hold, strength, feather). Output width/height must keep the source aspect.
     pub regions: Vec<RegionSpec>,
-    /// Global denoise, finite in [0.05, 1.0]; inside a region it is scaled
-    /// by (1 - hold).
+    /// Global denoise, finite in [0.05, 1.0]; inside a region scaled by (1 - hold).
     pub denoise: Option<f64>,
     pub width: Option<u32>,
     pub height: Option<u32>,

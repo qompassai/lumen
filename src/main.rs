@@ -408,7 +408,7 @@ impl Lumen {
     }
 
     #[tool(
-        description = "Regional img2img (L7): unify a composite while keeping each composited element in its own region. Takes the img2img fields plus 1-4 `regions` (box [x0,y0,x1,y1] in source pixels, region prompt, `hold` in [0,1] = share of the global denoise withheld inside the region, `strength` in [0,2] of the region prompt, `feather_px`). Each region prompt is applied only inside its mask (ConditioningSetMask combined with the global prompt) and the region is denoised at denoise x (1 - hold) through a fractional SetLatentNoiseMask; masks are rasterised by lumen and recorded (sha256) in the manifest. Output width/height must keep the source aspect. Same model admission, source roots and style steering as lumen_img2img.",
+        description = "Regional img2img (L7): unify a composite while keeping each composited element in its own region. Img2img fields plus 1-4 `regions` (box [x0,y0,x1,y1] in source pixels, prompt, `hold` in [0,1] = share of global denoise withheld in the region, `strength` in [0,2], `feather_px`). Each region prompt applies only inside its mask; the region is denoised at denoise x (1 - hold). Masks are rasterised by lumen and recorded (sha256) in the manifest. Output width/height must keep the source aspect. Same model admission, source roots and style steering as lumen_img2img.",
         annotations(read_only_hint = false, open_world_hint = false)
     )]
     async fn lumen_img2img_regional(
@@ -490,7 +490,7 @@ impl Lumen {
     // only, existing conversion behaviour is unchanged without a
     // handle (SPEC §6).
     #[tool(
-        description = "Resolve a canon handle (canon://<lane>/<character>@<version> + record SHA-256) to a record summary. Lane law enforced: nsfw records are refused to qompass callers.",
+        description = "Resolve a canon handle (canon://<lane>/<character>@<version> + record SHA-256) to a record summary. Lane law: nsfw records refused to qompass callers.",
         annotations(read_only_hint = true, open_world_hint = false)
     )]
     fn canon_resolve(&self, Parameters(req): Parameters<CanonResolveRequest>) -> String {
@@ -512,7 +512,7 @@ impl Lumen {
     }
 
     #[tool(
-        description = "Gate an artifact's measurements against a canon record: proportion + register bands, per-metric deltas on drift. Requires declared anchor lineage; PASS releases to the eye sheet, never to adoption.",
+        description = "Gate an artifact's measurements against a canon record (proportion + register bands, per-metric deltas on drift). Requires declared anchor lineage; PASS releases to the eye sheet, never to adoption.",
         annotations(read_only_hint = true, open_world_hint = false)
     )]
     fn canon_gate(&self, Parameters(req): Parameters<CanonGateRequest>) -> String {
@@ -541,7 +541,7 @@ impl Lumen {
     }
 
     #[tool(
-        description = "Anchored generation broker: a job requires a canon handle, an anchor role, the keeper anchor + style-authority hashes in its inputs, and turnaround + plate reference inputs. There is no unanchored mode. Validates pre-generation, gates any supplied outputs, and persists a workflow-JSON provenance receipt.",
+        description = "Anchored generation broker: a job requires a canon handle, an anchor role, the keeper anchor + style-authority hashes, and turnaround + plate reference inputs. No unanchored mode. Validates pre-generation, gates supplied outputs, persists a workflow-JSON provenance receipt.",
         annotations(read_only_hint = false, open_world_hint = false)
     )]
     fn canon_generate(&self, Parameters(req): Parameters<CanonGenerateRequest>) -> String {
@@ -598,7 +598,7 @@ impl Lumen {
     }
 
     #[tool(
-        description = "Convert a project PNG under a canon record: the record's palette governs a colour remap (nearest palette colour within its tolerance), and the converted artifact is gated against the record's proportion + register bands before anything is written. Requires a canon handle and adopted anchor lineage; lane law enforced. Without a handle this conversion does not exist — the other conversion tools keep their unhandled behaviour.",
+        description = "Convert a project PNG under a canon record: the record's palette governs a colour remap (nearest palette colour within tolerance); the result is gated against the record's proportion + register bands before anything is written. Requires a canon handle and adopted anchor lineage; lane law enforced. Without a handle this conversion does not exist.",
         annotations(read_only_hint = false, open_world_hint = false)
     )]
     fn canon_convert(&self, Parameters(req): Parameters<CanonConvertRequest>) -> String {
@@ -634,7 +634,7 @@ impl Lumen {
     // dataset, manifest and metadata are all parameters; no content
     // lives in the tool. MCP surface only (no A2A registration).
     #[tool(
-        description = "Upload generated media to a Hugging Face dataset from a manifest (manifest_path, or manifest inline): every file's sha256 is asserted before upload, identical remote files are skipped, a different remote hash is a hard stop, metadata rows merge into the dataset's metadata file in the same commit, the upload is verified by LFS sha256 read-back, and pending_flag_path is removed only after verification passes. The token is read from `pass` at runtime (entry named by pass_entry) and never logged or persisted. dry_run returns the validated plan with no token read and no network. All paths are relative to the server working directory. Errors carry a machine-readable `kind` (secret_unavailable = the pass entry could not be read; nothing was attempted).",
+        description = "Upload generated media to a Hugging Face dataset from a manifest (manifest_path, or manifest inline): every file's sha256 is asserted before upload, identical remote files are skipped, a different remote hash is a hard stop, metadata rows merge into the dataset's metadata file in the same commit, verified by LFS sha256 read-back; pending_flag_path is removed only after verification passes. Token read from `pass` at runtime (entry named by pass_entry), never logged or persisted. dry_run returns the validated plan (no token read, no network). Errors carry a machine-readable `kind` (secret_unavailable = pass entry unreadable; nothing attempted).",
         annotations(
             read_only_hint = false,
             destructive_hint = false,

@@ -41,8 +41,7 @@ pub struct RegionSpec {
     pub bbox: [u32; 4],
     /// What belongs in this region (applied only inside it). Nonempty.
     pub prompt: String,
-    /// Share of the global denoise withheld inside the region, in [0, 1]:
-    /// 0 = re-drawn like the rest, 1 = left as composited. Default 0.6.
+    /// Share of global denoise withheld in the region, [0, 1]: 0 = re-drawn like the rest, 1 = left as composited. Default 0.6.
     pub hold: Option<f64>,
     /// Region conditioning strength in [0, 2]. Default 1.0.
     pub strength: Option<f64>,
