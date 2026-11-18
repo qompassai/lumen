@@ -1445,7 +1445,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "lumen-mcp-server"
+name = "lumen-mcp"
 version = "2.0.2"
 dependencies = [
  "asefile",
