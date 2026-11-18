@@ -48,8 +48,9 @@ use rmcp::{
     ErrorData, RoleServer, ServerHandler, ServiceExt,
     handler::server::{router::tool::ToolRouter, tool::ToolCallContext, wrapper::Parameters},
     model::{
-        CallToolRequestParams, CallToolResponse, CallToolResult, Implementation, IntoContents,
-        ProtocolVersion, ServerCapabilities, ServerConfig,
+        CacheScope, CallToolRequestParams, CallToolResponse, CallToolResult, Implementation,
+        IntoContents, ListToolsResult, PaginatedRequestParams, ProtocolVersion, ResultType,
+        ServerCapabilities, ServerConfig, Tool,
     },
     schemars,
     service::RequestContext,
@@ -746,6 +747,34 @@ impl ServerHandler for Lumen {
         }
         let tcc = ToolCallContext::new(self, request, context);
         self.tool_router.call(tcc).await
+    }
+
+    /// The served surface is the profile-filtered router's own. The
+    /// `#[tool_handler]` default would rebuild a fresh
+    /// `Self::tool_router()` for the generated list/get methods and
+    /// leak every profile's tools into a scoped launch, so both are
+    /// written here against `self.tool_router` (whose disabled set is
+    /// the launch profile).
+    async fn list_tools(
+        &self,
+        _request: Option<PaginatedRequestParams>,
+        context: RequestContext<RoleServer>,
+    ) -> Result<ListToolsResult, ErrorData> {
+        let supports_cache_hints = context
+            .protocol_version()
+            .is_some_and(|version| version >= ProtocolVersion::V_2026_07_28);
+        Ok(ListToolsResult {
+            result_type: Some(ResultType::COMPLETE),
+            tools: self.tool_router.list_all(),
+            meta: None,
+            next_cursor: None,
+            ttl_ms: supports_cache_hints.then_some(0),
+            cache_scope: supports_cache_hints.then_some(CacheScope::Public),
+        })
+    }
+
+    fn get_tool(&self, name: &str) -> Option<Tool> {
+        self.tool_router.get(name).cloned()
     }
 
     /// Modern era only: `server/discover` advertises exactly this
