@@ -21,6 +21,10 @@
 //! `lumen_status`, `lumen_models`, `lumen_txt2img`, `lumen_img2img`.
 //! Images only (D-144/D-145) — no video or music tools existed in
 //! atelier or are added here.
+//!
+//! As of 2.1.0 the MCP launch is profile-scoped: a bare launch serves
+//! the conversion core; `--profile generation` and `--profile canon`
+//! each add one opt-in pack; `--profile full` serves all 17 tools.
 
 #![forbid(unsafe_code)]
 
@@ -53,6 +57,59 @@ use rmcp::{
     transport::async_rw::AsyncRwTransport,
 };
 
+/// Conversion-core tools: the default MCP surface.
+const CORE_TOOLS: [&str; 7] = [
+    "bevy_discover",
+    "sprite_info",
+    "style_apply",
+    "style_list",
+    "validate_atlas",
+    "vrm_grade",
+    "vrm_inspect",
+];
+
+/// Folded generation tools: served only by the generation/full profiles.
+const GENERATION_TOOLS: [&str; 5] = [
+    "lumen_img2img",
+    "lumen_img2img_regional",
+    "lumen_models",
+    "lumen_status",
+    "lumen_txt2img",
+];
+
+/// Canon and Hugging Face tools: served only by the canon/full profiles.
+const CANON_TOOLS: [&str; 5] = [
+    "canon_convert",
+    "canon_gate",
+    "canon_generate",
+    "canon_resolve",
+    "hf_dataset_upload",
+];
+
+/// Launch-time MCP tool profile. Profiles decide presence only; the
+/// policy gate still decides whether a served tool may run.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, clap::ValueEnum)]
+pub enum ToolProfile {
+    /// Conversion core only (the bare-launch default).
+    #[default]
+    Core,
+    /// Conversion core plus the folded generation pack.
+    Generation,
+    /// Conversion core plus the canon/Hugging Face pack.
+    Canon,
+    /// The complete 17-tool surface.
+    Full,
+}
+
+impl ToolProfile {
+    fn serves(self, tool: &str) -> bool {
+        CORE_TOOLS.contains(&tool)
+            || self == Self::Full
+            || (self == Self::Generation && GENERATION_TOOLS.contains(&tool))
+            || (self == Self::Canon && CANON_TOOLS.contains(&tool))
+    }
+}
+
 #[derive(Parser)]
 #[command(
     name = "lumen",
@@ -60,6 +117,9 @@ use rmcp::{
     about = "Lux in motu — sprite artistry MCP server and pipeline CLI"
 )]
 struct Cli {
+    /// MCP tool profile to serve when no subcommand is given.
+    #[arg(long, value_enum, default_value = "core")]
+    profile: ToolProfile,
     /// Subcommand. With none, serves the MCP server on stdio.
     #[command(subcommand)]
     command: Option<Command>,
@@ -308,9 +368,19 @@ impl Lumen {
 
 #[tool_router]
 impl Lumen {
-    pub fn new(enforcer: Arc<Enforcer>, generation: GenerationState) -> Self {
+    pub fn new(enforcer: Arc<Enforcer>, generation: GenerationState, profile: ToolProfile) -> Self {
+        let mut tool_router = Self::tool_router();
+        for tool in CORE_TOOLS
+            .iter()
+            .chain(GENERATION_TOOLS.iter())
+            .chain(CANON_TOOLS.iter())
+        {
+            if !profile.serves(tool) {
+                tool_router.disable_route(*tool);
+            }
+        }
         Self {
-            tool_router: Self::tool_router(),
+            tool_router,
             enforcer,
             generation,
         }
@@ -856,6 +926,7 @@ fn run_cli(command: Command) -> i32 {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse();
+    let tool_profile = cli.profile;
     if let Some(command) = cli.command {
         std::process::exit(run_cli(command));
     }
@@ -892,7 +963,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             GenerationState::Unconfigured { expected_path }
         }
     };
-    let handler = Lumen::new(Arc::new(Enforcer::new(policy)), generation);
+    let handler = Lumen::new(Arc::new(Enforcer::new(policy)), generation, tool_profile);
     serve_modern(handler).await
 }
 
