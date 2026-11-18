@@ -36,7 +36,7 @@
       },
       "ai.qompass/lumen": {
         "agentCard": ".well-known/agent-card.json",
-        "versionNote": "Server version of record is 2.0.2: the published lumen-mcp-server crate is 2.0.2 and the installed binary reports 'lumen 2.0.2' (D-1543 check). The packages entry still references the v2.0.1 mcpb asset because the 2.0.2 cut produced no mcpb bundle; no 2.0.2 package is asserted."
+        "versionNote": "Server version of record is 2.0.4, published to the MCP Registry from the lumen-202 worktree on 2026-11-18. The packages entry is the cargo lumen-mcp 2.0.4 package, aligned to that published record."
       }
     }
   }
