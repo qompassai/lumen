@@ -35,7 +35,20 @@ fn modern_meta() -> Value {
 /// (method, params) request in order with `_meta` stamped into
 /// its params, returning the JSON-RPC replies in order.
 fn stdio_requests(project: &std::path::Path, requests: &[(&str, Value)]) -> Vec<Value> {
+    stdio_requests_with_args(project, requests, &[])
+}
+
+fn stdio_full_requests(project: &std::path::Path, requests: &[(&str, Value)]) -> Vec<Value> {
+    stdio_requests_with_args(project, requests, &["--profile", "full"])
+}
+
+fn stdio_requests_with_args(
+    project: &std::path::Path,
+    requests: &[(&str, Value)],
+    args: &[&str],
+) -> Vec<Value> {
     let mut child = Command::new(env!("CARGO_BIN_EXE_lumen"))
+        .args(args)
         .env_remove("LUMEN_POLICY")
         .env_remove("LUMEN_ALLOW_REMOTE_BRP")
         // The folded generation lane reads a default config from
@@ -125,7 +138,7 @@ fn write_fixture_doc(root: &std::path::Path) {
 #[test]
 fn stdio_tools_list_includes_style_ops() {
     let project = tempfile::tempdir().expect("tempdir");
-    let replies = stdio_requests(project.path(), &[("tools/list", json!({}))]);
+    let replies = stdio_full_requests(project.path(), &[("tools/list", json!({}))]);
     let tools = replies[0]["result"]["tools"]
         .as_array()
         .expect("tools array");

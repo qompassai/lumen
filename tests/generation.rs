@@ -44,9 +44,14 @@ fn modern_meta() -> Value {
 /// Spawn the server with a fully explicit environment and drive a
 /// modern session: `server/discover`, then each request in order
 /// with `_meta` stamped in. Returns the JSON-RPC replies in order.
-fn stdio_session(env: &[(&str, &std::ffi::OsStr)], requests: &[(&str, Value)]) -> Vec<Value> {
+fn stdio_session_with_args(
+    env: &[(&str, &std::ffi::OsStr)],
+    requests: &[(&str, Value)],
+    args: &[&str],
+) -> Vec<Value> {
     let mut command = Command::new(env!("CARGO_BIN_EXE_lumen"));
     command
+        .args(args)
         .env_clear()
         .env("PATH", std::env::var("PATH").unwrap_or_default())
         .stdin(Stdio::piped())
@@ -218,13 +223,30 @@ queue_depth_max = 4
 /// One session under the fixture config: project tempdir + atelier
 /// fixture tempdir, both kept alive by the caller.
 fn configured_session(project: &Path, config: &Path, requests: &[(&str, Value)]) -> Vec<Value> {
-    stdio_session(
+    stdio_session_with_args(
         &[
             ("LUMEN_PROJECT_ROOT", project.as_os_str()),
             ("LUMEN_CONFIG", config.as_os_str()),
             ("HOME", project.as_os_str()),
         ],
         requests,
+        &["--profile", "full"],
+    )
+}
+
+fn configured_full_session(
+    project: &Path,
+    config: &Path,
+    requests: &[(&str, Value)],
+) -> Vec<Value> {
+    stdio_session_with_args(
+        &[
+            ("LUMEN_PROJECT_ROOT", project.as_os_str()),
+            ("LUMEN_CONFIG", config.as_os_str()),
+            ("HOME", project.as_os_str()),
+        ],
+        requests,
+        &["--profile", "full"],
     )
 }
 
@@ -241,7 +263,7 @@ fn fold_tools_list_matches_both_baselines() {
     let project = tempfile::tempdir().expect("tempdir");
     let fixture = tempfile::tempdir().expect("tempdir");
     let config = write_atelier_fixture(fixture.path());
-    let replies = configured_session(project.path(), &config, &[("tools/list", json!({}))]);
+    let replies = configured_full_session(project.path(), &config, &[("tools/list", json!({}))]);
     let tools = replies[0]["result"]["tools"]
         .as_array()
         .expect("tools array")
@@ -357,7 +379,7 @@ fn fold_configured_status_and_models_keep_lane_shape() {
 fn fold_unconfigured_lane_refuses_but_lumen_serves() {
     let project = tempfile::tempdir().expect("tempdir");
     let home = tempfile::tempdir().expect("tempdir");
-    let replies = stdio_session(
+    let replies = stdio_session_with_args(
         &[
             ("LUMEN_PROJECT_ROOT", project.path().as_os_str()),
             ("HOME", home.path().as_os_str()),
@@ -367,6 +389,7 @@ fn fold_unconfigured_lane_refuses_but_lumen_serves() {
             call("lumen_models", json!({})),
             call("style_list", json!({})),
         ],
+        &["--profile", "full"],
     );
     for reply in &replies[..2] {
         assert!(
