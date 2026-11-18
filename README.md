@@ -1,5 +1,7 @@
 # lumen
 
+mcp-name: ai.qompass/lumen
+
 **Lux in motu** — light in motion. A cross-platform, cross-media
 conversion engine, written in Rust (edition 2024, `rmcp` 3.8.0): one
 operation core that bridges media formats — 2D art and sprite formats,
