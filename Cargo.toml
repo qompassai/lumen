@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/lumen-canon"]
+members = ["crates/lumen-canon", "crates/lumen-scene-script"]
 resolver = "2"
 
 [package]

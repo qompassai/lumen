@@ -1476,6 +1476,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "lumen-scene-script"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "sha2",
+]
+
+[[package]]
 name = "lzma-rust2"
 version = "0.15.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
